@@ -429,7 +429,14 @@
 - [x] 변경 파일과 민감정보 후보 확인
 - [x] 문법 검증 실행
 - [x] 변경 파일 stage(스테이징)
-- [ ] commit(커밋)
-- [ ] GitHub push(푸시)
+- [x] commit(커밋)
+- [x] GitHub push(푸시)
 - [ ] `main` 대상 draft PR(초안 변경 요청) 생성
-- [ ] 결과 기록
+- [x] 결과 기록
+
+## 진행 결과
+
+- commit(커밋): `5310e06 feat: add calculation logs and result gate`
+- push(푸시): `origin/feature-search-log` 동기화 완료
+- PR(변경 요청) 생성: GitHub 플러그인 재인증 필요로 자동 생성 보류
+- 수동 PR 생성 주소: `https://github.com/yeonjunim521-tech/hospital-fee-calc/compare/main...feature-search-log?expand=1`
