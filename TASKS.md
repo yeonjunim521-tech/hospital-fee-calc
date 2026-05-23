@@ -161,16 +161,26 @@
   - `node --check backend\server.js` 통과
   - 임시 백엔드 실행 후 `/api/health`, `/api/nonbenefit/region-prices` 200 응답 확인
 
-## 현재 작업 예정: 깃허브 비공개 업로드 및 자동 연동 준비
+## 현재 작업 진행: 깃허브 비공개 업로드 및 자동 연동 준비
 
 목표: 프로젝트를 깃허브 비공개 저장소에 올리고, 이후 로컬 업데이트가 깃허브에 자동 반영되도록 준비한다.
 
 ## 작업 범위
 
-- [ ] 현재 깃 원격 저장소 상태 확인
-- [ ] 깃허브 인증 수단 확인
-- [ ] 비공개 원격 저장소 생성 가능 여부 확인
-- [ ] 자동 커밋·푸시 스크립트 추가
-- [ ] 커밋 후 자동 푸시 훅 구성
+- [x] 현재 깃 원격 저장소 상태 확인
+- [x] 깃허브 인증 수단 확인
+- [x] 비공개 원격 저장소 생성 가능 여부 확인
+- [x] 자동 커밋·푸시 스크립트 추가
+- [x] 커밋 후 자동 푸시 훅 구성
 - [ ] 실제 원격 연결 및 첫 업로드
-- [ ] 결과를 `TASKS.md`에 기록
+- [x] 결과를 `TASKS.md`에 기록
+
+## 진행 결과
+
+- 현재 `origin` 리모트 없음.
+- 현재 환경에 `gh` 명령 도구 없음.
+- `GH_TOKEN`/`GITHUB_TOKEN` 없음. 그래서 깃허브 비공개 저장소 생성과 첫 업로드는 인증 정보 없어서 보류.
+- `scripts/create-private-github-repo.ps1` 추가: 토큰이 있으면 비공개 저장소 생성 및 `origin` 연결.
+- `scripts/sync-github.ps1` 추가: 변경사항 자동 커밋 후 `origin/main` 푸시.
+- `scripts/install-auto-push-hook.ps1` 추가 및 `.git/hooks/post-commit` 설치 완료: 커밋마다 자동 푸시. 단, `origin` 없으면 건너뜀.
+- 첫 로컬 커밋 생성 완료: `768cb9b chore: initial project setup`.
