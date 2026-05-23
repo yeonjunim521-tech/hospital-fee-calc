@@ -5,4 +5,4 @@ pages_build_output_dir = "."
 [[d1_databases]]
 binding = "DB"
 database_name = "search-analytics-db"
-database_id = "여기에_Cloudflare에서_발급된_database_id_입력"
+database_id = "1db70fcf-0e42-4fa3-af1c-52ef45619dba"

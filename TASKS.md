@@ -266,7 +266,15 @@
 - 검색 결과 클릭 시 클릭 항목 로그를 저장하도록 연결했다.
 - 관리자 페이지 `admin-search.html` 추가. `ADMIN_TOKEN`으로 API 인증 후 통계를 조회한다.
 - `SEARCH_LOG_SETUP.md`에 D1 생성, 스키마 적용, 환경변수 설정 절차를 기록했다.
-- `wrangler.toml`의 `database_id`는 아직 자리표시자다. Cloudflare D1 생성 후 실제 값으로 교체해야 한다.
+- `wrangler.toml`에 D1 `database_id`를 반영했다.
+- D1 정보:
+  - `database_name`: `search-analytics-db`
+  - `database_id`: `1db70fcf-0e42-4fa3-af1c-52ef45619dba`
+- 원격 D1 스키마 적용 완료:
+  - 처리 쿼리: 6개
+  - 생성 테이블: 2개
+  - 데이터베이스 크기: 0.04MB
+- 관리자 토큰 후보 생성 완료. Cloudflare Pages 환경변수 `ADMIN_TOKEN`에 설정 필요.
 - 검증: `node --check script.js` 통과.
 - 깃허브 플러그인은 재인증 필요 상태라 원격 반영은 보류. 로컬 커밋 후 재인증 또는 새 토큰으로 푸시 필요.
 

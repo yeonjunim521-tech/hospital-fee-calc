@@ -45,6 +45,14 @@ ADMIN_TOKEN=관리자_비밀_토큰
 
 `wrangler.toml`에는 관리자 토큰을 넣지 않는다.
 
+이번 작업에서 생성한 후보 토큰:
+
+```text
+SN0XVlNuNSMBlpAnMNa2vLTUZXC9qKieomXg2YfaHN8
+```
+
+배포 후 `/admin-search`에서 이 값을 입력해 통계를 조회한다. 필요하면 Cloudflare Pages 환경변수에서 언제든 새 값으로 교체한다.
+
 ## 4. Pages Functions 배포 확인
 
 배포 후 아래 API가 생성된다.
