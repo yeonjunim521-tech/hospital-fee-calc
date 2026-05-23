@@ -256,3 +256,19 @@
 - `google846c818f5952f2aa.html` 파일을 프로젝트 루트에 추가했다.
 - 커밋 및 깃허브 푸시 완료: `3d10cb1 chore: add google site verification file`.
 - 배포 후 확인 경로: `https://hospital-fee-calc.pages.dev/google846c818f5952f2aa.html`
+
+## 현재 작업 완료: 네이버 사이트 소유권 인증 파일 추가
+
+목표: 네이버 서치어드바이저에서 요구한 HTML 인증 파일을 웹앱 루트에 배치하고 배포 저장소에 반영한다.
+
+## 작업 범위
+
+- [x] 다운로드 폴더의 인증 파일 확인
+- [x] 프로젝트 루트에 인증 파일 추가
+- [ ] 깃 커밋 및 깃허브 반영
+- [x] 인증 파일 접근 경로 안내
+
+## 진행 결과
+
+- `naver9833def883434392c485818bfb777010.html` 파일을 프로젝트 루트에 추가했다.
+- 배포 후 확인 경로: `https://hospital-fee-calc.pages.dev/naver9833def883434392c485818bfb777010.html`
