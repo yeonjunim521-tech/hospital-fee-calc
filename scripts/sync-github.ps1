@@ -29,5 +29,14 @@ if ($pending) {
     Write-Host "커밋할 변경사항이 없습니다."
 }
 
-git push -u $RemoteName $branch
+$token = $env:GH_TOKEN
+if (-not $token) { $token = $env:GITHUB_TOKEN }
+
+if ($token) {
+    $encoded = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("x-access-token:$token"))
+    git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $encoded" push -u $RemoteName $branch
+} else {
+    git push -u $RemoteName $branch
+}
+
 Write-Host "깃허브 동기화 완료: $RemoteName/$branch"

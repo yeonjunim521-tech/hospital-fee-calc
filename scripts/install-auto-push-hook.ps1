@@ -23,7 +23,17 @@ if ! git remote get-url $RemoteName >/dev/null 2>&1; then
   exit 0
 fi
 
-git push -u $RemoteName "`$branch"
+token="`$GH_TOKEN"
+if [ -z "`$token" ]; then
+  token="`$GITHUB_TOKEN"
+fi
+
+if [ -n "`$token" ]; then
+  encoded=`$(printf "x-access-token:%s" "`$token" | base64)
+  git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic `$encoded" push -u $RemoteName "`$branch"
+else
+  git push -u $RemoteName "`$branch"
+fi
 "@
 
 Set-Content -Path $hookPath -Value $hook -Encoding ASCII
