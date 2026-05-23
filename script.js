@@ -942,10 +942,49 @@ function executeSearchFromInput(searchInput, targetGroup) {
         return;
     }
 
-    performSearch(query, targetGroup);
+    performSearch(query, targetGroup, { logSearch: true });
     searchInput.focus();
     const textLength = searchInput.value.length;
     searchInput.setSelectionRange(textLength, textLength);
+}
+
+async function sendSearchLog(query, resultCount) {
+    if (!query || query.trim().length < 2 || typeof fetch !== 'function') return;
+
+    try {
+        await fetch('/api/search-log', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                query,
+                resultCount,
+                path: window.location.pathname
+            }),
+            keepalive: true
+        });
+    } catch (error) {
+        // 검색 로그 저장 실패는 사용자 검색 흐름을 막지 않는다.
+    }
+}
+
+async function sendSearchClickLog(searchQuery, item) {
+    if (!searchQuery || !item || typeof fetch !== 'function') return;
+
+    try {
+        await fetch('/api/search-click', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                searchQuery,
+                clickedItemId: item.code || item.type || '',
+                clickedItemName: item.name || '',
+                path: window.location.pathname
+            }),
+            keepalive: true
+        });
+    } catch (error) {
+        // 클릭 로그 저장 실패는 항목 추가 흐름을 막지 않는다.
+    }
 }
 
 /** 
@@ -953,7 +992,7 @@ function executeSearchFromInput(searchInput, targetGroup) {
  * @param {string} query - 검색어
  * @param {string} targetGroup - 검색 대상 탭/분류 ('test', 'procedure_hira', 'surgery', 'etc')
  */
-function performSearch(query, targetGroup) {
+function performSearch(query, targetGroup, options = {}) {
     const resultsList = targetGroup === 'etc' 
         ? document.getElementById('etc-search-results')
         : document.getElementById('category-search-results');
@@ -965,6 +1004,10 @@ function performSearch(query, targetGroup) {
     
     // 2단계: 타겟 그룹에 속하는지 탭 필터링
     matched = matched.filter(item => getItemTypeGroup(item) === targetGroup);
+
+    if (options.logSearch) {
+        sendSearchLog(query, matched.length);
+    }
     
     resultsList.innerHTML = '';
     
@@ -1018,6 +1061,7 @@ function performSearch(query, targetGroup) {
             
             // 검색 결과 항목 선택(클릭) 이벤트
             btn.addEventListener('click', () => {
+                sendSearchClickLog(query, item);
                 addHiraItem(item);
                 
                 // 입력창 및 결과 드롭다운 클리어

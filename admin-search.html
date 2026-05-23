@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>검색 로그 관리자 | 병원비 계산기</title>
+    <link rel="stylesheet" href="seo-page.css">
+    <style>
+        .admin-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 18px;
+            margin-top: 24px;
+        }
+
+        .admin-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 18px;
+            background: #f8fafc;
+        }
+
+        .admin-form {
+            display: grid;
+            gap: 12px;
+            margin-top: 18px;
+        }
+
+        .admin-form input,
+        .admin-form select {
+            padding: 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            font-size: 15px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 12px;
+            font-size: 14px;
+        }
+
+        th,
+        td {
+            padding: 10px;
+            border-bottom: 1px solid #e5e7eb;
+            text-align: left;
+        }
+
+        th {
+            color: #334155;
+        }
+
+        .error {
+            color: #b91c1c;
+            margin-top: 12px;
+        }
+    </style>
+</head>
+<body>
+    <main class="page">
+        <section class="panel">
+            <h1>검색 로그 관리자</h1>
+            <p>많이 검색된 키워드, 결과 없는 검색어, 많이 클릭된 항목을 확인합니다.</p>
+
+            <div class="admin-form">
+                <input id="admin-token" type="password" placeholder="관리자 토큰">
+                <select id="days">
+                    <option value="7">최근 7일</option>
+                    <option value="30" selected>최근 30일</option>
+                    <option value="90">최근 90일</option>
+                    <option value="365">최근 365일</option>
+                </select>
+                <button class="cta" type="button" onclick="loadStats()">통계 불러오기</button>
+            </div>
+
+            <p id="status" class="error"></p>
+
+            <div class="admin-grid">
+                <section class="admin-card">
+                    <h2>많이 검색된 키워드</h2>
+                    <table>
+                        <thead>
+                            <tr><th>검색어</th><th>횟수</th><th>평균 결과</th></tr>
+                        </thead>
+                        <tbody id="top-searches"></tbody>
+                    </table>
+                </section>
+
+                <section class="admin-card">
+                    <h2>결과 없는 검색어</h2>
+                    <table>
+                        <thead>
+                            <tr><th>검색어</th><th>횟수</th></tr>
+                        </thead>
+                        <tbody id="zero-searches"></tbody>
+                    </table>
+                </section>
+
+                <section class="admin-card">
+                    <h2>많이 클릭된 항목</h2>
+                    <table>
+                        <thead>
+                            <tr><th>항목</th><th>클릭</th></tr>
+                        </thead>
+                        <tbody id="clicked-items"></tbody>
+                    </table>
+                </section>
+
+                <section class="admin-card">
+                    <h2>최근 검색</h2>
+                    <table>
+                        <thead>
+                            <tr><th>검색어</th><th>결과</th><th>시간</th></tr>
+                        </thead>
+                        <tbody id="recent-searches"></tbody>
+                    </table>
+                </section>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, char => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            }[char]));
+        }
+
+        function renderRows(targetId, rows, renderer, emptyColspan) {
+            const target = document.getElementById(targetId);
+            if (!rows || rows.length === 0) {
+                target.innerHTML = `<tr><td colspan="${emptyColspan}">데이터 없음</td></tr>`;
+                return;
+            }
+
+            target.innerHTML = rows.map(renderer).join('');
+        }
+
+        async function loadStats() {
+            const token = document.getElementById('admin-token').value.trim();
+            const days = document.getElementById('days').value;
+            const status = document.getElementById('status');
+            status.textContent = '';
+
+            try {
+                const response = await fetch(`/api/admin/search-stats?days=${encodeURIComponent(days)}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+
+                const data = await response.json();
+                if (!response.ok || !data.ok) {
+                    throw new Error(data.error || '통계 조회 실패');
+                }
+
+                renderRows('top-searches', data.topSearches, row => `
+                    <tr>
+                        <td>${escapeHtml(row.normalized_query)}</td>
+                        <td>${escapeHtml(row.search_count)}</td>
+                        <td>${Math.round(Number(row.avg_result_count || 0))}</td>
+                    </tr>
+                `, 3);
+
+                renderRows('zero-searches', data.zeroResultSearches, row => `
+                    <tr>
+                        <td>${escapeHtml(row.normalized_query)}</td>
+                        <td>${escapeHtml(row.zero_result_count)}</td>
+                    </tr>
+                `, 2);
+
+                renderRows('clicked-items', data.clickedItems, row => `
+                    <tr>
+                        <td>${escapeHtml(row.clicked_item_name)}</td>
+                        <td>${escapeHtml(row.click_count)}</td>
+                    </tr>
+                `, 2);
+
+                renderRows('recent-searches', data.recentSearches, row => `
+                    <tr>
+                        <td>${escapeHtml(row.query)}</td>
+                        <td>${escapeHtml(row.result_count)}</td>
+                        <td>${escapeHtml(row.created_at)}</td>
+                    </tr>
+                `, 3);
+            } catch (error) {
+                status.textContent = error.message;
+            }
+        }
+    </script>
+</body>
+</html>

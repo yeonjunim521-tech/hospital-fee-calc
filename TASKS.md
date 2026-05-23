@@ -238,6 +238,36 @@
   - `contact.html`
 - 클라우드플레어 페이지 설정 문서 `DEPLOY.md` 추가.
 - 검증: `node --check script.js` 통과.
+
+## 현재 작업 완료: Cloudflare Pages Functions + D1 검색 로그 구축
+
+목표: 사용자가 내부 검색창에 입력한 검색어와 검색 결과 클릭을 Cloudflare D1에 저장하고, 관리자 통계 화면에서 많이 검색된 키워드와 결과 없는 검색어를 확인한다.
+
+## 작업 범위
+
+- [x] `wrangler.toml` D1 바인딩 설정 파일 추가
+- [x] D1 스키마 `schema.sql` 추가
+- [x] `/api/search-log` Pages Function 추가
+- [x] `/api/search-click` Pages Function 추가
+- [x] `/api/admin/search-stats` Pages Function 추가
+- [x] 프론트 검색 실행/클릭 로그 연동
+- [x] 관리자 통계 페이지 추가
+- [x] 배포 및 D1 적용 안내 문서 추가
+- [x] 문법 검증 및 결과 기록
+
+## 진행 결과
+
+- `schema.sql`에 `search_logs`, `search_click_logs` 테이블과 인덱스를 추가했다.
+- Cloudflare Pages Functions 추가:
+  - `functions/api/search-log.ts`
+  - `functions/api/search-click.ts`
+  - `functions/api/admin/search-stats.ts`
+- 검색 버튼 또는 엔터로 실행한 검색어만 저장하도록 프론트를 연결했다.
+- 검색 결과 클릭 시 클릭 항목 로그를 저장하도록 연결했다.
+- 관리자 페이지 `admin-search.html` 추가. `ADMIN_TOKEN`으로 API 인증 후 통계를 조회한다.
+- `SEARCH_LOG_SETUP.md`에 D1 생성, 스키마 적용, 환경변수 설정 절차를 기록했다.
+- `wrangler.toml`의 `database_id`는 아직 자리표시자다. Cloudflare D1 생성 후 실제 값으로 교체해야 한다.
+- 검증: `node --check script.js` 통과.
 - 깃허브 플러그인은 재인증 필요 상태라 원격 반영은 보류. 로컬 커밋 후 재인증 또는 새 토큰으로 푸시 필요.
 
 ## 현재 작업 완료: 구글 사이트 소유권 인증 파일 추가

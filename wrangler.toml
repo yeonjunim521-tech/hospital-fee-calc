@@ -1,0 +1,8 @@
+name = "hospital-fee-calc"
+compatibility_date = "2026-05-23"
+pages_build_output_dir = "."
+
+[[d1_databases]]
+binding = "DB"
+database_name = "search-analytics-db"
+database_id = "여기에_Cloudflare에서_발급된_database_id_입력"
