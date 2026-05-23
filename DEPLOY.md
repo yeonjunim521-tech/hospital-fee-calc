@@ -53,7 +53,6 @@ https://hospital-fee-calc.pages.dev/
 1. D1 데이터베이스 `search-analytics-db` 생성
 2. `wrangler.toml`의 `database_id` 교체
 3. `schema.sql` 원격 적용
-4. Pages 환경변수 `ADMIN_TOKEN` 설정
-5. 배포 후 `/admin-search`에서 통계 확인
+4. 배포 후 `/admin-search`에서 통계 확인
 
 자세한 절차는 `SEARCH_LOG_SETUP.md`를 따른다.

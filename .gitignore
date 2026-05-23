@@ -13,6 +13,7 @@ desktop.ini
 *.log
 .env
 .env.*
+.dev.vars
 
 # Dependency/build folders if added later
 node_modules/

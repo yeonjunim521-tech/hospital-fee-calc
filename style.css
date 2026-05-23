@@ -566,6 +566,47 @@ input:checked + .switch-slider:before { transform: translateX(22px); }
     margin-bottom: 1.5rem;
 }
 
+.result-action-panel {
+    margin-bottom: 1.2rem;
+    padding: 1rem;
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    border-radius: var(--radius-md);
+    background: rgba(59, 130, 246, 0.06);
+}
+
+.btn-show-result {
+    width: 100%;
+    border: none;
+    border-radius: var(--radius-md);
+    background: var(--primary);
+    color: white;
+    padding: 0.9rem 1rem;
+    font-weight: 800;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+}
+
+.btn-show-result:hover {
+    box-shadow: 0 0 18px var(--primary-glow);
+    transform: translateY(-1px);
+}
+
+.btn-show-result.needs-selection {
+    background: rgba(100, 116, 139, 0.85);
+}
+
+#result-ready-message {
+    margin: 0.65rem 0 0;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    line-height: 1.45;
+}
+
+#result-ready-message.warning {
+    color: var(--warning);
+}
+
 .result-item {
     padding: 1.2rem 1.5rem;
     border-radius: var(--radius-md);

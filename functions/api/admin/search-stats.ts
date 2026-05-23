@@ -1,24 +1,13 @@
 interface Env {
   DB: D1Database;
-  ADMIN_TOKEN: string;
 }
 
-function unauthorized() {
-  return Response.json(
-    { ok: false, error: "Unauthorized" },
-    { status: 401 }
-  );
+function rows(result: any) {
+  return Array.isArray(result.results) ? result.results : [];
 }
 
 export const onRequestGet: PagesFunction<Env> = async (context) => {
   try {
-    const authHeader = context.request.headers.get("authorization") ?? "";
-    const token = authHeader.replace("Bearer ", "").trim();
-
-    if (!context.env.ADMIN_TOKEN || token !== context.env.ADMIN_TOKEN) {
-      return unauthorized();
-    }
-
     const url = new URL(context.request.url);
     const days = Math.max(1, Math.min(Number(url.searchParams.get("days") ?? 30), 365));
 
@@ -78,19 +67,36 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     `)
       .all();
 
+    const calculationConditions = await context.env.DB.prepare(`
+      SELECT
+        hospital_class,
+        treatment_type,
+        nonbenefit_region,
+        COUNT(*) AS calculation_count
+      FROM calculation_logs
+      WHERE created_at >= datetime('now', ?)
+      GROUP BY hospital_class, treatment_type, nonbenefit_region
+      ORDER BY calculation_count DESC
+      LIMIT 50
+    `)
+      .bind(`-${days} days`)
+      .all();
+
     return Response.json({
       ok: true,
       days,
-      topSearches: topSearches.results,
-      zeroResultSearches: zeroResultSearches.results,
-      clickedItems: clickedItems.results,
-      recentSearches: recentSearches.results,
+      topSearches: rows(topSearches),
+      zeroResultSearches: rows(zeroResultSearches),
+      clickedItems: rows(clickedItems),
+      recentSearches: rows(recentSearches),
+      calculationConditions: rows(calculationConditions),
     });
   } catch (error) {
-    console.error("search-stats error", error);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("search-stats error", message);
 
     return Response.json(
-      { ok: false, error: "검색 통계 조회 중 오류가 발생했습니다." },
+      { ok: false, error: "검색 통계 조회 중 오류가 발생했습니다.", detail: message },
       { status: 500 }
     );
   }

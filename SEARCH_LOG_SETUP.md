@@ -35,23 +35,17 @@ npx wrangler d1 execute search-analytics-db --remote --file=./schema.sql
 npx wrangler d1 execute search-analytics-db --local --file=./schema.sql
 ```
 
-## 3. Cloudflare Pages 환경변수 설정
+로컬 실행:
 
-Cloudflare Pages 프로젝트 설정에서 환경변수를 추가한다.
-
-```text
-ADMIN_TOKEN=관리자_비밀_토큰
+```powershell
+npx wrangler pages dev . --d1 DB=search-analytics-db
 ```
 
-`wrangler.toml`에는 관리자 토큰을 넣지 않는다.
+## 3. 관리자 통계 페이지
 
-이번 작업에서 생성한 후보 토큰:
+관리자 통계 페이지는 토큰 없이 조회한다. 대신 검색엔진에 노출되지 않도록 `noindex`와 `robots.txt` 차단을 적용한다.
 
-```text
-SN0XVlNuNSMBlpAnMNa2vLTUZXC9qKieomXg2YfaHN8
-```
-
-배포 후 `/admin-search`에서 이 값을 입력해 통계를 조회한다. 필요하면 Cloudflare Pages 환경변수에서 언제든 새 값으로 교체한다.
+공개 링크로 노출하지 말고 운영자만 직접 주소를 보관한다.
 
 ## 4. Pages Functions 배포 확인
 
@@ -71,9 +65,9 @@ GET /api/admin/search-stats
 https://hospital-fee-calc.pages.dev/admin-search
 ```
 
-관리자 토큰 입력 후 최근 7일, 30일, 90일, 365일 통계를 볼 수 있다.
+최근 7일, 30일, 90일, 365일 통계를 볼 수 있다.
 
-관리자 페이지는 `robots.txt`와 `noindex`로 검색 노출을 막는다. 보안은 API의 `ADMIN_TOKEN` 인증이 담당한다.
+관리자 페이지는 `robots.txt`와 `noindex`로 검색 노출을 막는다. 단, 주소를 아는 사람은 조회할 수 있으므로 공개 링크로 노출하지 않는다.
 
 ## 주의
 

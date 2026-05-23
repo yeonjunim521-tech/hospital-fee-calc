@@ -62,7 +62,7 @@
                         <label class="form-label">1. 진료받을 병원 등급 선택</label>
                         <div class="radio-group-tile hospital-select-grid">
                             <label class="tile-option">
-                                <input type="radio" name="hospital_class" value="clinic" checked onchange="calculate()">
+                                <input type="radio" name="hospital_class" value="clinic" onchange="calculate()">
                                 <span class="tile-content">
                                     <i data-lucide="home"></i>
                                     <span class="tile-title">동네 의원</span>
@@ -101,7 +101,7 @@
                         <label class="form-label">2. 진료 형태 및 입원 여부</label>
                         <div class="radio-group-tile treatment-select-grid">
                             <label class="tile-option">
-                                <input type="radio" name="treatment_type" value="outpatient" checked onchange="toggleTreatmentDetails()">
+                                <input type="radio" name="treatment_type" value="outpatient" onchange="toggleTreatmentDetails()">
                                 <span class="tile-content">
                                     <i data-lucide="user-check"></i>
                                     <span class="tile-title">일반 외래</span>
@@ -192,7 +192,7 @@
                             <div class="sub-group">
                                 <label class="sub-label" for="nonbenefit_region">비급여 가격 기준 지역</label>
                                 <select id="nonbenefit_region" class="form-select" onchange="calculate()">
-                                    <option value="national" selected>전국 공개 중앙값</option>
+                                    <option value="" selected>-- 비급여 가격 기준 지역 선택 --</option>
                                 </select>
                                 <p class="public-data-help-text">프로젝트에 추가된 지역별 비급여 공개자료가 있으면 선택 지역의 중앙값을 우선 적용하고, 중앙값이 없으면 평균값을 사용합니다. 데이터가 없는 항목은 기존 추정가를 사용합니다.</p>
                             </div>
@@ -320,6 +320,12 @@
             <!-- ===== 우측: 예상 영수증 및 병원비 비교 결과 ===== -->
             <section class="card result-card">
                 <h2 class="card-title"><i data-lucide="receipt"></i> 예상 병원비 산출 결과</h2>
+                <div class="result-action-panel">
+                    <button type="button" id="btn-show-result" class="btn-show-result" onclick="requestCalculation()">
+                        결과보기
+                    </button>
+                    <p id="result-ready-message">병원 등급, 진료 형태, 비급여 기준 지역을 선택하면 결과보기가 활성화됩니다.</p>
+                </div>
                 
                 <div class="result-display">
                     <!-- 최상단 강조: 최종 예상 실부담금 및 가격 편차 범위 -->
