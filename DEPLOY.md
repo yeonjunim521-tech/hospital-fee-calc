@@ -45,3 +45,14 @@ https://hospital-fee-calc.pages.dev/
 ## 광고 준비
 
 애드센스 또는 카카오 애드핏 승인 후 `ads.txt`를 실제 광고 계정 값으로 교체한다.
+
+## 검색 로그 기능 준비
+
+검색 로그 기능은 Cloudflare D1 연결 후 활성화된다.
+
+1. D1 데이터베이스 `search-analytics-db` 생성
+2. `wrangler.toml`의 `database_id` 교체
+3. `schema.sql` 원격 적용
+4. 배포 후 `/admin-search`에서 통계 확인
+
+자세한 절차는 `SEARCH_LOG_SETUP.md`를 따른다.

@@ -154,6 +154,7 @@ let procedureIdCounter = 0;
 
 let activeTab = 'test'; // 현재 활성화된 카테고리 탭 (기본값: 검사)
 let etcAccordionOpen = false; // 기타 처치 아코디언의 펼침 여부 상태
+let resultRequested = false;
 
 const EMERGENCY_SEVERITY_CODE_MAP = {
     mild: 'ER_LG01',
@@ -182,7 +183,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 폼 변경 이벤트 연동
     const form = document.getElementById('calculator-form');
     if (form) {
-        form.addEventListener('change', calculate);
+        form.addEventListener('change', handleCalculatorInputChange, true);
     }
 
     // 심평원 고시 자료 기준일 렌더링
@@ -204,8 +205,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 검색 이벤트 초기화 (대분류 검색창 및 기타 검색창 개별 등록)
     initSearchEvents();
 
-    // 초기 계산 수행
-    calculate();
+    // 초기 결과 영역은 필수 조건 선택 전까지 잠근다.
+    resetResultView();
+    updateResultButtonState();
 });
 
 
@@ -251,6 +253,103 @@ function switchTab(tabId) {
         resultsList.innerHTML = '';
         resultsList.classList.add('hidden');
     }
+}
+
+function getRequiredCalculationSelections() {
+    const hospitalClassEl = document.querySelector('input[name="hospital_class"]:checked');
+    const treatmentTypeEl = document.querySelector('input[name="treatment_type"]:checked');
+    const regionEl = document.getElementById('nonbenefit_region');
+
+    return {
+        hospitalClass: hospitalClassEl ? hospitalClassEl.value : '',
+        treatmentType: treatmentTypeEl ? treatmentTypeEl.value : '',
+        nonBenefitRegion: regionEl ? regionEl.value : ''
+    };
+}
+
+function isCalculationReady() {
+    const selections = getRequiredCalculationSelections();
+    return Boolean(selections.hospitalClass && selections.treatmentType && selections.nonBenefitRegion);
+}
+
+function getMissingCalculationLabels() {
+    const selections = getRequiredCalculationSelections();
+    const missing = [];
+
+    if (!selections.hospitalClass) missing.push('병원 등급');
+    if (!selections.treatmentType) missing.push('진료 형태');
+    if (!selections.nonBenefitRegion) missing.push('비급여 기준 지역');
+
+    return missing;
+}
+
+function updateResultButtonState() {
+    const btn = document.getElementById('btn-show-result');
+    const message = document.getElementById('result-ready-message');
+    const ready = isCalculationReady();
+
+    if (btn) {
+        btn.classList.toggle('needs-selection', !ready);
+    }
+    if (!message) return;
+
+    if (ready) {
+        message.classList.remove('warning');
+        message.innerText = resultRequested
+            ? '선택 조건 기준으로 결과를 계산했습니다. 조건을 바꾸면 다시 결과보기를 눌러주세요.'
+            : '필수 조건이 모두 선택되었습니다. 결과보기를 눌러 예상 병원비를 계산하세요.';
+    } else {
+        message.classList.add('warning');
+        message.innerText = `${getMissingCalculationLabels().join(', ')} 선택 후 결과를 조회할 수 있습니다.`;
+    }
+}
+
+function resetResultView() {
+    const finalCostEl = document.getElementById('display_final_cost');
+    const totalCostEl = document.getElementById('display_total_cost');
+    const refundCostEl = document.getElementById('display_refund_cost');
+    const rangeEl = document.getElementById('display_cost_range');
+    const tableBody = document.getElementById('cost-table-body');
+    const comparisonBody = document.getElementById('comparison-table-body');
+    const insuranceBox = document.getElementById('result_insurance_box');
+    const drgNotice = document.getElementById('drg-notice');
+
+    if (finalCostEl) finalCostEl.innerText = '0';
+    if (totalCostEl) totalCostEl.innerText = '0';
+    if (refundCostEl) refundCostEl.innerText = '0';
+    if (rangeEl) rangeEl.innerText = '0원 ~ 0원';
+    if (tableBody) tableBody.innerHTML = '<tr><td colspan="3" class="empty-row">결과보기를 누르면 세부 산출 내역이 표시됩니다.</td></tr>';
+    if (comparisonBody) comparisonBody.innerHTML = '<tr><td colspan="3" class="empty-row">필수 조건 선택 후 결과보기를 눌러주세요.</td></tr>';
+    if (insuranceBox) insuranceBox.classList.add('hidden');
+    if (drgNotice) drgNotice.classList.add('hidden');
+}
+
+function markResultStale() {
+    resultRequested = false;
+    resetResultView();
+    updateResultButtonState();
+}
+
+function handleCalculatorInputChange() {
+    markResultStale();
+}
+
+function requestCalculation() {
+    updateResultButtonState();
+    if (!isCalculationReady()) {
+        const missingLabels = getMissingCalculationLabels();
+        const message = `${missingLabels.join(', ')}을(를) 선택해야 결과를 조회할 수 있습니다.`;
+        const messageEl = document.getElementById('result-ready-message');
+        if (messageEl) {
+            messageEl.classList.add('warning');
+            messageEl.innerText = message;
+        }
+        alert(message);
+        return;
+    }
+
+    resultRequested = true;
+    calculate();
 }
 
 /**
@@ -307,6 +406,8 @@ function handleDirectSelectChange(selectType) {
     const matchedItem = HIRA_DATABASE.find(item => item.code === selectedCode);
     
     if (matchedItem) {
+        sendSearchLog(matchedItem.name, 1);
+        sendSearchClickLog(matchedItem.name, matchedItem);
         addHiraItem(matchedItem);
     }
     
@@ -397,7 +498,8 @@ function updateEtcAddedBadge() {
 
 /** 진료 형태 변경 시 입원 세부 필드 토글 */
 function toggleTreatmentDetails() {
-    const treatmentType = document.querySelector('input[name="treatment_type"]:checked').value;
+    const treatmentTypeEl = document.querySelector('input[name="treatment_type"]:checked');
+    const treatmentType = treatmentTypeEl ? treatmentTypeEl.value : '';
     const hospitalizationSection = document.getElementById('hospitalization_details');
     const emergencySection = document.getElementById('emergency_details');
     if (treatmentType === 'inpatient') {
@@ -583,15 +685,13 @@ function populateNonBenefitRegions() {
     const externalRegions = collectExternalNonBenefitRegions();
     const hasExternalRegions = Object.keys(externalRegions).length > 0;
     const regions = hasExternalRegions ? externalRegions : DB.NON_BENEFIT_PUBLIC_PRICE_DATA.regions;
-    const savedRegion = getStoredNonBenefitRegion();
-    const preferred = savedRegion || (hasExternalRegions ? '11' : DB.NON_BENEFIT_PUBLIC_PRICE_DATA.defaultRegion);
     const regionEntries = Object.entries(regions).sort(([a], [b]) => a.localeCompare(b, 'ko'));
-    const selected = regions[preferred] ? preferred : regionEntries[0]?.[0];
 
-    regionEl.innerHTML = regionEntries.map(([code, region]) => {
-        const selectedAttr = code === selected ? ' selected' : '';
-        return `<option value="${code}"${selectedAttr}>${region.name}</option>`;
-    }).join('');
+    const options = ['<option value="" selected>-- 비급여 가격 기준 지역 선택 --</option>'];
+    options.push(...regionEntries.map(([code, region]) => {
+        return `<option value="${code}">${region.name}</option>`;
+    }));
+    regionEl.innerHTML = options.join('');
 
     regionEl.addEventListener('change', () => {
         setStoredNonBenefitRegion(regionEl.value);
@@ -819,12 +919,8 @@ function initSearchEvents() {
         categorySearchInput.addEventListener('input', (e) => {
             const query = e.target.value.trim();
             updateSearchControlState(categorySearchInput, btnClearCategory, btnRunCategory);
-            if (query.length > 0) {
-                performSearch(query, activeTab); // 현재 활성 탭 카테고리 내에서만 검색 실행
-            } else {
-                categoryResultsList.innerHTML = '';
-                categoryResultsList.classList.add('hidden');
-            }
+            categoryResultsList.innerHTML = '';
+            categoryResultsList.classList.add('hidden');
         });
 
         categorySearchInput.addEventListener('keydown', (e) => {
@@ -852,11 +948,6 @@ function initSearchEvents() {
             });
         }
         
-        categorySearchInput.addEventListener('focus', () => {
-            if (categorySearchInput.value.trim().length > 0 && categoryResultsList.children.length > 0) {
-                categoryResultsList.classList.remove('hidden');
-            }
-        });
     }
 
     // B. 기타 처치 검색창 리스너 바인딩
@@ -869,12 +960,8 @@ function initSearchEvents() {
         etcSearchInput.addEventListener('input', (e) => {
             const query = e.target.value.trim();
             updateSearchControlState(etcSearchInput, btnClearEtc, btnRunEtc);
-            if (query.length > 0) {
-                performSearch(query, 'etc'); // 기타 분류(etc) 내에서만 검색 실행
-            } else {
-                etcResultsList.innerHTML = '';
-                etcResultsList.classList.add('hidden');
-            }
+            etcResultsList.innerHTML = '';
+            etcResultsList.classList.add('hidden');
         });
 
         etcSearchInput.addEventListener('keydown', (e) => {
@@ -902,20 +989,15 @@ function initSearchEvents() {
             });
         }
         
-        etcSearchInput.addEventListener('focus', () => {
-            if (etcSearchInput.value.trim().length > 0 && etcResultsList.children.length > 0) {
-                etcResultsList.classList.remove('hidden');
-            }
-        });
     }
     
     // C. 드롭다운 바깥 영역 클릭 시 검색창 드롭다운 레이어 닫기
     document.addEventListener('click', (e) => {
         if (categorySearchInput && categoryResultsList && !categorySearchInput.contains(e.target) && !categoryResultsList.contains(e.target)) {
-            categoryResultsList.classList.add('hidden');
+            categorySearchInput.blur();
         }
         if (etcSearchInput && etcResultsList && !etcSearchInput.contains(e.target) && !etcResultsList.contains(e.target)) {
-            etcResultsList.classList.add('hidden');
+            etcSearchInput.blur();
         }
     });
 }
@@ -942,18 +1024,86 @@ function executeSearchFromInput(searchInput, targetGroup) {
         return;
     }
 
-    performSearch(query, targetGroup);
+    performSearch(query, targetGroup, { logSearch: true });
     searchInput.focus();
     const textLength = searchInput.value.length;
     searchInput.setSelectionRange(textLength, textLength);
 }
 
+async function sendSearchLog(query, resultCount) {
+    if (!query || query.trim().length < 2 || typeof fetch !== 'function') return;
+
+    try {
+        await fetch('/api/search-log', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                query,
+                resultCount,
+                path: window.location.pathname
+            }),
+            keepalive: true
+        });
+    } catch (error) {
+        // 검색 로그 저장 실패는 사용자 검색 흐름을 막지 않는다.
+    }
+}
+
+async function sendSearchClickLog(searchQuery, item) {
+    if (!searchQuery || !item || typeof fetch !== 'function') return;
+
+    try {
+        await fetch('/api/search-click', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                searchQuery,
+                clickedItemId: item.code || item.type || '',
+                clickedItemName: item.name || '',
+                path: window.location.pathname
+            }),
+            keepalive: true
+        });
+    } catch (error) {
+        // 클릭 로그 저장 실패는 항목 추가 흐름을 막지 않는다.
+    }
+}
+
+function compactSelectedItems(items) {
+    return items.map(item => ({
+        code: item.type,
+        name: item.typeName,
+        category: item.categoryName || item.category,
+        count: item.count || 1,
+        basePrice: item.basePrice,
+        isBenefit: item.isBenefit
+    }));
+}
+
+async function sendCalculationLog(payload) {
+    if (!payload || typeof fetch !== 'function') return;
+
+    try {
+        await fetch('/api/calculation-log', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ...payload,
+                path: window.location.pathname
+            }),
+            keepalive: true
+        });
+    } catch (error) {
+        // 계산 로그 저장 실패는 결과 표시를 막지 않는다.
+    }
+}
+
 /** 
- * 실시간 검색 필터링 수행 및 드롭다운 목록 렌더링 
+ * 검색 실행 후 결과 목록 렌더링
  * @param {string} query - 검색어
  * @param {string} targetGroup - 검색 대상 탭/분류 ('test', 'procedure_hira', 'surgery', 'etc')
  */
-function performSearch(query, targetGroup) {
+function performSearch(query, targetGroup, options = {}) {
     const resultsList = targetGroup === 'etc' 
         ? document.getElementById('etc-search-results')
         : document.getElementById('category-search-results');
@@ -965,6 +1115,10 @@ function performSearch(query, targetGroup) {
     
     // 2단계: 타겟 그룹에 속하는지 탭 필터링
     matched = matched.filter(item => getItemTypeGroup(item) === targetGroup);
+
+    if (options.logSearch) {
+        sendSearchLog(query, matched.length);
+    }
     
     resultsList.innerHTML = '';
     
@@ -1018,9 +1172,10 @@ function performSearch(query, targetGroup) {
             
             // 검색 결과 항목 선택(클릭) 이벤트
             btn.addEventListener('click', () => {
+                sendSearchClickLog(query, item);
                 addHiraItem(item);
                 
-                // 입력창 및 결과 드롭다운 클리어
+                // 입력창 및 결과 목록 클리어
                 const searchInput = targetGroup === 'etc' 
                     ? document.getElementById('etc-search-input')
                     : document.getElementById('category-search-input');
@@ -1063,7 +1218,7 @@ function searchByChip(keyword) {
     const btnRun = document.getElementById('btn-run-category-search');
     updateSearchControlState(searchInput, btnClear, btnRun);
     
-    performSearch(keyword, activeTab);
+    performSearch(keyword, activeTab, { logSearch: true });
     searchInput.focus();
 }
 
@@ -1176,7 +1331,7 @@ function addHiraItem(item) {
 
     renderAddedItems();
     updateEtcAddedBadge();
-    calculate();
+    markResultStale();
 }
 
 
@@ -1280,7 +1435,7 @@ function removeTestItem(id) {
     addedTests = addedTests.filter(i => i.id !== id);
     renderAddedItems();
     updateEtcAddedBadge();
-    calculate();
+    markResultStale();
 }
 
 /** 수술 제거 */
@@ -1288,7 +1443,7 @@ function removeSurgeryItem(id) {
     addedSurgeries = addedSurgeries.filter(i => i.id !== id);
     renderAddedItems();
     updateEtcAddedBadge();
-    calculate();
+    markResultStale();
 }
 
 /** 처치 제거 */
@@ -1296,7 +1451,7 @@ function removeProcedureItem(id) {
     addedProcedures = addedProcedures.filter(i => i.id !== id);
     renderAddedItems();
     updateEtcAddedBadge();
-    calculate();
+    markResultStale();
 }
 
 
@@ -1491,6 +1646,12 @@ function renderComparisonTable(currentClass) {
 // 8. 핵심 계산 엔진 (종별가산, 본인부담금, 실비 환급 계산 및 명세서 렌더링)
 // =========================================================
 function calculate() {
+    updateResultButtonState();
+    if (!resultRequested || !isCalculationReady()) {
+        resetResultView();
+        return null;
+    }
+
     // [1] 입력 폼 요소 값 획득 및 맵핑
     const hospitalClass = document.querySelector('input[name="hospital_class"]:checked').value;
     const treatmentType = document.querySelector('input[name="treatment_type"]:checked').value;
@@ -1746,4 +1907,23 @@ function calculate() {
 
     // 실시간 종별 병원 규모 비교 테이블 렌더링 호출
     renderComparisonTable(hospitalClass);
+    updateResultButtonState();
+
+    sendCalculationLog({
+        hospitalClass,
+        treatmentType,
+        nonBenefitRegion: getSelectedNonBenefitRegion(),
+        roomType,
+        stayDays,
+        hasInsurance,
+        insuranceGeneration: insuranceGen,
+        hasSanjeong: Boolean(sanjeongInfo),
+        sanjeongDisease: document.getElementById('sanjeong_disease')?.value || '',
+        selectedTests: compactSelectedItems(addedTests),
+        selectedSurgeries: compactSelectedItems(addedSurgeries),
+        selectedProcedures: compactSelectedItems(addedProcedures),
+        finalCost: finalPatientPay,
+        totalCost: patientTotalPay,
+        refundCost: refundTotal
+    });
 }
