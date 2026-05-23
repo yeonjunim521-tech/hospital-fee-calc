@@ -7,31 +7,31 @@
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://hospital-fee-calc.pages.dev/hospital-cost-calculator.html</loc>
+    <loc>https://hospital-fee-calc.pages.dev/hospital-cost-calculator</loc>
     <lastmod>2026-05-23</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://hospital-fee-calc.pages.dev/er-cost-calculator.html</loc>
+    <loc>https://hospital-fee-calc.pages.dev/er-cost-calculator</loc>
     <lastmod>2026-05-23</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://hospital-fee-calc.pages.dev/privacy.html</loc>
+    <loc>https://hospital-fee-calc.pages.dev/privacy</loc>
     <lastmod>2026-05-23</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.4</priority>
   </url>
   <url>
-    <loc>https://hospital-fee-calc.pages.dev/contact.html</loc>
+    <loc>https://hospital-fee-calc.pages.dev/contact</loc>
     <lastmod>2026-05-23</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.4</priority>
   </url>
   <url>
-    <loc>https://hospital-fee-calc.pages.dev/about.html</loc>
+    <loc>https://hospital-fee-calc.pages.dev/about</loc>
     <lastmod>2026-05-23</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>

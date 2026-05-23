@@ -239,9 +239,14 @@ function switchTab(tabId) {
     const searchInput = document.getElementById('category-search-input');
     const btnClear = document.getElementById('btn-clear-category-search');
     const resultsList = document.getElementById('category-search-results');
+    const btnRun = document.getElementById('btn-run-category-search');
     
     if (searchInput) searchInput.value = '';
     if (btnClear) btnClear.classList.add('hidden');
+    if (btnRun) {
+        btnRun.disabled = true;
+        btnRun.classList.remove('active');
+    }
     if (resultsList) {
         resultsList.innerHTML = '';
         resultsList.classList.add('hidden');
@@ -808,27 +813,42 @@ function initSearchEvents() {
     const categorySearchInput = document.getElementById('category-search-input');
     const categoryResultsList = document.getElementById('category-search-results');
     const btnClearCategory = document.getElementById('btn-clear-category-search');
+    const btnRunCategory = document.getElementById('btn-run-category-search');
     
     if (categorySearchInput && categoryResultsList) {
         categorySearchInput.addEventListener('input', (e) => {
             const query = e.target.value.trim();
+            updateSearchControlState(categorySearchInput, btnClearCategory, btnRunCategory);
             if (query.length > 0) {
-                if (btnClearCategory) btnClearCategory.classList.remove('hidden');
                 performSearch(query, activeTab); // 현재 활성 탭 카테고리 내에서만 검색 실행
             } else {
-                if (btnClearCategory) btnClearCategory.classList.add('hidden');
                 categoryResultsList.innerHTML = '';
                 categoryResultsList.classList.add('hidden');
             }
         });
+
+        categorySearchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                executeSearchFromInput(categorySearchInput, activeTab);
+            }
+        });
         
         if (btnClearCategory) {
-            btnClearCategory.addEventListener('click', () => {
+            btnClearCategory.addEventListener('click', (e) => {
+                e.stopPropagation();
                 categorySearchInput.value = '';
-                btnClearCategory.classList.add('hidden');
+                updateSearchControlState(categorySearchInput, btnClearCategory, btnRunCategory);
                 categoryResultsList.innerHTML = '';
                 categoryResultsList.classList.add('hidden');
                 categorySearchInput.focus();
+            });
+        }
+
+        if (btnRunCategory) {
+            btnRunCategory.addEventListener('click', (e) => {
+                e.stopPropagation();
+                executeSearchFromInput(categorySearchInput, activeTab);
             });
         }
         
@@ -843,27 +863,42 @@ function initSearchEvents() {
     const etcSearchInput = document.getElementById('etc-search-input');
     const etcResultsList = document.getElementById('etc-search-results');
     const btnClearEtc = document.getElementById('btn-clear-etc-search');
+    const btnRunEtc = document.getElementById('btn-run-etc-search');
     
     if (etcSearchInput && etcResultsList) {
         etcSearchInput.addEventListener('input', (e) => {
             const query = e.target.value.trim();
+            updateSearchControlState(etcSearchInput, btnClearEtc, btnRunEtc);
             if (query.length > 0) {
-                if (btnClearEtc) btnClearEtc.classList.remove('hidden');
                 performSearch(query, 'etc'); // 기타 분류(etc) 내에서만 검색 실행
             } else {
-                if (btnClearEtc) btnClearEtc.classList.add('hidden');
                 etcResultsList.innerHTML = '';
                 etcResultsList.classList.add('hidden');
             }
         });
+
+        etcSearchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                executeSearchFromInput(etcSearchInput, 'etc');
+            }
+        });
         
         if (btnClearEtc) {
-            btnClearEtc.addEventListener('click', () => {
+            btnClearEtc.addEventListener('click', (e) => {
+                e.stopPropagation();
                 etcSearchInput.value = '';
-                btnClearEtc.classList.add('hidden');
+                updateSearchControlState(etcSearchInput, btnClearEtc, btnRunEtc);
                 etcResultsList.innerHTML = '';
                 etcResultsList.classList.add('hidden');
                 etcSearchInput.focus();
+            });
+        }
+
+        if (btnRunEtc) {
+            btnRunEtc.addEventListener('click', (e) => {
+                e.stopPropagation();
+                executeSearchFromInput(etcSearchInput, 'etc');
             });
         }
         
@@ -883,6 +918,34 @@ function initSearchEvents() {
             etcResultsList.classList.add('hidden');
         }
     });
+}
+
+function updateSearchControlState(searchInput, clearButton, runButton) {
+    const hasQuery = Boolean(searchInput && searchInput.value.trim().length > 0);
+
+    if (clearButton) {
+        clearButton.classList.toggle('hidden', !hasQuery);
+    }
+
+    if (runButton) {
+        runButton.disabled = !hasQuery;
+        runButton.classList.toggle('active', hasQuery);
+    }
+}
+
+function executeSearchFromInput(searchInput, targetGroup) {
+    if (!searchInput) return;
+
+    const query = searchInput.value.trim();
+    if (!query) {
+        searchInput.focus();
+        return;
+    }
+
+    performSearch(query, targetGroup);
+    searchInput.focus();
+    const textLength = searchInput.value.length;
+    searchInput.setSelectionRange(textLength, textLength);
 }
 
 /** 
@@ -965,11 +1028,16 @@ function performSearch(query, targetGroup) {
                 const btnClear = targetGroup === 'etc'
                     ? document.getElementById('btn-clear-etc-search')
                     : document.getElementById('btn-clear-category-search');
+
+                const btnRun = targetGroup === 'etc'
+                    ? document.getElementById('btn-run-etc-search')
+                    : document.getElementById('btn-run-category-search');
                     
                 if (searchInput) searchInput.value = '';
-                if (btnClear) btnClear.classList.add('hidden');
+                if (searchInput) updateSearchControlState(searchInput, btnClear, btnRun);
                 resultsList.innerHTML = '';
                 resultsList.classList.add('hidden');
+                if (searchInput) searchInput.focus();
             });
             
             resultsList.appendChild(btn);
@@ -992,6 +1060,8 @@ function searchByChip(keyword) {
     
     const btnClear = document.getElementById('btn-clear-category-search');
     if (btnClear) btnClear.classList.remove('hidden');
+    const btnRun = document.getElementById('btn-run-category-search');
+    updateSearchControlState(searchInput, btnClear, btnRun);
     
     performSearch(keyword, activeTab);
     searchInput.focus();

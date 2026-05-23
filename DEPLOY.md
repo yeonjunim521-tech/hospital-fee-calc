@@ -28,11 +28,11 @@ https://hospital-fee-calc.pages.dev/
 - `index.html`
 - `robots.txt`
 - `sitemap.xml`
-- `hospital-cost-calculator.html`
-- `er-cost-calculator.html`
-- `about.html`
-- `privacy.html`
-- `contact.html`
+- `hospital-cost-calculator`
+- `er-cost-calculator`
+- `about`
+- `privacy`
+- `contact`
 
 ## 검색 등록 순서
 
