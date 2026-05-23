@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- SEO 검색 최적화 설정 -->
+    <title>대한민국 병원/응급실 예상 비용 계산기 MVP</title>
+    <meta name="description" content="자연어 검색과 질문 흐름 기반으로 일반인이 검사·시술·수술 예상 실비 환급액 및 본인부담금을 대략적으로 예측할 수 있는 서비스입니다.">
+    <meta name="keywords" content="심평원 수가, 병원비 계산기, MRI 비용, CT 비용, 수술비, 입원비, 실비보험, 종별 가산, 응급실 비용">
+    <meta name="author" content="Antigravity MEDICost MVP">
+    
+    <!-- Open Graph 메타 태그 -->
+    <meta property="og:title" content="병원/응급실 예상 비용 계산기 MVP">
+    <meta property="og:description" content="자연어 검색으로 쉽고 빠르게 예상 병원비와 실비 환급액을 확인해보세요.">
+    <meta property="og:type" content="website">
+    
+    <!-- 폰트 (Noto Sans KR, Outfit) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- 스타일시트 -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- ============ 헤더 ============ -->
+        <header class="app-header">
+            <div class="logo-area">
+                <i data-lucide="heart-pulse" class="pulse-icon"></i>
+                <span class="logo-text">MEDICost MVP</span>
+            </div>
+            <h1>병원/응급실 예상 비용 계산기</h1>
+            <p class="subtitle">일반인 용어 자연어 검색 · 자동 수가 계산 및 실비 환급 범위 예측 서비스</p>
+            <div class="development-notice">
+                <i data-lucide="construction"></i>
+                <div>
+                    <strong>현재 개발중인 계산기입니다.</strong>
+                    <span>공개 수가와 비급여 데이터 연동 범위를 계속 업데이트하고 있으며, 실제 청구액은 병원·환자 상태·보험 약관에 따라 달라질 수 있습니다.</span>
+                    <small id="data-source-status">데이터 상태 확인 중</small>
+                </div>
+            </div>
+        </header>
+
+        <!-- ============ 메인 콘텐츠 (Grid) ============ -->
+        <main class="app-main">
+            <!-- ===== 좌측: 입력 폼 ===== -->
+            <section class="card form-card">
+                <h2 class="card-title"><i data-lucide="activity"></i> 진료 조건 및 항목 선택</h2>
+                
+                <form id="calculator-form" onsubmit="event.preventDefault();">
+
+                    <!-- 1. 병원 등급 선택 (의원/병원/종합병원/상급종합병원) -->
+                    <div class="form-group">
+                        <label class="form-label">1. 진료받을 병원 등급 선택</label>
+                        <div class="radio-group-tile hospital-select-grid">
+                            <label class="tile-option">
+                                <input type="radio" name="hospital_class" value="clinic" checked onchange="calculate()">
+                                <span class="tile-content">
+                                    <i data-lucide="home"></i>
+                                    <span class="tile-title">동네 의원</span>
+                                    <span class="tile-desc">동네 개인 의원·치과<br>(본인부담금 낮음)</span>
+                                </span>
+                            </label>
+                            <label class="tile-option">
+                                <input type="radio" name="hospital_class" value="hospital" onchange="calculate()">
+                                <span class="tile-content">
+                                    <i data-lucide="building"></i>
+                                    <span class="tile-title">일반 병원</span>
+                                    <span class="tile-desc">입원실을 갖춘 병원<br>(30병상 이상)</span>
+                                </span>
+                            </label>
+                            <label class="tile-option">
+                                <input type="radio" name="hospital_class" value="general_hospital" onchange="calculate()">
+                                <span class="tile-content">
+                                    <i data-lucide="building-2"></i>
+                                    <span class="tile-title">종합병원</span>
+                                    <span class="tile-desc">진료과목이 많은 대형 병원<br>(100병상 이상)</span>
+                                </span>
+                            </label>
+                            <label class="tile-option">
+                                <input type="radio" name="hospital_class" value="tertiary_hospital" onchange="calculate()">
+                                <span class="tile-content">
+                                    <i data-lucide="landmark"></i>
+                                    <span class="tile-title">대학병원 (상급종합)</span>
+                                    <span class="tile-desc">40여개 지정 상급병원<br>(가산율 높음)</span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 2. 진료 형태 및 입원 여부 -->
+                    <div class="form-group">
+                        <label class="form-label">2. 진료 형태 및 입원 여부</label>
+                        <div class="radio-group-tile treatment-select-grid">
+                            <label class="tile-option">
+                                <input type="radio" name="treatment_type" value="outpatient" checked onchange="toggleTreatmentDetails()">
+                                <span class="tile-content">
+                                    <i data-lucide="user-check"></i>
+                                    <span class="tile-title">일반 외래</span>
+                                    <span class="tile-desc">통원 외래 진료</span>
+                                </span>
+                            </label>
+                            <label class="tile-option">
+                                <input type="radio" name="treatment_type" value="er" onchange="toggleTreatmentDetails()">
+                                <span class="tile-content">
+                                    <i data-lucide="ambulance"></i>
+                                    <span class="tile-title">응급실</span>
+                                    <span class="tile-desc">응급실 내원 진료</span>
+                                </span>
+                            </label>
+                            <label class="tile-option">
+                                <input type="radio" name="treatment_type" value="inpatient" onchange="toggleTreatmentDetails()">
+                                <span class="tile-content">
+                                    <i data-lucide="bed"></i>
+                                    <span class="tile-title">입원 치료</span>
+                                    <span class="tile-desc">입원 20% 본인부담</span>
+                                </span>
+                            </label>
+                        </div>
+
+                        <!-- 응급실 상세 옵션 (응급실 선택시에만 표시) -->
+                        <div id="emergency_details" class="sub-form-section hidden">
+                            <div class="sub-group">
+                                <label class="sub-label">응급실 중증도</label>
+                                <select id="er_severity" class="form-select" onchange="calculate()">
+                                    <option value="mild" selected>경증/비응급 수준 (응급의료 관리료 경증 기준)</option>
+                                    <option value="moderate">중등도 응급 (복통·골절·봉합 등 중등도 기준)</option>
+                                    <option value="severe">중증/응급 환자 (호흡곤란·의식저하 등 중증 기준)</option>
+                                </select>
+                                <p class="er-help-text">응급실 중증도는 예상 응급의료관리료에 반영됩니다. 실제 중증도는 병원 현장 분류 기준에 따라 달라질 수 있습니다.</p>
+                            </div>
+                        </div>
+
+                        <!-- 입원 상세 옵션 (입원 선택시에만 표시) -->
+                        <div id="hospitalization_details" class="sub-form-section hidden">
+                            <div class="sub-group">
+                                <label class="sub-label">병실 등급</label>
+                                <select id="room_type" class="form-select" onchange="calculate()">
+                                    <option value="standard" selected>일반 다인실 (급여 적용 · 20% 본인부담)</option>
+                                    <option value="premium">상급 1~2인실 (비급여 적용 · 100% 환자부담)</option>
+                                </select>
+                            </div>
+                            <div class="sub-group">
+                                <label class="sub-label">입원 기간</label>
+                                <div class="number-input-wrapper">
+                                    <button type="button" class="btn-step" onclick="adjustDays(-1)">-</button>
+                                    <input type="number" id="stay_days" value="1" min="1" max="90" readonly>
+                                    <span class="unit">일</span>
+                                    <button type="button" class="btn-step" onclick="adjustDays(1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 산정특례 토글 -->
+                        <div class="sanjeong-toggle-box">
+                            <div class="insurance-toggle">
+                                <label class="switch-container">
+                                    <input type="checkbox" id="has_sanjeong" onchange="toggleSanjeongSpecial()">
+                                    <span class="switch-slider"></span>
+                                </label>
+                                <span class="switch-label">산정특례 대상자 (질환 유형별 급여 본인부담 0~10%, 비급여 제외)</span>
+                            </div>
+                            <div id="sanjeong_details" class="sub-form-section hidden">
+                                <label class="sub-label">중증질환 유형 선택</label>
+                                <select id="sanjeong_disease" class="form-select" onchange="calculate()">
+                                    <option value="cancer">중증 암 환자 (급여 본인부담 5%)</option>
+                                    <option value="heart">심장질환 수술 환자 (급여 본인부담 5%)</option>
+                                    <option value="cerebro">뇌혈관질환 수술 환자 (급여 본인부담 5%)</option>
+                                    <option value="burn">중증 화상 환자 (급여 본인부담 5%)</option>
+                                    <option value="rare">희귀질환자 (급여 본인부담 10%)</option>
+                                    <option value="intractable">중증난치질환자 (급여 본인부담 10%)</option>
+                                    <option value="dementia">중증치매 환자 (급여 본인부담 10%)</option>
+                                    <option value="tuberculosis">결핵 산정특례 대상자 (급여 본인부담 0%)</option>
+                                </select>
+                                <p class="sanjeong-help-text">산정특례는 요양급여 항목에만 적용됩니다. 비급여와 전액본인부담·선별급여 항목은 실제 청구 기준 확인이 필요합니다.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. 비급여 공개자료 기준 -->
+                    <div class="form-group">
+                        <label class="form-label">3. 비급여 공개자료 기준</label>
+                        <div class="sub-form-section nonbenefit-public-section">
+                            <div class="sub-group">
+                                <label class="sub-label" for="nonbenefit_region">비급여 가격 기준 지역</label>
+                                <select id="nonbenefit_region" class="form-select" onchange="calculate()">
+                                    <option value="national" selected>전국 공개 중앙값</option>
+                                </select>
+                                <p class="public-data-help-text">프로젝트에 추가된 지역별 비급여 공개자료가 있으면 선택 지역의 중앙값을 우선 적용하고, 중앙값이 없으면 평균값을 사용합니다. 데이터가 없는 항목은 기존 추정가를 사용합니다.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. 핵심: 검사/시술/수술 선택 및 검색 -->
+                    <div class="form-group">
+                        <label class="form-label">4. 치료 및 검사 항목 추가</label>
+                        
+                        <!-- 대분류 탭 메뉴 -->
+                        <div class="category-tabs" role="tablist">
+                            <button type="button" class="tab-btn active" data-tab="test" onclick="switchTab('test')">
+                                <i data-lucide="test-tube"></i> 검사
+                            </button>
+                            <button type="button" class="tab-btn" data-tab="procedure_hira" onclick="switchTab('procedure_hira')">
+                                <i data-lucide="activity"></i> 시술
+                            </button>
+                            <button type="button" class="tab-btn" data-tab="surgery" onclick="switchTab('surgery')">
+                                <i data-lucide="heart-pulse"></i> 수술
+                            </button>
+                        </div>
+
+                        <!-- 탭별 입력 콘텐트 (직접 선택 + 자연어 검색 공존) -->
+                        <div class="tab-content-wrapper">
+                            <div class="input-inline-group">
+                                <!-- 직접 선택 드롭다운 -->
+                                <div class="direct-select-box">
+                                    <label class="input-sub-label" for="category-direct-select"><i data-lucide="list-filter"></i> 직접 선택</label>
+                                    <select id="category-direct-select" class="form-select" onchange="handleDirectSelectChange('category')">
+                                        <!-- JS에서 활성화된 탭에 따라 옵션을 동적으로 로드 -->
+                                    </select>
+                                </div>
+                                <!-- 자연어 검색창 -->
+                                <div class="search-input-box">
+                                    <label class="input-sub-label" for="category-search-input"><i data-lucide="search"></i> 자연어/의학 용어 검색</label>
+                                    <div class="search-input-container">
+                                        <i data-lucide="search" class="search-icon"></i>
+                                        <input type="text" id="category-search-input" class="form-input search-input" placeholder="이름, 동의어, 초성, 영타 오타 검색..." autocomplete="off">
+                                        <button type="button" id="btn-clear-category-search" class="btn-clear-search hidden"><i data-lucide="x"></i></button>
+                                    </div>
+                                    <!-- 실시간 검색 결과 리스트 -->
+                                    <div id="category-search-results" class="search-results-list hidden"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 인기 검색어 (선택형 칩 제공) -->
+                        <div class="search-chips-container">
+                            <div class="chip-row">
+                                <span class="chip-label">추천 키워드:</span>
+                                <div class="chips-list" id="recommend-chips-list">
+                                    <!-- JS에서 현재 선택된 탭에 맞춰 추천 키워드를 채워줌 -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- [신규] 기타 처치, 주사, 마취 등 접이식 아코디언 섹션 -->
+                        <div class="etc-accordion-wrapper">
+                            <button type="button" class="etc-accordion-trigger" onclick="toggleEtcAccordion()">
+                                <div class="etc-trigger-title">
+                                    <i data-lucide="plus-circle" id="etc-accordion-icon-lucide"></i>
+                                    <span>기타 처치, 주사, 마취 등 추가</span>
+                                </div>
+                                <span class="badge badge-etc-count" id="etc-added-badge" style="display:none;">0개 추가됨</span>
+                            </button>
+                            <div id="etc-accordion-body" class="etc-accordion-content hidden">
+                                <p class="etc-desc-text">마취료, 수액/주사제, 물리치료, 한방침술, 단순 드레싱 등 기타 보조 처치를 추가할 수 있습니다.</p>
+                                <div class="input-inline-group">
+                                    <!-- 기타 직접 선택 -->
+                                    <div class="direct-select-box">
+                                        <label class="input-sub-label" for="etc-direct-select"><i data-lucide="list-filter"></i> 직접 선택</label>
+                                        <select id="etc-direct-select" class="form-select" onchange="handleDirectSelectChange('etc')">
+                                            <!-- JS에서 기타 항목을 동적으로 로드 -->
+                                        </select>
+                                    </div>
+                                    <!-- 기타 검색창 -->
+                                    <div class="search-input-box">
+                                        <label class="input-sub-label" for="etc-search-input"><i data-lucide="search"></i> 기타 항목 검색</label>
+                                        <div class="search-input-container">
+                                            <i data-lucide="search" class="search-icon"></i>
+                                            <input type="text" id="etc-search-input" class="form-input search-input" placeholder="마취, 수액, 물리치료 등 검색..." autocomplete="off">
+                                            <button type="button" id="btn-clear-etc-search" class="btn-clear-search hidden"><i data-lucide="x"></i></button>
+                                        </div>
+                                        <div id="etc-search-results" class="search-results-list hidden"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 선택 및 추가된 전체 항목 목록 칩 -->
+                        <div class="added-items-container">
+                            <span class="added-list-title"><i data-lucide="check-square"></i> 추가된 치료/검사 항목 (실시간 누적)</span>
+                            <div id="added_items_unified_list" class="added-items-list">
+                                <p class="empty-list-text">등록된 치료 및 검사 항목이 없습니다. 대분류를 선택하여 드롭다운으로 추가하거나 검색해 주세요.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 5. 실비보험 적용 여부 -->
+                    <div class="form-group last-group">
+                        <label class="form-label">5. 실손의료보험(실비) 적용 여부</label>
+                        <div class="insurance-toggle">
+                            <label class="switch-container">
+                                <input type="checkbox" id="has_insurance" onchange="toggleInsuranceSection()">
+                                <span class="switch-slider"></span>
+                            </label>
+                            <span class="switch-label">실비보험을 적용하여 예상 환급금을 계산합니다.</span>
+                        </div>
+                        <div id="insurance_details" class="sub-form-section hidden">
+                            <label class="sub-label">가입한 실비보험 세대 선택</label>
+                            <select id="insurance_generation" class="form-select" onchange="calculate()">
+                                <option value="gen1" selected>1세대 (~2009년 7월 가입 / 급여·비급여 100% 환급)</option>
+                                <option value="gen2">2세대 (2009년 8월 ~ 2017년 3월 / 급여·비급여 90% 환급)</option>
+                                <option value="gen3">3세대 (2017년 4월 ~ 2021년 6월 / 급여 90% · 비급여 80% 환급)</option>
+                                <option value="gen4">4세대 (2021년 7월 ~ 현재 가입 / 급여 80% · 비급여 70% 환급)</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </section>
+
+            <!-- ===== 우측: 예상 영수증 및 병원비 비교 결과 ===== -->
+            <section class="card result-card">
+                <h2 class="card-title"><i data-lucide="receipt"></i> 예상 병원비 산출 결과</h2>
+                
+                <div class="result-display">
+                    <!-- 최상단 강조: 최종 예상 실부담금 및 가격 편차 범위 -->
+                    <div class="result-item final-cost-box-primary">
+                        <span class="result-label highlight-label">최종 예상 환자 실부담금</span>
+                        <div class="cost-value-wrapper highlight-value">
+                            <span id="display_final_cost" class="cost-value main-value">0</span><span class="cost-unit main-unit">원</span>
+                        </div>
+                        <div class="cost-range-primary">
+                            <span class="range-lbl">대략적인 예상 범위:</span>
+                            <span id="display_cost_range" class="range-value-large">0원 ~ 0원</span>
+                        </div>
+                    </div>
+
+                    <!-- 예상 총 청구액 (종별가산 반영 청구총액) -->
+                    <div class="result-item total-cost-box-secondary">
+                        <span class="result-label">병원 예상 총 청구 금액 (가산반영)</span>
+                        <div class="cost-value-wrapper secondary-value">
+                            <span id="display_total_cost" class="cost-value">0</span><span class="cost-unit">원</span>
+                        </div>
+                    </div>
+
+                    <!-- 실비보험 예상 환급액 -->
+                    <div id="result_insurance_box" class="result-item insurance-refund-box fade-in hidden">
+                        <span class="result-label text-green"><i data-lucide="shield-check"></i> 실비보험 예상 환급액</span>
+                        <div class="cost-value-wrapper secondary-value">
+                            <span id="display_refund_cost" class="cost-value refund-text">0</span><span class="cost-unit refund-text">원</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DRG 포괄수가제 안내 -->
+                <div id="drg-notice" class="drg-notice-box hidden">
+                    <i data-lucide="alert-circle"></i>
+                    <p><strong>[DRG 포괄수가제 대상]</strong> 선택하신 수술 항목 중 포괄수가제(DRG)가 적용되는 항목이 있습니다. 맹장염, 백내장, 제왕절개 등의 수술은 입원비, 약제비가 하나로 묶인 고정 정액 수가로 청구되므로 실부담 금액이 더 안정적입니다.</p>
+                </div>
+
+                <!-- 병원 규모별 실시간 예상비용 비교 테이블 -->
+                <div class="comparison-card">
+                    <h3 class="comparison-title"><i data-lucide="arrow-left-right"></i> 동일 조건 병원 규모별 예상 실부담금 비교</h3>
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>병원 분류</th>
+                                <th>본인부담금 비율</th>
+                                <th class="text-right">예상 실부담금 범위</th>
+                            </tr>
+                        </thead>
+                        <tbody id="comparison-table-body">
+                            <!-- JS에서 실시간 계산하여 출력 -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 상세 명세서 아코디언 (자동산정된 주사/마취/처치료 등은 여기에만 표시) -->
+                <div class="details-accordion">
+                    <button class="accordion-trigger" onclick="toggleAccordion()">
+                        <span>세부 심평원 수가 산출 명세서 (주사/마취비 등 포함)</span>
+                        <i data-lucide="chevron-down" id="accordion-icon"></i>
+                    </button>
+                    <div id="accordion-content" class="accordion-content hidden">
+                        <table class="cost-table">
+                            <thead>
+                                <tr>
+                                    <th>항목 명칭</th>
+                                    <th>구분</th>
+                                    <th class="text-right">산출 금액(본인부담)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cost-table-body">
+                                <!-- JS에서 동적으로 삽입 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 법적 면책 조항 및 참고사항 -->
+                <div class="disclaimer-box">
+                    <i data-lucide="info"></i>
+                    <p><strong>[이용 안내]</strong> 본 서비스는 심평원 고시 수가 자료를 바탕으로 예상 가격을 추정하는 시뮬레이터입니다. 병원의 특화 비급여 항목, 선택형 약제, 환자의 중증도 및 응급 상황에 따라 실제 병원 수납금과 차이가 발생할 수 있으며 법적 효력을 갖지 않습니다.</p>
+                    <p style="margin-top: 0.35rem; font-size: 0.72rem; color: var(--text-muted);">※ 대표 비급여 일부는 국민건강보험 비급여 항목별 가격정보 공개 화면에서 확인한 전국 중앙값을 우선 반영합니다. 지역별 상세 평균은 공식 OpenAPI 키 또는 별도 데이터셋 확보 후 적용해야 합니다.</p>
+                </div>
+            </section>
+        </main>
+
+        <!-- ============ 자료 기준일 Footer ============ -->
+        <footer class="data-date-footer">
+            <i data-lucide="database"></i>
+            <span>수가 데이터 기준일: <strong id="data-reference-date">로딩 중...</strong> | 건강보험심사평가원 공개 수가 고시 기준 시뮬레이션</span>
+        </footer>
+    </div>
+
+    <!-- 스크립트 바인딩 -->
+    <script src="hira_codes.js"></script>
+    <script src="nonbenefit_data.js"></script>
+    <script src="script.js"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>
