@@ -265,10 +265,11 @@
 
 - [x] 다운로드 폴더의 인증 파일 확인
 - [x] 프로젝트 루트에 인증 파일 추가
-- [ ] 깃 커밋 및 깃허브 반영
+- [x] 깃 커밋 및 깃허브 반영
 - [x] 인증 파일 접근 경로 안내
 
 ## 진행 결과
 
 - `naver9833def883434392c485818bfb777010.html` 파일을 프로젝트 루트에 추가했다.
+- 커밋 및 깃허브 푸시 완료: `6846e8a chore: add naver site verification file`.
 - 배포 후 확인 경로: `https://hospital-fee-calc.pages.dev/naver9833def883434392c485818bfb777010.html`
