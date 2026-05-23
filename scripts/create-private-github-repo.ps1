@@ -58,9 +58,9 @@ try {
 }
 
 $remoteUrl = "https://github.com/$($user.login)/$RepoName.git"
-$existingRemote = git remote get-url $RemoteName 2>$null
+$existingRemotes = @(git remote)
 
-if ($LASTEXITCODE -eq 0 -and $existingRemote) {
+if ($existingRemotes -contains $RemoteName) {
     git remote set-url $RemoteName $remoteUrl
 } else {
     git remote add $RemoteName $remoteUrl
