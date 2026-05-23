@@ -307,6 +307,8 @@ function handleDirectSelectChange(selectType) {
     const matchedItem = HIRA_DATABASE.find(item => item.code === selectedCode);
     
     if (matchedItem) {
+        sendSearchLog(matchedItem.name, 1);
+        sendSearchClickLog(matchedItem.name, matchedItem);
         addHiraItem(matchedItem);
     }
     
@@ -819,12 +821,8 @@ function initSearchEvents() {
         categorySearchInput.addEventListener('input', (e) => {
             const query = e.target.value.trim();
             updateSearchControlState(categorySearchInput, btnClearCategory, btnRunCategory);
-            if (query.length > 0) {
-                performSearch(query, activeTab); // 현재 활성 탭 카테고리 내에서만 검색 실행
-            } else {
-                categoryResultsList.innerHTML = '';
-                categoryResultsList.classList.add('hidden');
-            }
+            categoryResultsList.innerHTML = '';
+            categoryResultsList.classList.add('hidden');
         });
 
         categorySearchInput.addEventListener('keydown', (e) => {
@@ -852,11 +850,6 @@ function initSearchEvents() {
             });
         }
         
-        categorySearchInput.addEventListener('focus', () => {
-            if (categorySearchInput.value.trim().length > 0 && categoryResultsList.children.length > 0) {
-                categoryResultsList.classList.remove('hidden');
-            }
-        });
     }
 
     // B. 기타 처치 검색창 리스너 바인딩
@@ -869,12 +862,8 @@ function initSearchEvents() {
         etcSearchInput.addEventListener('input', (e) => {
             const query = e.target.value.trim();
             updateSearchControlState(etcSearchInput, btnClearEtc, btnRunEtc);
-            if (query.length > 0) {
-                performSearch(query, 'etc'); // 기타 분류(etc) 내에서만 검색 실행
-            } else {
-                etcResultsList.innerHTML = '';
-                etcResultsList.classList.add('hidden');
-            }
+            etcResultsList.innerHTML = '';
+            etcResultsList.classList.add('hidden');
         });
 
         etcSearchInput.addEventListener('keydown', (e) => {
@@ -902,20 +891,15 @@ function initSearchEvents() {
             });
         }
         
-        etcSearchInput.addEventListener('focus', () => {
-            if (etcSearchInput.value.trim().length > 0 && etcResultsList.children.length > 0) {
-                etcResultsList.classList.remove('hidden');
-            }
-        });
     }
     
     // C. 드롭다운 바깥 영역 클릭 시 검색창 드롭다운 레이어 닫기
     document.addEventListener('click', (e) => {
         if (categorySearchInput && categoryResultsList && !categorySearchInput.contains(e.target) && !categoryResultsList.contains(e.target)) {
-            categoryResultsList.classList.add('hidden');
+            categorySearchInput.blur();
         }
         if (etcSearchInput && etcResultsList && !etcSearchInput.contains(e.target) && !etcResultsList.contains(e.target)) {
-            etcResultsList.classList.add('hidden');
+            etcSearchInput.blur();
         }
     });
 }
@@ -988,7 +972,7 @@ async function sendSearchClickLog(searchQuery, item) {
 }
 
 /** 
- * 실시간 검색 필터링 수행 및 드롭다운 목록 렌더링 
+ * 검색 실행 후 결과 목록 렌더링
  * @param {string} query - 검색어
  * @param {string} targetGroup - 검색 대상 탭/분류 ('test', 'procedure_hira', 'surgery', 'etc')
  */
@@ -1064,7 +1048,7 @@ function performSearch(query, targetGroup, options = {}) {
                 sendSearchClickLog(query, item);
                 addHiraItem(item);
                 
-                // 입력창 및 결과 드롭다운 클리어
+                // 입력창 및 결과 목록 클리어
                 const searchInput = targetGroup === 'etc' 
                     ? document.getElementById('etc-search-input')
                     : document.getElementById('category-search-input');
@@ -1107,7 +1091,7 @@ function searchByChip(keyword) {
     const btnRun = document.getElementById('btn-run-category-search');
     updateSearchControlState(searchInput, btnClear, btnRun);
     
-    performSearch(keyword, activeTab);
+    performSearch(keyword, activeTab, { logSearch: true });
     searchInput.focus();
 }
 
