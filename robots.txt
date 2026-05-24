@@ -1,6 +1,0 @@
-User-agent: *
-Allow: /
-Disallow: /admin-search
-Disallow: /admin-search.html
-
-Sitemap: https://hospital-fee-calc.pages.dev/sitemap.xml

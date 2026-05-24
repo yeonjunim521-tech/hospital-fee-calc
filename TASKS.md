@@ -2,44 +2,27 @@
 
 ## 운영 규칙
 
-- 이 프로젝트의 작업 목록 파일은 `TASKS.md` 하나만 사용한다.
-- 새 작업을 시작할 때는 마지막 작업 하나만 `TASKS.md`에 남긴다.
+- 작업 목록 파일은 `TASKS.md` 하나만 사용한다.
+- `TASKS.md`에는 현재 작업 하나만 남긴다.
 - 이전 작업 기록은 `docs/TASK_HISTORY.md`에 보관한다.
-- 상태 표기:
-  - `- [ ]`: 미완료
-  - `- [/]`: 진행 중
-  - `- [x]`: 완료
+- 상태 표기: `[ ]` 미완료, `[/]` 진행 중, `[x]` 완료
 
-## 현재 작업 진행: 프로젝트 구조 정리 및 SEO 랜딩 페이지 추가
+## 현재 작업: 프론트/백엔드 분리, CSV 통계 반영, SEO/AEO/GEO 보강
 
-목표: `task.md`와 `TASKS.md` 운영을 하나로 통합하고, 프로젝트 파일을 보기 좋게 정리하며, SEO/AEO/GEO 노출을 위한 랜딩 페이지와 보조 파일을 추가한다.
+목표: Cloudflare Pages 정적 프론트엔드와 API 백엔드 구조를 분리하고, 다운로드한 공공데이터 CSV를 요약 데이터로 변환해 계산기에 반영한다. 검색 노출용 보조 파일과 랜딩 콘텐츠도 보강한다.
 
 ## 작업 범위
 
-- [x] `TASKS.md` 하나만 사용하도록 운영 규칙 변경
-- [x] 이전 작업 기록을 `docs/TASK_HISTORY.md`로 이동
-- [x] 임시 배포 폴더 `.deploy-pages-10ac6a4` 삭제
-- [x] CSV 파일을 `data/raw`로 이동하고 짧은 영문 파일명 적용
-- [x] JS/CSS/정적 데이터 파일을 `assets` 하위로 정리
-- [x] 문서, DB 스키마, 테스트 파일을 전용 폴더로 이동
-- [x] SEO 랜딩 페이지 추가
-- [x] `sitemap.xml` 갱신
-- [x] `llms.txt`와 데이터 출처 페이지 추가
-- [x] 경로 참조 검증 및 문법 검사
-- [x] Cloudflare 배포 최신 버전 안내
-- [x] 구글/네이버 색인 요청 URL 정리
-- [x] AEO/GEO 추가 작업 정리
+- [x] 프론트엔드 공개 파일을 `frontend/`로 분리
+- [x] 백엔드 API 파일은 `backend/`, Pages Functions는 `functions/`로 유지
+- [x] CSV 원본에서 통계 JS 파일 생성
+- [x] 상병코드 평균 진료비 입력/반영 추가
+- [x] 행위코드가 있는 항목은 공공데이터 평균값 우선 반영하는 hook(훅: 연결 지점) 추가
+- [x] SEO/AEO/GEO 보조 콘텐츠 추가
+- [x] sitemap, 문법, 로컬 파일 참조 검증
+- [/] 변경분 commit(커밋), push(푸시)
 
-## 진행 결과
+## 진행 메모
 
-- `TASKS.md`는 마지막 작업 하나만 보이도록 정리했다.
-- 이전 작업 기록은 `docs/TASK_HISTORY.md`에 저장했다.
-- 임시 배포 폴더 `.deploy-pages-10ac6a4`는 삭제했다.
-- CSV 원본 4개는 `data/raw`로 이동하고 짧은 영문 파일명으로 변경했다.
-- JS/CSS/정적 데이터 파일은 `assets` 하위로 이동했다.
-- 문서, DB 스키마, 테스트 파일은 전용 폴더로 이동했다.
-- SEO 랜딩 페이지 5개와 데이터 출처 페이지, `llms.txt`를 추가했다.
-- `sitemap.xml`은 새 URL 목록으로 갱신했다.
-- 검증: `node --check assets/js/script.js`, `node --check backend/server.js` 통과.
-- 검증: `sitemap.xml`에 적힌 로컬 파일 존재 확인 통과.
-- 참고: `tests/test_runner.js`는 실행되지만 기존 기대값이 최신 결과보기 게이트 로직과 맞지 않아 일부 FAIL이 남아 있다.
+- 이전 commit(커밋) `1d91ca3`은 이미 `origin/main`에 push(푸시) 완료.
+- 현재 작업 검증 완료. commit(커밋), push(푸시) 진행 중.

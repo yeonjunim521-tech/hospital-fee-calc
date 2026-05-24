@@ -1,58 +1,32 @@
-# 클라우드플레어 페이지 배포 순서
+# Cloudflare Pages 배포 메모
 
-## 목표
+## 현재 구조
 
-빠른 정적 웹앱 배포와 검색 노출 준비.
+- 프론트엔드(frontend, 화면 파일): `frontend/`
+- 백엔드(backend, API 서버): `backend/`
+- Cloudflare Pages Functions(API 함수): `functions/`
+- D1 schema(데이터베이스 구조): `database/schema.sql`
+- 원본 공공데이터 CSV: `data/raw/`
 
-## 클라우드플레어 설정값
+## Cloudflare Pages 설정
 
-- 서비스: 클라우드플레어 페이지
-- 저장소: `yeonjunim521-tech/hospital-fee-calc`
-- 프로젝트명: `hospital-fee-calc`
-- 배포 브랜치: `main`
-- 프레임워크: 없음
-- 빌드 명령: 비움
-- 빌드 출력 폴더: `/`
-- 루트 폴더: `/`
+- repository(저장소): `yeonjunim521-tech/hospital-fee-calc`
+- project(프로젝트): `hospital-fee-calc`
+- branch(브랜치): `main`
+- build command(빌드 명령): 비움
+- build output directory(빌드 출력 폴더): `frontend`
 
-## 배포 후 확인할 주소
+`wrangler.toml`도 `pages_build_output_dir = "frontend"`로 맞춰야 한다.
 
-예상 주소:
+## 색인 요청
 
-```text
-https://hospital-fee-calc.pages.dev/
+검색엔진에는 sitemap 자체만 색인 요청하는 것이 아니라 sitemap 제출 후 주요 페이지 URL을 색인 요청한다.
+
+- sitemap 제출: `https://hospital-fee-calc.pages.dev/sitemap.xml`
+- 주요 URL 색인 요청: 메인, 병원비, 응급실, MRI, CT, 입원비, 비급여, 데이터 출처 페이지
+
+## D1 적용
+
+```powershell
+npx wrangler d1 execute search-analytics-db --remote --file=./database/schema.sql
 ```
-
-실제 주소가 다르면 아래 파일의 주소를 실제 주소로 교체해야 한다.
-
-- `index.html`
-- `robots.txt`
-- `sitemap.xml`
-- `hospital-cost-calculator`
-- `er-cost-calculator`
-- `about`
-- `privacy`
-- `contact`
-
-## 검색 등록 순서
-
-1. 구글 서치 콘솔에 사이트 등록
-2. 네이버 서치어드바이저에 사이트 등록
-3. `https://hospital-fee-calc.pages.dev/sitemap.xml` 제출
-4. 메인 페이지 색인 요청
-5. 랜딩 페이지 색인 요청
-
-## 광고 준비
-
-애드센스 또는 카카오 애드핏 승인 후 `ads.txt`를 실제 광고 계정 값으로 교체한다.
-
-## 검색 로그 기능 준비
-
-검색 로그 기능은 Cloudflare D1 연결 후 활성화된다.
-
-1. D1 데이터베이스 `search-analytics-db` 생성
-2. `wrangler.toml`의 `database_id` 교체
-3. `schema.sql` 원격 적용
-4. 배포 후 `/admin-search`에서 통계 확인
-
-자세한 절차는 `SEARCH_LOG_SETUP.md`를 따른다.

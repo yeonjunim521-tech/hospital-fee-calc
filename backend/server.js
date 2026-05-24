@@ -4,10 +4,12 @@ const path = require('node:path');
 
 const PORT = Number(process.env.PORT || 8787);
 const ROOT_DIR = path.resolve(__dirname, '..');
+const FRONTEND_DIR = path.join(ROOT_DIR, 'frontend');
 
 const ROUTES = {
-  '/api/nonbenefit/region-prices': path.join(ROOT_DIR, 'assets', 'data', 'nonbenefit_region_prices.json'),
-  '/api/nonbenefit/code-map': path.join(ROOT_DIR, 'assets', 'data', 'nonbenefit_code_map.json')
+  '/api/nonbenefit/region-prices': path.join(FRONTEND_DIR, 'assets', 'data', 'nonbenefit_region_prices.json'),
+  '/api/nonbenefit/code-map': path.join(FRONTEND_DIR, 'assets', 'data', 'nonbenefit_code_map.json'),
+  '/api/public/medical-statistics': path.join(FRONTEND_DIR, 'assets', 'js', 'medical_statistics.js')
 };
 
 const MIME_TYPES = {
@@ -63,14 +65,21 @@ async function handleApi(req, res, pathname) {
     return;
   }
 
+  if (pathname === '/api/public/medical-statistics') {
+    const raw = await fs.readFile(filePath, 'utf8');
+    const json = raw.replace(/^window\.MEDICAL_STATISTICS\s*=\s*/, '').replace(/;\s*$/, '');
+    sendJson(res, 200, JSON.parse(json));
+    return;
+  }
+
   sendJson(res, 200, await readJsonFile(filePath));
 }
 
 async function handleStatic(req, res, pathname) {
   const safePathname = pathname === '/' ? 'index.html' : pathname.replace(/^\/+/, '');
-  const filePath = path.normalize(path.join(ROOT_DIR, safePathname));
+  const filePath = path.normalize(path.join(FRONTEND_DIR, safePathname));
 
-  if (!filePath.startsWith(ROOT_DIR)) {
+  if (!filePath.startsWith(FRONTEND_DIR)) {
     res.writeHead(403);
     res.end('접근할 수 없는 경로입니다.');
     return;
