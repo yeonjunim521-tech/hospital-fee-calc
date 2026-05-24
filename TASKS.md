@@ -20,9 +20,9 @@
 - [x] 행위코드가 있는 항목은 공공데이터 평균값 우선 반영하는 hook(훅: 연결 지점) 추가
 - [x] SEO/AEO/GEO 보조 콘텐츠 추가
 - [x] sitemap, 문법, 로컬 파일 참조 검증
-- [/] 변경분 commit(커밋), push(푸시)
+- [x] 변경분 commit(커밋), push(푸시)
 
 ## 진행 메모
 
 - 이전 commit(커밋) `1d91ca3`은 이미 `origin/main`에 push(푸시) 완료.
-- 현재 작업 검증 완료. commit(커밋), push(푸시) 진행 중.
+- commit(커밋) `647b426` 생성 및 `origin/main` push(푸시) 완료.
