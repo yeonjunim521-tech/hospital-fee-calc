@@ -19,7 +19,7 @@
 - [x] 수가명/행위코드 매칭 데이터 생성
 - [x] 계산기 항목 가격 최신화 반영
 - [x] 문법/test(테스트) 검증
-- [/] commit(커밋), push(푸시)
+- [x] commit(커밋), push(푸시)
 
 ## 진행 메모
 
@@ -28,3 +28,4 @@
   - `data/raw/건강보험심사평가원_의료행위별 성별 입원외래별 건강보험 진료 통계_20241231.csv`
 - 새 CSV는 기존 `action_cost_inout_2024.csv`와 SHA256 hash(해시)가 같아 중복 파일임.
 - xlsx에서 계산기용 공공 수가 subset 6,246개를 `frontend/assets/js/fee_schedule_items.js`로 생성함.
+- commit(커밋) `477e47d` 생성 및 `origin/main` push(푸시) 완료.
