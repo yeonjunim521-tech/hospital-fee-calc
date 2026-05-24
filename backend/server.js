@@ -6,8 +6,8 @@ const PORT = Number(process.env.PORT || 8787);
 const ROOT_DIR = path.resolve(__dirname, '..');
 
 const ROUTES = {
-  '/api/nonbenefit/region-prices': path.join(ROOT_DIR, 'nonbenefit_region_prices.json'),
-  '/api/nonbenefit/code-map': path.join(ROOT_DIR, 'nonbenefit_code_map.json')
+  '/api/nonbenefit/region-prices': path.join(ROOT_DIR, 'assets', 'data', 'nonbenefit_region_prices.json'),
+  '/api/nonbenefit/code-map': path.join(ROOT_DIR, 'assets', 'data', 'nonbenefit_code_map.json')
 };
 
 const MIME_TYPES = {
@@ -67,7 +67,7 @@ async function handleApi(req, res, pathname) {
 }
 
 async function handleStatic(req, res, pathname) {
-  const safePathname = pathname === '/' ? '/index.html' : pathname;
+  const safePathname = pathname === '/' ? 'index.html' : pathname.replace(/^\/+/, '');
   const filePath = path.normalize(path.join(ROOT_DIR, safePathname));
 
   if (!filePath.startsWith(ROOT_DIR)) {
