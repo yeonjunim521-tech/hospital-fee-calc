@@ -16,6 +16,9 @@ desktop.ini
 .dev.vars
 .deploy-pages-*/
 
+# Duplicate raw download already tracked as data/raw/action_cost_inout_2024.csv
+data/raw/건강보험심사평가원_의료행위별 성별 입원외래별 건강보험 진료 통계_20241231.csv
+
 # Dependency/build folders if added later
 node_modules/
 dist/

@@ -234,8 +234,28 @@ function applyPublicStatsToItem(item) {
     return {
         ...item,
         price: actionStats.stat.avgClaimPerUse,
+        alreadyPricedByProvider: true,
         publicStatsSource: `2024 공공데이터 행위코드 ${actionStats.actionCode} ${actionStats.visitType} 평균`
     };
+}
+
+function getMedicalItemDatabase() {
+    const publicFeeItems = (typeof window !== 'undefined' && window.PUBLIC_FEE_SCHEDULE_ITEMS && Array.isArray(window.PUBLIC_FEE_SCHEDULE_ITEMS.items))
+        ? window.PUBLIC_FEE_SCHEDULE_ITEMS.items
+        : [];
+    return HIRA_DATABASE.concat(publicFeeItems);
+}
+
+function resolveProviderPrice(item) {
+    const hospitalClass = document.querySelector('input[name="hospital_class"]:checked')?.value || 'hospital';
+    if (hospitalClass === 'clinic' && item.clinicPrice) return item.clinicPrice;
+    if (item.hospitalPrice) return item.hospitalPrice;
+    return item.price;
+}
+
+function getBenefitChargeBase(item, hData) {
+    const base = item.basePrice || 0;
+    return item.alreadyPricedByProvider ? base : base * hData.gasanRate;
 }
 
 
@@ -438,7 +458,7 @@ function renderDirectSelectOptions(target, groupOrTab) {
     selectEl.appendChild(defaultOpt);
     
     // HIRA_DATABASE의 전체 수가 항목 중 해당 그룹에 매핑되는 항목 필터링
-    const filtered = HIRA_DATABASE.filter(item => getItemTypeGroup(item) === groupOrTab && !isEmergencyManagementItem(item));
+    const filtered = getMedicalItemDatabase().filter(item => getItemTypeGroup(item) === groupOrTab && !isEmergencyManagementItem(item));
     
     // 항목 명칭 기준 가나다 사전 순 정렬
     filtered.sort((a, b) => a.name.localeCompare(b.name, 'ko-KR'));
@@ -466,7 +486,7 @@ function handleDirectSelectChange(selectType) {
     
     const selectedCode = selectEl.value;
     // 선택된 수가 항목 DB에서 검색 후 추가
-    const matchedItem = HIRA_DATABASE.find(item => item.code === selectedCode);
+    const matchedItem = getMedicalItemDatabase().find(item => item.code === selectedCode);
     
     if (matchedItem) {
         sendSearchLog(matchedItem.name, 1);
@@ -535,19 +555,19 @@ function updateEtcAddedBadge() {
     
     // addedTests에서 기타 항목 카운트
     addedTests.forEach(item => {
-        const dbItem = HIRA_DATABASE.find(db => db.code === item.type);
+        const dbItem = getMedicalItemDatabase().find(db => db.code === item.type);
         if (dbItem && getItemTypeGroup(dbItem) === 'etc') etcCount += item.count;
     });
     
     // addedSurgeries에서 기타 항목 카운트
     addedSurgeries.forEach(item => {
-        const dbItem = HIRA_DATABASE.find(db => db.code === item.type);
+        const dbItem = getMedicalItemDatabase().find(db => db.code === item.type);
         if (dbItem && getItemTypeGroup(dbItem) === 'etc') etcCount++;
     });
     
     // addedProcedures에서 기타 항목 카운트
     addedProcedures.forEach(item => {
-        const dbItem = HIRA_DATABASE.find(db => db.code === item.type);
+        const dbItem = getMedicalItemDatabase().find(db => db.code === item.type);
         if (dbItem && getItemTypeGroup(dbItem) === 'etc') etcCount += item.count;
     });
     
@@ -654,7 +674,7 @@ function isEmergencyManagementItem(item) {
 function getEmergencySeverityInfo() {
     const severity = document.getElementById('er_severity').value || 'mild';
     const code = EMERGENCY_SEVERITY_CODE_MAP[severity] || EMERGENCY_SEVERITY_CODE_MAP.mild;
-    const item = HIRA_DATABASE.find(dbItem => dbItem.code === code);
+    const item = getMedicalItemDatabase().find(dbItem => dbItem.code === code);
     return item || { code, name: '응급실 경증 진료 (응급의료 관리료 경증 환자)', price: 20000, isBenefit: true };
 }
 
@@ -1174,7 +1194,7 @@ function performSearch(query, targetGroup, options = {}) {
     if (!resultsList) return;
     
     // 1단계: 전체 DB에서 문자열 매칭
-    let matched = HIRA_DATABASE.filter(item => isMatch(query, item) && !isEmergencyManagementItem(item));
+    let matched = getMedicalItemDatabase().filter(item => isMatch(query, item) && !isEmergencyManagementItem(item));
     
     // 2단계: 타겟 그룹에 속하는지 탭 필터링
     matched = matched.filter(item => getItemTypeGroup(item) === targetGroup);
@@ -1290,6 +1310,8 @@ function searchByChip(keyword) {
  * [검사], [시술], [수술], [기타] 4대 대분류 탭/영역으로 분류하는 헬퍼 함수입니다.
  */
 function getItemTypeGroup(item) {
+    if (item.group) return item.group;
+
     // 1. 검사 (imaging, specimen, functional, endoscopy 카테고리 전체)
     if (['imaging', 'specimen', 'functional', 'endoscopy'].includes(item.category)) {
         return 'test';
@@ -1348,8 +1370,10 @@ function addHiraItem(item) {
             categoryName: '수술/시술',
             type: item.code,
             typeName: item.name,
-            basePrice: item.price,
+            basePrice: resolveProviderPrice(item),
             publicStatsSource: item.publicStatsSource || '',
+            publicFeeScheduleSource: item.publicFeeScheduleSource || '',
+            alreadyPricedByProvider: Boolean(item.alreadyPricedByProvider),
             isBenefit: item.isBenefit,
             isDRG: item.isDRG || false
         });
@@ -1368,8 +1392,10 @@ function addHiraItem(item) {
                 type: item.code,
                 typeName: item.name,
                 count: 1,
-                basePrice: item.price,
+                basePrice: resolveProviderPrice(item),
                 publicStatsSource: item.publicStatsSource || '',
+                publicFeeScheduleSource: item.publicFeeScheduleSource || '',
+                alreadyPricedByProvider: Boolean(item.alreadyPricedByProvider),
                 isBenefit: item.isBenefit
             });
         }
@@ -1390,8 +1416,10 @@ function addHiraItem(item) {
                 area: 'std',
                 areaName: '정밀진단',
                 count: 1,
-                basePrice: item.price,
+                basePrice: resolveProviderPrice(item),
                 publicStatsSource: item.publicStatsSource || '',
+                publicFeeScheduleSource: item.publicFeeScheduleSource || '',
+                alreadyPricedByProvider: Boolean(item.alreadyPricedByProvider),
                 isBenefit: item.isBenefit
             });
         }
@@ -1432,7 +1460,7 @@ function renderAddedItems() {
         div.innerHTML = `
             <div class="item-info">
                 <span class="item-name">${item.typeName}</span>
-                <span class="item-meta">${item.categoryName} · ${item.count}회 · ${benefitTag}${item.publicStatsSource ? ` · ${item.publicStatsSource}` : ''}</span>
+                <span class="item-meta">${item.categoryName} · ${item.count}회 · ${benefitTag}${item.publicStatsSource ? ` · ${item.publicStatsSource}` : ''}${item.publicFeeScheduleSource ? ` · ${item.publicFeeScheduleSource}` : ''}</span>
             </div>
             <button type="button" class="btn-remove" onclick="removeTestItem(${item.id})" title="제거">
                 <i data-lucide="x"></i>
@@ -1451,13 +1479,13 @@ function renderAddedItems() {
         const drgBadge = item.isDRG ? ' <span class="badge badge-drg">DRG</span>' : '';
         
         // UI 표시용 분류 뱃지
-        const dbItem = HIRA_DATABASE.find(db => db.code === item.type);
+        const dbItem = getMedicalItemDatabase().find(db => db.code === item.type);
         const groupName = dbItem && getItemTypeGroup(dbItem) === 'procedure_hira' ? '시술' : '수술';
 
         div.innerHTML = `
             <div class="item-info">
                 <span class="item-name">${item.typeName}${drgBadge}</span>
-                <span class="item-meta">${groupName} · ${benefitTag}${item.publicStatsSource ? ` · ${item.publicStatsSource}` : ''}</span>
+                <span class="item-meta">${groupName} · ${benefitTag}${item.publicStatsSource ? ` · ${item.publicStatsSource}` : ''}${item.publicFeeScheduleSource ? ` · ${item.publicFeeScheduleSource}` : ''}</span>
             </div>
             <button type="button" class="btn-remove" onclick="removeSurgeryItem(${item.id})" title="제거">
                 <i data-lucide="x"></i>
@@ -1475,7 +1503,7 @@ function renderAddedItems() {
             : '<span class="badge badge-non-benefit">비급여</span>';
         
         // UI 표시용 분류 뱃지
-        const dbItem = HIRA_DATABASE.find(db => db.code === item.type);
+        const dbItem = getMedicalItemDatabase().find(db => db.code === item.type);
         let groupName = '처치/치료';
         if (dbItem) {
             const group = getItemTypeGroup(dbItem);
@@ -1486,7 +1514,7 @@ function renderAddedItems() {
         div.innerHTML = `
             <div class="item-info">
                 <span class="item-name">${item.typeName}</span>
-                <span class="item-meta">${groupName} · ${item.count}회 · ${benefitTag}${item.publicStatsSource ? ` · ${item.publicStatsSource}` : ''}</span>
+                <span class="item-meta">${groupName} · ${item.count}회 · ${benefitTag}${item.publicStatsSource ? ` · ${item.publicStatsSource}` : ''}${item.publicFeeScheduleSource ? ` · ${item.publicFeeScheduleSource}` : ''}</span>
             </div>
             <button type="button" class="btn-remove" onclick="removeProcedureItem(${item.id})" title="제거">
                 <i data-lucide="x"></i>
@@ -1591,7 +1619,7 @@ function simulateCostForClass(targetClass) {
         const benefitTestsSorted = [...benefitTests].sort((a, b) => b.basePrice - a.basePrice);
         benefitTestsSorted.forEach((test, idx) => {
             const discountFactor = (idx === 0) ? 1.0 : 0.5;
-            const finalPrice = test.basePrice * hData.gasanRate * discountFactor;
+            const finalPrice = getBenefitChargeBase(test, hData) * discountFactor;
             const patientPay = finalPrice * patientBenefitRate * test.count;
             patientTotalPay += patientPay;
             refundEligibleBenefit += patientPay;
@@ -1611,7 +1639,7 @@ function simulateCostForClass(targetClass) {
         addedSurgeriesSorted.forEach((surg, idx) => {
             if (surg.isBenefit) {
                 const discountFactor = (idx === 0) ? 1.0 : 0.5;
-                const finalPrice = surg.basePrice * hData.gasanRate * discountFactor;
+                const finalPrice = getBenefitChargeBase(surg, hData) * discountFactor;
                 let rate = patientBenefitRate;
                 if (surg.type === 'c_section' || surg.type === 'SU_OB01') rate = 0; // 제왕절개 0%
                 const patientPay = finalPrice * rate;
@@ -1641,7 +1669,7 @@ function simulateCostForClass(targetClass) {
     if (addedProcedures.length > 0) {
         addedProcedures.forEach(proc => {
             if (proc.isBenefit) {
-                const finalPrice = proc.basePrice * hData.gasanRate;
+                const finalPrice = getBenefitChargeBase(proc, hData);
                 const patientPay = finalPrice * patientBenefitRate * proc.count;
                 patientTotalPay += patientPay;
                 refundEligibleBenefit += patientPay;
@@ -1823,7 +1851,7 @@ function calculate() {
         benefitTests.sort((a, b) => b.basePrice - a.basePrice);
         benefitTests.forEach((test, idx) => {
             const discountFactor = (idx === 0) ? 1.0 : 0.5; // 주검사 100%, 부검사 50%
-            const finalPrice = test.basePrice * hData.gasanRate * discountFactor;
+            const finalPrice = getBenefitChargeBase(test, hData) * discountFactor;
             const patientPay = finalPrice * patientBenefitRate * test.count;
             patientTotalPay += patientPay;
             refundEligibleBenefit += patientPay;
@@ -1853,7 +1881,7 @@ function calculate() {
 
             if (surg.isBenefit) {
                 const discountFactor = (idx === 0) ? 1.0 : 0.5; // 주수술 100%, 부수술 50%
-                const finalPrice = surg.basePrice * hData.gasanRate * discountFactor;
+                const finalPrice = getBenefitChargeBase(surg, hData) * discountFactor;
                 let rate = patientBenefitRate;
                 
                 // 제왕절개 분만 수술일 경우 본인부담금 면제 (0%)
@@ -1897,7 +1925,7 @@ function calculate() {
     if (addedProcedures.length > 0) {
         addedProcedures.forEach(proc => {
             if (proc.isBenefit) {
-                const finalPrice = proc.basePrice * hData.gasanRate;
+                const finalPrice = getBenefitChargeBase(proc, hData);
                 const patientPay = finalPrice * patientBenefitRate * proc.count;
                 patientTotalPay += patientPay;
                 refundEligibleBenefit += patientPay;
