@@ -396,6 +396,7 @@ function resetResultView() {
     const comparisonBody = document.getElementById('comparison-table-body');
     const insuranceBox = document.getElementById('result_insurance_box');
     const drgNotice = document.getElementById('drg-notice');
+    const sanjeongNotice = document.getElementById('sanjeong-notice');
 
     if (finalCostEl) finalCostEl.innerText = '0';
     if (totalCostEl) totalCostEl.innerText = '0';
@@ -405,6 +406,7 @@ function resetResultView() {
     if (comparisonBody) comparisonBody.innerHTML = '<tr><td colspan="3" class="empty-row">필수 조건 선택 후 결과보기를 눌러주세요.</td></tr>';
     if (insuranceBox) insuranceBox.classList.add('hidden');
     if (drgNotice) drgNotice.classList.add('hidden');
+    if (sanjeongNotice) sanjeongNotice.classList.add('hidden');
 }
 
 function markResultStale() {
@@ -414,17 +416,7 @@ function markResultStale() {
 }
 
 function handleCalculatorInputChange() {
-    const ready = isCalculationReady();
-    const diseaseInput = document.getElementById('disease_code_input');
-    const hasDisease = diseaseInput && diseaseInput.value.trim() !== '';
-
-    // 병원 등급, 입원 형태, 비급여 자료기준, 상병코드 평균 진료비가 모두 선택/입력되었을 때 실시간 자동 계산
-    if (ready && hasDisease) {
-        resultRequested = true;
-        calculate();
-    } else {
-        markResultStale();
-    }
+    markResultStale();
 }
 
 function requestCalculation() {
@@ -2007,6 +1999,18 @@ function calculate() {
     document.getElementById('display_refund_cost').innerText = formatNumber(refundTotal);
     document.getElementById('display_final_cost').innerText = formatNumber(finalPatientPay);
     document.getElementById('display_cost_range').innerText = `${formatNumber(minRange)}원 ~ ${formatNumber(maxRange)}원`;
+
+    // 산정특례/상병코드 안내 토글
+    const sanjeongNotice = document.getElementById('sanjeong-notice');
+    if (sanjeongNotice) {
+        const isSanjeongApplied = Boolean(sanjeongInfo);
+        const isDiseaseAvgApplied = Boolean(diseaseStats && !hasSpecificSelectedItems);
+        if (isSanjeongApplied || isDiseaseAvgApplied) {
+            sanjeongNotice.classList.remove('hidden');
+        } else {
+            sanjeongNotice.classList.add('hidden');
+        }
+    }
 
     // DRG 포괄수가제 대상 수술 포함 시 경고 메시지 출력 토글
     const drgNotice = document.getElementById('drg-notice');
