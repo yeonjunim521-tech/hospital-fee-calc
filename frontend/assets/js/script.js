@@ -2583,8 +2583,17 @@ function getHierarchicalClassification(item) {
     const lowerName = name.toLowerCase();
     const code = (item.publicActionCode || item.actionCode || item.ediCode || item.code || '').toUpperCase();
 
-    // 임상적 직관을 감안해 PICC(중심정맥관 삽입술)는 시술(procedure_hira)로 강제 분류
-    if (lowerName.includes('picc') || lowerName.includes('중심정맥')) {
+    // 임상적 직관을 감안해 PICC, 케모포트 등 중심정맥관 관련 침습적 처치는 시술(procedure_hira)로 강제 분류
+    if (
+        lowerName.includes('picc') || 
+        lowerName.includes('중심정맥') || 
+        lowerName.includes('포트') || 
+        lowerName.includes('히크만') || 
+        lowerName.includes('카테터') || 
+        lowerName.includes('chemoport') || 
+        lowerName.includes('hickman') ||
+        code.startsWith('O707')
+    ) {
         main = 'procedure_hira';
     }
 
@@ -2626,7 +2635,23 @@ function getHierarchicalClassification(item) {
         // 시술 대분류 (cardiovascular, dental, general_proc)
         if (code.startsWith('U') || lowerName.includes('치과') || lowerName.includes('치아') || lowerName.includes('발치') || lowerName.includes('치주') || lowerName.includes('잇몸') || lowerName.includes('치석') || lowerName.includes('스케일링') || lowerName.includes('임플란트')) {
             sub = 'dental';
-        } else if (lowerName.includes('심장') || lowerName.includes('혈관') || lowerName.includes('색전술') || lowerName.includes('스텐트') || lowerName.includes('카테터') || lowerName.includes('조영술') || lowerName.includes('중심정맥') || lowerName.includes('picc') || lowerName.includes('정맥관') || lowerName.includes('동맥관')) {
+        } else if (
+            lowerName.includes('심장') || 
+            lowerName.includes('혈관') || 
+            lowerName.includes('색전술') || 
+            lowerName.includes('스텐트') || 
+            lowerName.includes('카테터') || 
+            lowerName.includes('조영술') || 
+            lowerName.includes('중심정맥') || 
+            lowerName.includes('picc') || 
+            lowerName.includes('정맥관') || 
+            lowerName.includes('동맥관') ||
+            lowerName.includes('포트') ||
+            lowerName.includes('히크만') ||
+            lowerName.includes('chemoport') ||
+            lowerName.includes('hickman') ||
+            code.startsWith('O707')
+        ) {
             sub = 'cardiovascular';
         } else {
             sub = 'general_proc';
@@ -3021,23 +3046,33 @@ function performSearch(query, targetGroup, options = {}) {
     // 1단계: 전체 DB에서 수가 항목 매칭
     let matched = getMedicalItemDatabase().filter(item => isMatch(query, item) && !isEmergencyManagementItem(item));
     
-    // 2단계: KCD 질환 매칭 데이터도 검색 결과에 통합하여 함께 렌더링 (통합검색 실현)
-    const dbToSearch = (ALL_KCD_DATABASE && ALL_KCD_DATABASE.length > 0) ? ALL_KCD_DATABASE : KCD_DATABASE;
-    let matchedKcd = dbToSearch.filter(item => {
-        const cleanQuery = query.replace(/\s+/g, '').toLowerCase();
-        if (item.code.toLowerCase().includes(cleanQuery)) return true;
-        if (item.name.toLowerCase().replace(/\s+/g, '').includes(cleanQuery)) return true;
-        if (item.name_en && item.name_en.toLowerCase().replace(/\s+/g, '').includes(cleanQuery)) return true;
-        if (item.keywords && item.keywords.some(k => k.toLowerCase().replace(/\s+/g, '').includes(cleanQuery))) return true;
-        return false;
-    }).slice(0, 30).map(item => ({
-        ...item,
-        isKcd: true, // KCD 질병 객체임을 마킹
-        price: 0,
-        isBenefit: true
-    }));
+    // 2단계: etc 탭에서는 etc 항목만 검색, 그 외 상단 카테고리 탭에서는 etc 항목 제외
+    if (targetGroup === 'etc') {
+        matched = matched.filter(item => getItemTypeGroup(item) === 'etc');
+    } else {
+        matched = matched.filter(item => getItemTypeGroup(item) !== 'etc');
+    }
     
-    // 3단계: KCD 질병과 수가 목록을 합친다 (KCD 질병 우선 노출)
+    // 3단계: KCD 질환 매칭 데이터도 검색 결과에 통합하여 함께 렌더링 (통합검색 실현 - etc 탭 제외)
+    let matchedKcd = [];
+    if (targetGroup !== 'etc') {
+        const dbToSearch = (ALL_KCD_DATABASE && ALL_KCD_DATABASE.length > 0) ? ALL_KCD_DATABASE : KCD_DATABASE;
+        matchedKcd = dbToSearch.filter(item => {
+            const cleanQuery = query.replace(/\s+/g, '').toLowerCase();
+            if (item.code.toLowerCase().includes(cleanQuery)) return true;
+            if (item.name.toLowerCase().replace(/\s+/g, '').includes(cleanQuery)) return true;
+            if (item.name_en && item.name_en.toLowerCase().replace(/\s+/g, '').includes(cleanQuery)) return true;
+            if (item.keywords && item.keywords.some(k => k.toLowerCase().replace(/\s+/g, '').includes(cleanQuery))) return true;
+            return false;
+        }).slice(0, 30).map(item => ({
+            ...item,
+            isKcd: true, // KCD 질병 객체임을 마킹
+            price: 0,
+            isBenefit: true
+        }));
+    }
+    
+    // 4단계: KCD 질병과 수가 목록을 합친다 (KCD 질병 우선 노출)
     let combinedResults = [...matchedKcd, ...matched];
 
     if (options.logSearch) {
