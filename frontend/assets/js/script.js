@@ -4411,3 +4411,282 @@ function eofBindAllSearchControls() {
 
 document.addEventListener('DOMContentLoaded', eofBindAllSearchControls);
 setTimeout(eofBindAllSearchControls, 0);
+
+// 14. Final UI override: add feedback, hide empty detail select, fix broken labels.
+const EOF2_TEXT = {
+    selectSub: '-- \uc911\ubd84\ub958 \uc120\ud0dd --',
+    selectDetail: '-- \uc18c\ubd84\ub958 \uc120\ud0dd --',
+    noResult: '\uac80\uc0c9 \uacb0\uacfc\uac00 \uc5c6\uc2b5\ub2c8\ub2e4.',
+    chooseMain: '\uba3c\uc800 \uac80\uc0ac, \uc2dc\uc220, \uc218\uc220 \uc911 \ud558\ub098\ub97c \uc120\ud0dd\ud558\uc138\uc694.',
+    add: '+ \ucd94\uac00',
+    added: '\ucd94\uac00\ub428',
+    benefit: '\uae09\uc5ec',
+    nonBenefit: '\ube44\uae09\uc5ec',
+    code: '\ucf54\ub4dc',
+    won: '\uc6d0'
+};
+
+const EOF2_GROUP_LABELS = {
+    test: '\uac80\uc0ac',
+    procedure_hira: '\uc2dc\uc220',
+    surgery: '\uc218\uc220',
+    etc: '\uae30\ud0c0'
+};
+
+function eof2Option(value, label, selected = false, disabled = false) {
+    const opt = document.createElement('option');
+    opt.value = value;
+    opt.textContent = label;
+    opt.selected = selected;
+    opt.disabled = disabled;
+    return opt;
+}
+
+function eof2SetDetailVisible(visible) {
+    const detailSelect = document.getElementById('detail-item-select');
+    if (!detailSelect) return;
+    detailSelect.disabled = !visible;
+    detailSelect.classList.toggle('is-hidden', !visible);
+    detailSelect.style.display = visible ? '' : 'none';
+    if (!visible) detailSelect.value = '';
+}
+
+function eof2GetActiveMain() {
+    const activeButton = document.querySelector('.category-tab.active');
+    return activeTab || activeButton?.dataset?.tab || '';
+}
+
+function eof2ShowAddedFeedback(button, after) {
+    if (!button) {
+        if (typeof after === 'function') after();
+        return;
+    }
+    button.classList.add('is-added');
+    const addLabel = button.querySelector('.btn-result-add');
+    if (addLabel) addLabel.textContent = EOF2_TEXT.added;
+    setTimeout(() => {
+        if (typeof after === 'function') after();
+    }, 220);
+}
+
+function updateSubCategoriesForTab(tabId) {
+    const subSelect = document.getElementById('sub-category-select');
+    const detailSelect = document.getElementById('detail-item-select');
+    const itemsList = document.getElementById('hierarchical-items-list');
+    if (!subSelect) return;
+
+    subSelect.innerHTML = '';
+    subSelect.appendChild(eof2Option('', EOF2_TEXT.selectSub, true, true));
+    if (detailSelect) {
+        detailSelect.innerHTML = '';
+        detailSelect.appendChild(eof2Option('', EOF2_TEXT.selectDetail, true, true));
+    }
+    eof2SetDetailVisible(false);
+    if (itemsList) itemsList.innerHTML = '';
+
+    const labels = CONSUMER_SUB_LABELS?.[tabId] || {};
+    if (!tabId || !Object.keys(labels).length) {
+        subSelect.disabled = true;
+        return;
+    }
+
+    subSelect.disabled = false;
+    Object.entries(labels).forEach(([code, label]) => {
+        subSelect.appendChild(eof2Option(code, label));
+    });
+}
+
+function handleSubCategoryChange() {
+    const subSelect = document.getElementById('sub-category-select');
+    const detailSelect = document.getElementById('detail-item-select');
+    const itemsList = document.getElementById('hierarchical-items-list');
+    const mainVal = eof2GetActiveMain();
+    const subVal = subSelect?.value || '';
+    if (!detailSelect) return;
+
+    detailSelect.innerHTML = '';
+    detailSelect.appendChild(eof2Option('', EOF2_TEXT.selectDetail, true, true));
+
+    if (!mainVal || !subVal) {
+        eof2SetDetailVisible(false);
+        if (itemsList) itemsList.innerHTML = '';
+        return;
+    }
+
+    const details = CONSUMER_DETAIL_LABELS?.[subVal] || {};
+    if (Object.keys(details).length) {
+        Object.entries(details).forEach(([code, label]) => {
+            detailSelect.appendChild(eof2Option(code, label));
+        });
+        eof2SetDetailVisible(true);
+    } else {
+        eof2SetDetailVisible(false);
+        renderHierarchicalItemsList(mainVal, subVal, 'all');
+    }
+}
+
+function handleDetailItemChange() {
+    const subVal = document.getElementById('sub-category-select')?.value || '';
+    const detailVal = document.getElementById('detail-item-select')?.value || 'all';
+    const mainVal = eof2GetActiveMain();
+    if (!mainVal || !subVal) return;
+    renderHierarchicalItemsList(mainVal, subVal, detailVal || 'all');
+}
+
+function renderHierarchicalItemsList(mainVal, subVal, detailVal = 'all') {
+    const itemsList = document.getElementById('hierarchical-items-list');
+    if (!itemsList) return;
+    itemsList.innerHTML = '';
+    if (!mainVal || !subVal) return;
+
+    const items = getMedicalItemDatabase()
+        .filter(item => {
+            if (isEmergencyManagementItem(item)) return false;
+            const c = getHierarchicalClassification(item);
+            if (c.main !== mainVal || c.sub !== subVal) return false;
+            if (detailVal && detailVal !== 'all' && c.detail !== detailVal) return false;
+            return true;
+        })
+        .slice(0, 80);
+
+    if (!items.length) {
+        itemsList.innerHTML = `<div class="empty-search-results"><p>${EOF2_TEXT.noResult}</p></div>`;
+        return;
+    }
+
+    items.forEach(item => {
+        const code = item.publicActionCode || item.actionCode || item.ediCode || item.code || '';
+        const benefitLabel = item.isBenefit ? EOF2_TEXT.benefit : EOF2_TEXT.nonBenefit;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'search-result-item hierarchical-result-item';
+        btn.innerHTML = `
+            <div class="search-result-info">
+                <span class="search-result-name"><span class="badge badge-benefit" style="padding:0.15rem 0.35rem;font-size:0.68rem;margin-right:0.4rem;">${benefitLabel}</span>${item.name}</span>
+                <span class="search-result-keywords">${code ? `${EOF2_TEXT.code} ${code}` : ''}</span>
+            </div>
+            <div class="search-result-meta"><span class="search-result-price">${formatNumber(item.price)}${EOF2_TEXT.won}</span><span class="btn-result-add">${EOF2_TEXT.add}</span></div>
+        `;
+        btn.onclick = () => {
+            sendSearchClickLog('', item);
+            addHiraItem(item);
+            eof2ShowAddedFeedback(btn);
+        };
+        itemsList.appendChild(btn);
+    });
+}
+
+function eofRenderDiseaseResults(query) {
+    const input = document.getElementById('disease_code_input');
+    const results = document.getElementById('disease-search-results');
+    if (!input || !results) return;
+    const matched = eofSearchKcd(query);
+    results.innerHTML = '';
+    if (!matched.length) {
+        results.innerHTML = `<div class="empty-search-results"><p>'<strong>${query}</strong>' ${EOF2_TEXT.noResult}</p></div>`;
+    } else {
+        matched.forEach(item => {
+            const code = eofKcdCode(item);
+            const name = eofKcdName(item) || eofKcdEnglish(item) || code;
+            const en = eofKcdEnglish(item);
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'search-result-item';
+            btn.innerHTML = `
+                <div class="search-result-info">
+                    <span class="search-result-name"><span class="badge badge-benefit" style="font-size:0.68rem;margin-right:0.4rem;">KCD</span>${name}</span>
+                    <span class="search-result-keywords">KCD ${code}${en ? ` / ${en}` : ''}</span>
+                </div>
+                <div class="search-result-meta"><span class="btn-result-add">${EOF2_TEXT.add}</span></div>
+            `;
+            btn.onclick = () => {
+                addKcdDisease(code, name);
+                input.value = `${code} ${name}`;
+                eof2ShowAddedFeedback(btn, () => {
+                    results.innerHTML = '';
+                    results.classList.add('hidden');
+                    input.focus();
+                });
+            };
+            results.appendChild(btn);
+        });
+    }
+    results.classList.remove('hidden');
+}
+
+function eofRenderItemResults(query, targetGroup, items) {
+    const el = eofSearchElements(targetGroup);
+    if (!el.results) return;
+    el.results.innerHTML = '';
+    if (!items.length) {
+        el.results.innerHTML = `<div class="empty-search-results"><p>'<strong>${query}</strong>' ${EOF2_TEXT.noResult}</p></div>`;
+        el.results.classList.remove('hidden');
+        return;
+    }
+    items.slice(0, 30).forEach(item => {
+        const group = getItemTypeGroup(item);
+        const c = getHierarchicalClassification(item);
+        const sub = CONSUMER_SUB_LABELS?.[c.main]?.[c.sub] || EOF2_GROUP_LABELS[group] || '';
+        const detail = CONSUMER_DETAIL_LABELS?.[c.sub]?.[c.detail] || '';
+        const code = item.publicActionCode || item.actionCode || item.ediCode || item.code || '';
+        const benefitLabel = item.isBenefit ? EOF2_TEXT.benefit : EOF2_TEXT.nonBenefit;
+        const benefitClass = item.isBenefit ? 'badge-benefit' : 'badge-non-benefit';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'search-result-item';
+        btn.innerHTML = `
+            <div class="search-result-info">
+                <span class="search-result-name"><span class="badge badge-benefit" style="padding:0.15rem 0.35rem;font-size:0.68rem;margin-right:0.4rem;">${EOF2_GROUP_LABELS[group] || group}</span>${item.name}</span>
+                <span class="search-result-keywords">${sub}${detail ? ` / ${detail}` : ''}${code ? ` / ${EOF2_TEXT.code} ${code}` : ''}</span>
+            </div>
+            <div class="search-result-meta"><span class="search-result-price">${formatNumber(item.price)}${EOF2_TEXT.won}</span><span class="badge ${benefitClass}" style="font-size:0.65rem;">${benefitLabel}</span><span class="btn-result-add">${EOF2_TEXT.add}</span></div>
+        `;
+        btn.onclick = () => {
+            sendSearchClickLog(query, item);
+            addHiraItem(item);
+            eof2ShowAddedFeedback(btn, () => {
+                const searchEl = eofSearchElements(targetGroup);
+                if (searchEl.input) searchEl.input.value = '';
+                updateSearchControlState(searchEl.input, searchEl.clear, searchEl.run);
+                if (searchEl.results) {
+                    searchEl.results.innerHTML = '';
+                    searchEl.results.classList.add('hidden');
+                }
+                if (searchEl.input) searchEl.input.focus();
+            });
+        };
+        el.results.appendChild(btn);
+    });
+    el.results.classList.remove('hidden');
+}
+
+function performSearch(query, targetGroup = 'scoped', options = {}) {
+    const clean = String(query || '').trim();
+    if (!clean) return;
+    const el = eofSearchElements(targetGroup);
+    if (!el.results) return;
+    let matched = getMedicalItemDatabase().filter(item => isMatch(clean, item) && !isEmergencyManagementItem(item));
+    if (targetGroup !== 'global') {
+        const scope = getScopedSearchFilters();
+        if (!scope.main) {
+            el.results.innerHTML = `<div class="empty-search-results"><p>${EOF2_TEXT.chooseMain}</p></div>`;
+            el.results.classList.remove('hidden');
+            return;
+        }
+        matched = matched.filter(eofItemMatchesScope);
+    }
+    if (options.logSearch) sendSearchLog(clean, matched.length);
+    eofRenderItemResults(clean, targetGroup, matched);
+}
+
+function eof2RebindFinalUi() {
+    eofBindAllSearchControls();
+    const subSelect = document.getElementById('sub-category-select');
+    const detailSelect = document.getElementById('detail-item-select');
+    if (subSelect) subSelect.onchange = handleSubCategoryChange;
+    if (detailSelect) detailSelect.onchange = handleDetailItemChange;
+    if (!detailSelect?.value) eof2SetDetailVisible(false);
+}
+
+document.addEventListener('DOMContentLoaded', eof2RebindFinalUi);
+setTimeout(eof2RebindFinalUi, 0);
