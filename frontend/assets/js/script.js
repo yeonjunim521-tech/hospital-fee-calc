@@ -3051,6 +3051,19 @@ function performSearch(query, targetGroup, options = {}) {
         matched = matched.filter(item => getItemTypeGroup(item) === 'etc');
     } else {
         matched = matched.filter(item => getItemTypeGroup(item) !== 'etc');
+        
+        // 직접 선택 영역의 드롭다운 선택 상태에 따른 검색 제한
+        const mainSelect = document.getElementById('main-category-select');
+        const subSelect = document.getElementById('sub-category-select');
+        
+        // 중분류가 선택되어 있는 경우 해당 중분류만 매칭
+        if (subSelect && subSelect.value && subSelect.value !== '') {
+            matched = matched.filter(item => getHierarchicalClassification(item).sub === subSelect.value);
+        }
+        // 대분류가 선택되어 있고 대분류 드롭다운이 가려져 있지 않은 경우 (숨겨져 있으면 탭 자동 연동이므로 무시하고 전체 검색 유지)
+        else if (mainSelect && mainSelect.value && mainSelect.value !== '' && mainSelect.style.display !== 'none') {
+            matched = matched.filter(item => getHierarchicalClassification(item).main === mainSelect.value);
+        }
     }
     
     // 3단계: KCD 질환 매칭 데이터도 검색 결과에 통합하여 함께 렌더링 (통합검색 실현 - etc 탭 제외)
@@ -3085,10 +3098,16 @@ function performSearch(query, targetGroup, options = {}) {
     if (combinedResults.length === 0) {
         const emptyDiv = document.createElement('div');
         emptyDiv.className = 'empty-search-results';
+        
+        let helpText = '부위나 오타를 확인하거나, 다른 검색어로 시도해보세요.';
+        if (targetGroup !== 'etc') {
+            helpText = '검색이 되지 않는 내용(주사, 마취, 물리치료 등)은 하단의 <strong>\'기타 처치 주사 마취 등 추가\'</strong> 검색창에서 검색해 보세요.';
+        }
+        
         emptyDiv.innerHTML = `
             <i data-lucide="search"></i>
             <p>'<strong>${query}</strong>'에 매칭되는 항목이 없습니다.</p>
-            <span style="font-size:0.75rem; color:var(--text-muted);">부위나 오타를 확인하거나, 다른 검색어로 시도해보세요.</span>
+            <span style="font-size:0.75rem; color:var(--text-muted); line-height:1.4;">${helpText}</span>
         `;
         resultsList.appendChild(emptyDiv);
     } 
