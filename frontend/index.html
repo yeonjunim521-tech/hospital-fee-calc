@@ -488,25 +488,25 @@
                     <p style="margin-top: 0.35rem; font-size: 0.72rem; color: var(--text-muted);">※ 대표 비급여 일부는 국민건강보험 비급여 항목별 가격정보 공개 화면에서 확인한 전국 중앙값을 우선 반영합니다. 지역별 상세 평균은 공식 OpenAPI 키 또는 별도 데이터셋 확보 후 적용해야 합니다.</p>
                 </div>
             </section>
-
-            <section class="card seo-answer-card">
-                <h2 class="card-title"><i data-lucide="help-circle"></i> 병원비 계산 자주 묻는 질문</h2>
-                <div class="faq-list">
-                    <div class="faq-item">
-                        <h3>응급실 비용 계산은 어떤 기준인가요?</h3>
-                        <p>병원 등급, 응급실 진료 형태, 급여 본인부담률, 선택한 검사·처치 항목을 합산해 예상 금액을 보여줍니다.</p>
-                    </div>
-                    <div class="faq-item">
-                        <h3>상병코드 평균 진료비는 어떻게 쓰나요?</h3>
-                        <p>상병코드를 입력하고 검사·시술·수술을 직접 추가하지 않으면, 2024년 공공데이터 CSV의 상병코드별 평균 진료비를 계산에 참고합니다.</p>
-                    </div>
-                    <div class="faq-item">
-                        <h3>비급여 평균값은 최신인가요?</h3>
-                        <p>프로젝트에 포함된 지역별 비급여 공개자료와 정적 백업 데이터를 우선 사용합니다. 추후 백엔드 API(응용프로그램 인터페이스)로 자동 최신화할 수 있게 구조를 분리했습니다.</p>
-                    </div>
-                </div>
-            </section>
         </main>
+
+        <section class="card seo-answer-card">
+            <h2 class="card-title"><i data-lucide="help-circle"></i> 병원비 계산 자주 묻는 질문</h2>
+            <div class="faq-list">
+                <div class="faq-item">
+                    <h3>응급실 비용 계산은 어떤 기준인가요?</h3>
+                    <p>병원 등급, 응급실 진료 형태, 급여 본인부담률, 선택한 검사·처치 항목을 합산해 예상 금액을 보여줍니다.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>상병코드 평균 진료비는 어떻게 쓰나요?</h3>
+                    <p>상병코드를 입력하고 검사·시술·수술을 직접 추가하지 않으면, 2024년 공공데이터 CSV의 상병코드별 평균 진료비를 계산에 참고합니다.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>비급여 평균값은 최신인가요?</h3>
+                    <p>프로젝트에 포함된 지역별 비급여 공개자료와 정적 백업 데이터를 우선 사용합니다. 추후 백엔드 API(응용프로그램 인터페이스)로 자동 최신화할 수 있게 구조를 분리했습니다.</p>
+                </div>
+            </div>
+        </section>
 
         <!-- ============ 자료 기준일 Footer ============ -->
         <footer class="data-date-footer">

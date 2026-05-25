@@ -558,6 +558,22 @@ input:checked + .switch-slider:before { transform: translateX(22px); }
     border-color: rgba(59, 130, 246, 0.2);
     position: sticky;
     top: 2rem;
+    max-height: calc(100vh - 4rem);
+    overflow-y: auto;
+}
+
+.result-card::-webkit-scrollbar {
+    width: 6px;
+}
+.result-card::-webkit-scrollbar-track {
+    background: transparent;
+}
+.result-card::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
+}
+.result-card::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
 }
 
 .result-display {
@@ -1461,7 +1477,7 @@ input:checked + .switch-slider:before { transform: translateX(22px); }
         gap: 0.8rem;
     }
 
-    .result-card { position: static; }
+    .result-card { position: static; max-height: none; overflow-y: visible; }
 
     .data-date-footer {
         flex-direction: column;
