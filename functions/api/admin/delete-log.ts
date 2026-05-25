@@ -20,7 +20,20 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     let queryStr = '';
     let params: any[] = [];
 
-    if (type === 'top-search' || type === 'zero-search') {
+    if (type === 'all') {
+      await context.env.DB.batch([
+        context.env.DB.prepare(`DELETE FROM search_logs`),
+        context.env.DB.prepare(`DELETE FROM search_click_logs`),
+        context.env.DB.prepare(`DELETE FROM calculation_logs`),
+      ]);
+
+      return Response.json({ ok: true, deleted: 'all' }, {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Content-Type': 'application/json; charset=utf-8'
+        }
+      });
+    } else if (type === 'top-search' || type === 'zero-search') {
       // 쿼리(normalized_query) 기준 search_logs 일괄 삭제
       queryStr = `DELETE FROM search_logs WHERE normalized_query = ?`;
       params = [String(body.value).trim().toLowerCase()];

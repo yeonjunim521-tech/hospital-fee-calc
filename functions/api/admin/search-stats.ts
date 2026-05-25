@@ -61,6 +61,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
         normalized_query,
         result_count,
         path,
+        user_agent,
         created_at
       FROM search_logs
       ORDER BY created_at DESC
