@@ -4690,3 +4690,115 @@ function eof2RebindFinalUi() {
 
 document.addEventListener('DOMContentLoaded', eof2RebindFinalUi);
 setTimeout(eof2RebindFinalUi, 0);
+
+// 15. Final direct-select override: trust visible active tab and always show rendered list.
+function eof3GetActiveMain() {
+    const activeButton = document.querySelector('.tab-btn.active, .category-tab.active, [data-tab].active');
+    const tab = activeButton?.dataset?.tab || '';
+    return tab || activeTab || '';
+}
+
+function eof2GetActiveMain() {
+    return eof3GetActiveMain();
+}
+
+function renderHierarchicalItemsList(mainVal, subVal, detailVal = 'all') {
+    const itemsList = document.getElementById('hierarchical-items-list');
+    if (!itemsList) return;
+    itemsList.innerHTML = '';
+    itemsList.classList.remove('hidden');
+    if (!mainVal || !subVal) {
+        itemsList.classList.add('hidden');
+        return;
+    }
+
+    const items = getMedicalItemDatabase()
+        .filter(item => {
+            if (isEmergencyManagementItem(item)) return false;
+            const c = getHierarchicalClassification(item);
+            if (c.main !== mainVal || c.sub !== subVal) return false;
+            if (detailVal && detailVal !== 'all' && c.detail !== detailVal) return false;
+            return true;
+        })
+        .slice(0, 80);
+
+    if (!items.length) {
+        itemsList.innerHTML = `<div class="empty-search-results"><p>${EOF2_TEXT.noResult}</p></div>`;
+        return;
+    }
+
+    items.forEach(item => {
+        const code = item.publicActionCode || item.actionCode || item.ediCode || item.code || '';
+        const benefitLabel = item.isBenefit ? EOF2_TEXT.benefit : EOF2_TEXT.nonBenefit;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'search-result-item hierarchical-result-item';
+        btn.innerHTML = `
+            <div class="search-result-info">
+                <span class="search-result-name"><span class="badge badge-benefit" style="padding:0.15rem 0.35rem;font-size:0.68rem;margin-right:0.4rem;">${benefitLabel}</span>${item.name}</span>
+                <span class="search-result-keywords">${code ? `${EOF2_TEXT.code} ${code}` : ''}</span>
+            </div>
+            <div class="search-result-meta"><span class="search-result-price">${formatNumber(item.price)}${EOF2_TEXT.won}</span><span class="btn-result-add">${EOF2_TEXT.add}</span></div>
+        `;
+        btn.onclick = () => {
+            sendSearchClickLog('', item);
+            addHiraItem(item);
+            eof2ShowAddedFeedback(btn);
+        };
+        itemsList.appendChild(btn);
+    });
+}
+
+function handleSubCategoryChange() {
+    const subSelect = document.getElementById('sub-category-select');
+    const detailSelect = document.getElementById('detail-item-select');
+    const itemsList = document.getElementById('hierarchical-items-list');
+    const mainVal = eof3GetActiveMain();
+    const subVal = subSelect?.value || '';
+    if (!detailSelect) return;
+
+    detailSelect.innerHTML = '';
+    detailSelect.appendChild(eof2Option('', EOF2_TEXT.selectDetail, true, true));
+
+    if (!mainVal || !subVal) {
+        eof2SetDetailVisible(false);
+        if (itemsList) {
+            itemsList.innerHTML = '';
+            itemsList.classList.add('hidden');
+        }
+        return;
+    }
+
+    const details = CONSUMER_DETAIL_LABELS?.[subVal] || {};
+    if (Object.keys(details).length) {
+        Object.entries(details).forEach(([code, label]) => {
+            detailSelect.appendChild(eof2Option(code, label));
+        });
+        eof2SetDetailVisible(true);
+        if (itemsList) {
+            itemsList.innerHTML = '';
+            itemsList.classList.add('hidden');
+        }
+    } else {
+        eof2SetDetailVisible(false);
+        renderHierarchicalItemsList(mainVal, subVal, 'all');
+    }
+}
+
+function handleDetailItemChange() {
+    const subVal = document.getElementById('sub-category-select')?.value || '';
+    const detailVal = document.getElementById('detail-item-select')?.value || 'all';
+    const mainVal = eof3GetActiveMain();
+    if (!mainVal || !subVal) return;
+    renderHierarchicalItemsList(mainVal, subVal, detailVal || 'all');
+}
+
+function eof3RebindDirectSelect() {
+    const subSelect = document.getElementById('sub-category-select');
+    const detailSelect = document.getElementById('detail-item-select');
+    if (subSelect) subSelect.onchange = handleSubCategoryChange;
+    if (detailSelect) detailSelect.onchange = handleDetailItemChange;
+}
+
+document.addEventListener('DOMContentLoaded', eof3RebindDirectSelect);
+setTimeout(eof3RebindDirectSelect, 0);
