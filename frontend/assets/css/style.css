@@ -1414,6 +1414,26 @@ input:checked + .switch-slider:before { transform: translateX(22px); }
     display: none !important;
 }
 
+#disease-search-results {
+    background: #ffffff !important;
+    color: #0f172a !important;
+}
+
+#disease-search-results .search-result-item,
+#disease-search-results .search-result-name,
+#disease-search-results .search-result-keywords,
+#disease-search-results .empty-search-results {
+    color: #0f172a !important;
+}
+
+#disease-search-results .search-result-item {
+    background: #ffffff !important;
+}
+
+#disease-search-results .search-result-item:hover {
+    background: #f1f5f9 !important;
+}
+
 .seo-answer-card {
     grid-column: 1 / -1;
 }

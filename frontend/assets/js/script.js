@@ -1643,6 +1643,273 @@ function renderSearchResults(query, targetGroup, resultsList, items) {
 }
 
 // =========================================================
+// 12. Absolute final search override
+// Keep this block as the last search definition. Earlier generated code has
+// duplicate function names, so this section uses direct onclick handlers.
+// =========================================================
+
+function getFinalSearchElements(targetGroup) {
+    const isGlobal = targetGroup === 'global';
+    return {
+        input: document.getElementById(isGlobal ? 'global-search-input' : 'category-search-input'),
+        results: document.getElementById(isGlobal ? 'global-search-results' : 'category-search-results'),
+        clear: document.getElementById(isGlobal ? 'btn-clear-global-search' : 'btn-clear-category-search'),
+        run: document.getElementById(isGlobal ? 'btn-run-global-search' : 'btn-run-category-search')
+    };
+}
+
+function finalNormalizeSearch(value) {
+    return String(value || '').toLowerCase().replace(/\s+/g, '');
+}
+
+function finalKcdCode(item) {
+    return String(item.code || '').trim();
+}
+
+function finalKcdName(item) {
+    return String(item.name || item.ko || item.name_ko || '').trim();
+}
+
+function finalKcdEnglish(item) {
+    return String(item.name_en || item.en || '').trim();
+}
+
+function finalKcdKeywords(item) {
+    return Array.isArray(item.keywords) ? item.keywords : [];
+}
+
+const FINAL_KCD_ALIASES = [
+    { code: 'J00', name: '감기', keywords: ['감기', '코감기', '목감기', '급성 비인두염', 'cold'] },
+    { code: 'J10', name: '독감', keywords: ['독감', '인플루엔자', 'flu'] },
+    { code: 'K35', name: '맹장염', keywords: ['맹장염', '충수염', 'appendicitis'] },
+    { code: 'M54', name: '허리통증', keywords: ['허리통증', '요통', '등통증', 'back pain'] },
+    { code: 'M545', name: '요통', keywords: ['요통', '허리 아픔', 'low back pain'] },
+    { code: 'M51', name: '허리디스크', keywords: ['허리디스크', '요추디스크'] },
+    { code: 'M50', name: '목디스크', keywords: ['목디스크', '경추디스크'] },
+    { code: 'I10', name: '고혈압', keywords: ['고혈압', '혈압'] },
+    { code: 'E11', name: '당뇨병', keywords: ['당뇨', '당뇨병'] },
+    { code: 'R51', name: '두통', keywords: ['두통', '머리 아픔'] },
+    { code: 'R42', name: '어지럼증', keywords: ['어지럼', '어지럼증', '현기증'] },
+    { code: 'O82', name: '제왕절개 분만', keywords: ['제왕절개', 'c-section'] }
+];
+
+function finalKcdDatabase() {
+    const merged = [];
+    const seen = new Set();
+    const fullDb = Array.isArray(ALL_KCD_DATABASE) ? ALL_KCD_DATABASE : [];
+    const fallbackDb = Array.isArray(KCD_DATABASE) ? KCD_DATABASE : [];
+    FINAL_KCD_ALIASES.concat(fallbackDb, fullDb).forEach(item => {
+        const code = finalKcdCode(item);
+        const name = finalKcdName(item);
+        const key = `${code}|${name}`;
+        if (!code || seen.has(key)) return;
+        seen.add(key);
+        merged.push(item);
+    });
+    return merged;
+}
+
+function finalSearchKcd(query) {
+    const clean = finalNormalizeSearch(query);
+    if (!clean) return [];
+    return finalKcdDatabase().filter(item => {
+        const fields = [
+            finalKcdCode(item),
+            finalKcdName(item),
+            finalKcdEnglish(item),
+            ...finalKcdKeywords(item)
+        ];
+        return fields.some(field => finalNormalizeSearch(field).includes(clean));
+    }).slice(0, 40);
+}
+
+function finalRenderDiseaseResults(query) {
+    const input = document.getElementById('disease_code_input');
+    const results = document.getElementById('disease-search-results');
+    if (!input || !results) return;
+    const matched = finalSearchKcd(query);
+    results.innerHTML = '';
+    if (matched.length === 0) {
+        results.innerHTML = `<div class="empty-search-results"><p>'<strong>${query}</strong>' 질병명/상병코드 결과가 없습니다.</p></div>`;
+    } else {
+        matched.forEach(item => {
+            const code = finalKcdCode(item);
+            const name = finalKcdName(item) || finalKcdEnglish(item) || code;
+            const en = finalKcdEnglish(item);
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'search-result-item';
+            btn.innerHTML = `
+                <div class="search-result-info">
+                    <span class="search-result-name"><span class="badge badge-benefit" style="font-size:0.68rem;margin-right:0.4rem;">상병</span>${name}</span>
+                    <span class="search-result-keywords">KCD ${code}${en ? ` · ${en}` : ''}</span>
+                </div>
+                <div class="search-result-meta"><span class="btn-result-add">적용</span></div>
+            `;
+            btn.onclick = () => {
+                addKcdDisease(code, name);
+                input.value = `${code} ${name}`;
+                results.innerHTML = '';
+                results.classList.add('hidden');
+                input.focus();
+            };
+            results.appendChild(btn);
+        });
+    }
+    results.classList.remove('hidden');
+}
+
+function finalItemMatchesScope(item) {
+    const scope = getScopedSearchFilters();
+    if (!scope.main) return false;
+    const classification = getHierarchicalClassification(item);
+    if (classification.main !== scope.main) return false;
+    if (scope.sub && classification.sub !== scope.sub) return false;
+    if (scope.detail && scope.detail !== 'all' && classification.detail !== scope.detail) return false;
+    return true;
+}
+
+function finalRenderItemResults(query, targetGroup, items) {
+    const el = getFinalSearchElements(targetGroup);
+    if (!el.results) return;
+    el.results.innerHTML = '';
+    if (items.length === 0) {
+        el.results.innerHTML = `<div class="empty-search-results"><p>'<strong>${query}</strong>' 검색 결과가 없습니다.</p></div>`;
+        el.results.classList.remove('hidden');
+        return;
+    }
+
+    items.slice(0, 30).forEach(item => {
+        const itemGroup = getItemTypeGroup(item);
+        const groupLabels = { test: '검사', procedure_hira: '시술', surgery: '수술', etc: '기타' };
+        const classification = getHierarchicalClassification(item);
+        const subLabel = CONSUMER_SUB_LABELS[classification.main]?.[classification.sub] || groupLabels[itemGroup] || '';
+        const detailLabel = CONSUMER_DETAIL_LABELS[classification.sub]?.[classification.detail] || '';
+        const code = item.publicActionCode || item.actionCode || item.ediCode || item.code || '';
+        const benefitBadge = item.isBenefit
+            ? '<span class="badge badge-benefit" style="font-size:0.65rem;">급여</span>'
+            : '<span class="badge badge-non-benefit" style="font-size:0.65rem;">비급여</span>';
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'search-result-item';
+        btn.innerHTML = `
+            <div class="search-result-info">
+                <span class="search-result-name"><span class="badge badge-benefit" style="padding:0.15rem 0.35rem;font-size:0.68rem;margin-right:0.4rem;">${groupLabels[itemGroup] || itemGroup}</span>${item.name}</span>
+                <span class="search-result-keywords">${subLabel}${detailLabel ? ` · ${detailLabel}` : ''}${code ? ` · 코드 ${code}` : ''}</span>
+            </div>
+            <div class="search-result-meta">
+                <span class="search-result-price">${formatNumber(item.price)}원</span>
+                ${benefitBadge}
+                <span class="btn-result-add">추가</span>
+            </div>
+        `;
+        btn.onclick = () => {
+            sendSearchClickLog(query, item);
+            addHiraItem(item);
+            const searchEl = getFinalSearchElements(targetGroup);
+            if (searchEl.input) searchEl.input.value = '';
+            updateSearchControlState(searchEl.input, searchEl.clear, searchEl.run);
+            if (searchEl.results) {
+                searchEl.results.innerHTML = '';
+                searchEl.results.classList.add('hidden');
+            }
+            if (searchEl.input) searchEl.input.focus();
+        };
+        el.results.appendChild(btn);
+    });
+    el.results.classList.remove('hidden');
+}
+
+function performSearch(query, targetGroup = 'scoped', options = {}) {
+    const clean = String(query || '').trim();
+    if (!clean) return;
+    const el = getFinalSearchElements(targetGroup);
+    if (!el.results) return;
+    let matched = getMedicalItemDatabase().filter(item => isMatch(clean, item) && !isEmergencyManagementItem(item));
+    if (targetGroup !== 'global') {
+        const scope = getScopedSearchFilters();
+        if (!scope.main) {
+            el.results.innerHTML = '<div class="empty-search-results"><p>먼저 검사, 시술, 수술 중 하나를 선택하세요.</p></div>';
+            el.results.classList.remove('hidden');
+            return;
+        }
+        matched = matched.filter(finalItemMatchesScope);
+    }
+    if (options.logSearch) sendSearchLog(clean, matched.length);
+    finalRenderItemResults(clean, targetGroup, matched);
+}
+
+function executeSearchFromInput(searchInput, targetGroup = 'scoped') {
+    if (!searchInput) return;
+    const query = searchInput.value.trim();
+    if (!query) {
+        searchInput.focus();
+        return;
+    }
+    performSearch(query, targetGroup, { logSearch: true });
+    searchInput.focus();
+}
+
+function finalBindSearchBox(targetGroup) {
+    const el = getFinalSearchElements(targetGroup);
+    if (!el.input || !el.results) return;
+    el.input.oninput = () => updateSearchControlState(el.input, el.clear, el.run);
+    el.input.onkeydown = event => {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        executeSearchFromInput(el.input, targetGroup);
+    };
+    if (el.clear) {
+        el.clear.onclick = event => {
+            event.stopPropagation();
+            el.input.value = '';
+            updateSearchControlState(el.input, el.clear, el.run);
+            el.results.innerHTML = '';
+            el.results.classList.add('hidden');
+            el.input.focus();
+        };
+    }
+    if (el.run) {
+        el.run.disabled = !el.input.value.trim();
+        el.run.onclick = event => {
+            event.stopPropagation();
+            executeSearchFromInput(el.input, targetGroup);
+        };
+    }
+}
+
+function finalBindDiseaseSearchBox() {
+    const input = document.getElementById('disease_code_input');
+    const results = document.getElementById('disease-search-results');
+    if (!input || !results) return;
+    input.oninput = () => {
+        const query = input.value.trim();
+        if (!query) {
+            results.innerHTML = '';
+            results.classList.add('hidden');
+            return;
+        }
+        finalRenderDiseaseResults(query);
+    };
+    input.onkeydown = event => {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        const first = results.querySelector('button.search-result-item');
+        if (first) first.click();
+    };
+}
+
+function finalBindAllSearchControls() {
+    finalBindSearchBox('global');
+    finalBindSearchBox('scoped');
+    finalBindDiseaseSearchBox();
+}
+
+document.addEventListener('DOMContentLoaded', finalBindAllSearchControls);
+setTimeout(finalBindAllSearchControls, 0);
+
+// =========================================================
 // 11. Final search binding override
 // This block must stay at file end because earlier generated code defines
 // duplicate search functions.
@@ -3902,3 +4169,245 @@ function performSearch(query, targetGroup, options = {}) {
     resultsList.classList.remove('hidden');
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
+
+
+// =========================================================
+// 13. Absolute EOF search override
+// This must be the final search override in this file.
+// =========================================================
+
+function eofSearchElements(targetGroup) {
+    const global = targetGroup === 'global';
+    return {
+        input: document.getElementById(global ? 'global-search-input' : 'category-search-input'),
+        results: document.getElementById(global ? 'global-search-results' : 'category-search-results'),
+        clear: document.getElementById(global ? 'btn-clear-global-search' : 'btn-clear-category-search'),
+        run: document.getElementById(global ? 'btn-run-global-search' : 'btn-run-category-search')
+    };
+}
+
+function eofNormalize(value) {
+    return String(value || '').toLowerCase().replace(/\s+/g, '');
+}
+
+const EOF_KCD_ALIASES = [
+    { code: 'J00', name: '??', keywords: ['??', '???', '???', '?? ????', 'cold'] },
+    { code: 'J10', name: '??', keywords: ['??', '?????', 'flu'] },
+    { code: 'K35', name: '???', keywords: ['???', '???', 'appendicitis'] },
+    { code: 'M54', name: '????', keywords: ['????', '??', '???', 'back pain'] },
+    { code: 'M545', name: '??', keywords: ['??', '?? ??', 'low back pain'] },
+    { code: 'M51', name: '?????', keywords: ['?????', '?????'] },
+    { code: 'M50', name: '????', keywords: ['????', '?????'] },
+    { code: 'I10', name: '???', keywords: ['???', '??'] },
+    { code: 'E11', name: '???', keywords: ['??', '???'] },
+    { code: 'R51', name: '??', keywords: ['??', '?? ??'] },
+    { code: 'R42', name: '????', keywords: ['???', '????', '???'] },
+    { code: 'O82', name: '???? ??', keywords: ['????', 'c-section'] }
+];
+
+function eofKcdCode(item) { return String(item.code || '').trim(); }
+function eofKcdName(item) { return String(item.name || item.ko || item.name_ko || '').trim(); }
+function eofKcdEnglish(item) { return String(item.name_en || item.en || '').trim(); }
+function eofKcdKeywords(item) { return Array.isArray(item.keywords) ? item.keywords : []; }
+
+function eofKcdDatabase() {
+    const out = [];
+    const seen = new Set();
+    const full = Array.isArray(ALL_KCD_DATABASE) ? ALL_KCD_DATABASE : [];
+    const fallback = Array.isArray(KCD_DATABASE) ? KCD_DATABASE : [];
+    EOF_KCD_ALIASES.concat(fallback, full).forEach(item => {
+        const code = eofKcdCode(item);
+        const name = eofKcdName(item);
+        const key = `${code}|${name}`;
+        if (!code || seen.has(key)) return;
+        seen.add(key);
+        out.push(item);
+    });
+    return out;
+}
+
+function eofSearchKcd(query) {
+    const q = eofNormalize(query);
+    if (!q) return [];
+    return eofKcdDatabase().filter(item => {
+        const fields = [eofKcdCode(item), eofKcdName(item), eofKcdEnglish(item), ...eofKcdKeywords(item)];
+        return fields.some(field => eofNormalize(field).includes(q));
+    }).slice(0, 40);
+}
+
+function eofRenderDiseaseResults(query) {
+    const input = document.getElementById('disease_code_input');
+    const results = document.getElementById('disease-search-results');
+    if (!input || !results) return;
+    const matched = eofSearchKcd(query);
+    results.innerHTML = '';
+    if (!matched.length) {
+        results.innerHTML = `<div class="empty-search-results"><p>'<strong>${query}</strong>' ???/???? ??? ????.</p></div>`;
+    } else {
+        matched.forEach(item => {
+            const code = eofKcdCode(item);
+            const name = eofKcdName(item) || eofKcdEnglish(item) || code;
+            const en = eofKcdEnglish(item);
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'search-result-item';
+            btn.innerHTML = `
+                <div class="search-result-info">
+                    <span class="search-result-name"><span class="badge badge-benefit" style="font-size:0.68rem;margin-right:0.4rem;">??</span>${name}</span>
+                    <span class="search-result-keywords">KCD ${code}${en ? ` ? ${en}` : ''}</span>
+                </div>
+                <div class="search-result-meta"><span class="btn-result-add">??</span></div>
+            `;
+            btn.onclick = () => {
+                addKcdDisease(code, name);
+                input.value = `${code} ${name}`;
+                results.innerHTML = '';
+                results.classList.add('hidden');
+                input.focus();
+            };
+            results.appendChild(btn);
+        });
+    }
+    results.classList.remove('hidden');
+}
+
+function eofItemMatchesScope(item) {
+    const scope = getScopedSearchFilters();
+    if (!scope.main) return false;
+    const c = getHierarchicalClassification(item);
+    if (c.main !== scope.main) return false;
+    if (scope.sub && c.sub !== scope.sub) return false;
+    if (scope.detail && scope.detail !== 'all' && c.detail !== scope.detail) return false;
+    return true;
+}
+
+function eofRenderItemResults(query, targetGroup, items) {
+    const el = eofSearchElements(targetGroup);
+    if (!el.results) return;
+    el.results.innerHTML = '';
+    if (!items.length) {
+        el.results.innerHTML = `<div class="empty-search-results"><p>'<strong>${query}</strong>' ?? ??? ????.</p></div>`;
+        el.results.classList.remove('hidden');
+        return;
+    }
+    items.slice(0, 30).forEach(item => {
+        const group = getItemTypeGroup(item);
+        const labels = { test: '??', procedure_hira: '??', surgery: '??', etc: '??' };
+        const c = getHierarchicalClassification(item);
+        const sub = CONSUMER_SUB_LABELS[c.main]?.[c.sub] || labels[group] || '';
+        const detail = CONSUMER_DETAIL_LABELS[c.sub]?.[c.detail] || '';
+        const code = item.publicActionCode || item.actionCode || item.ediCode || item.code || '';
+        const benefit = item.isBenefit ? '<span class="badge badge-benefit" style="font-size:0.65rem;">??</span>' : '<span class="badge badge-non-benefit" style="font-size:0.65rem;">???</span>';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'search-result-item';
+        btn.innerHTML = `
+            <div class="search-result-info">
+                <span class="search-result-name"><span class="badge badge-benefit" style="padding:0.15rem 0.35rem;font-size:0.68rem;margin-right:0.4rem;">${labels[group] || group}</span>${item.name}</span>
+                <span class="search-result-keywords">${sub}${detail ? ` ? ${detail}` : ''}${code ? ` ? ?? ${code}` : ''}</span>
+            </div>
+            <div class="search-result-meta"><span class="search-result-price">${formatNumber(item.price)}?</span>${benefit}<span class="btn-result-add">??</span></div>
+        `;
+        btn.onclick = () => {
+            sendSearchClickLog(query, item);
+            addHiraItem(item);
+            const searchEl = eofSearchElements(targetGroup);
+            if (searchEl.input) searchEl.input.value = '';
+            updateSearchControlState(searchEl.input, searchEl.clear, searchEl.run);
+            if (searchEl.results) {
+                searchEl.results.innerHTML = '';
+                searchEl.results.classList.add('hidden');
+            }
+            if (searchEl.input) searchEl.input.focus();
+        };
+        el.results.appendChild(btn);
+    });
+    el.results.classList.remove('hidden');
+}
+
+function performSearch(query, targetGroup = 'scoped', options = {}) {
+    const clean = String(query || '').trim();
+    if (!clean) return;
+    const el = eofSearchElements(targetGroup);
+    if (!el.results) return;
+    let matched = getMedicalItemDatabase().filter(item => isMatch(clean, item) && !isEmergencyManagementItem(item));
+    if (targetGroup !== 'global') {
+        const scope = getScopedSearchFilters();
+        if (!scope.main) {
+            el.results.innerHTML = '<div class="empty-search-results"><p>?? ??, ??, ?? ? ??? ?????.</p></div>';
+            el.results.classList.remove('hidden');
+            return;
+        }
+        matched = matched.filter(eofItemMatchesScope);
+    }
+    if (options.logSearch) sendSearchLog(clean, matched.length);
+    eofRenderItemResults(clean, targetGroup, matched);
+}
+
+function executeSearchFromInput(searchInput, targetGroup = 'scoped') {
+    if (!searchInput) return;
+    const query = searchInput.value.trim();
+    if (!query) {
+        searchInput.focus();
+        return;
+    }
+    performSearch(query, targetGroup, { logSearch: true });
+    searchInput.focus();
+}
+
+function eofBindSearchBox(targetGroup) {
+    const el = eofSearchElements(targetGroup);
+    if (!el.input || !el.results) return;
+    el.input.oninput = () => updateSearchControlState(el.input, el.clear, el.run);
+    el.input.onkeydown = event => {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        executeSearchFromInput(el.input, targetGroup);
+    };
+    if (el.clear) {
+        el.clear.onclick = event => {
+            event.stopPropagation();
+            el.input.value = '';
+            updateSearchControlState(el.input, el.clear, el.run);
+            el.results.innerHTML = '';
+            el.results.classList.add('hidden');
+            el.input.focus();
+        };
+    }
+    if (el.run) {
+        el.run.onclick = event => {
+            event.stopPropagation();
+            executeSearchFromInput(el.input, targetGroup);
+        };
+    }
+}
+
+function eofBindDiseaseSearchBox() {
+    const input = document.getElementById('disease_code_input');
+    const results = document.getElementById('disease-search-results');
+    if (!input || !results) return;
+    input.oninput = () => {
+        const query = input.value.trim();
+        if (!query) {
+            results.innerHTML = '';
+            results.classList.add('hidden');
+            return;
+        }
+        eofRenderDiseaseResults(query);
+    };
+    input.onkeydown = event => {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        const first = results.querySelector('button.search-result-item');
+        if (first) first.click();
+    };
+}
+
+function eofBindAllSearchControls() {
+    eofBindSearchBox('global');
+    eofBindSearchBox('scoped');
+    eofBindDiseaseSearchBox();
+}
+
+document.addEventListener('DOMContentLoaded', eofBindAllSearchControls);
+setTimeout(eofBindAllSearchControls, 0);
