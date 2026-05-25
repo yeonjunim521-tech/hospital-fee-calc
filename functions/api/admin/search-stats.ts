@@ -56,6 +56,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
 
     const recentSearches = await context.env.DB.prepare(`
       SELECT
+        id,
         query,
         normalized_query,
         result_count,

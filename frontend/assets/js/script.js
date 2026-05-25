@@ -678,11 +678,31 @@ function getEmergencySeverityInfo() {
     return item || { code, name: '응급실 경증 진료 (응급의료 관리료 경증 환자)', price: 20000, isBenefit: true };
 }
 
+let ALL_KCD_DATABASE = [];
+
+async function loadKcdDatabase() {
+    try {
+        const res = await fetch('/assets/data/kcd_codes.json');
+        if (res.ok) {
+            ALL_KCD_DATABASE = await res.json();
+        } else {
+            console.warn(`KCD 데이터베이스 로드 실패 (HTTP status: ${res.status}), 기본 축소 DB 사용`);
+        }
+    } catch (error) {
+        console.error("KCD 데이터베이스 로드 중 오류 발생, 기본 축소 DB 사용", error);
+    }
+}
+
 async function initializeDataSources() {
     loadStaticNonBenefitData();
 
-    if (typeof fetch === 'function' && isHttpRuntime()) {
-        await loadBackendNonBenefitData();
+    if (typeof fetch === 'function') {
+        const promises = [];
+        if (isHttpRuntime()) {
+            promises.push(loadBackendNonBenefitData());
+        }
+        promises.push(loadKcdDatabase());
+        await Promise.all(promises);
     }
 
     renderDataSourceStatus();
@@ -2040,4 +2060,1114 @@ function calculate() {
         totalCost: patientTotalPay,
         refundCost: refundTotal
     });
+}
+
+// =========================================================
+// 8. 신규 추가: 주상병코드 토글 및 3단계 연쇄 직접 선택 제어
+// =========================================================
+
+function toggleDiseaseCodeSection() {
+    const hasDisease = document.getElementById('has_disease_code').checked;
+    const details = document.getElementById('disease_code_details');
+    const input = document.getElementById('disease_code_input');
+    
+    if (hasDisease) {
+        details.classList.remove('hidden');
+    } else {
+        details.classList.add('hidden');
+        if (input) {
+            input.value = '';
+        }
+        calculate();
+    }
+}
+
+// 3단계 분류 매핑 데이터
+const MAIN_CAT_LABELS = {
+    test: "검사",
+    procedure_hira: "시술",
+    surgery: "수술",
+    etc: "기타 처치"
+};
+
+const SUB_CAT_LABELS = {
+    test: {
+        imaging: "영상검사",
+        specimen: "검체검사",
+        functional: "기능검사",
+        endoscopy: "내시경검사"
+    },
+    procedure_hira: {
+        cardiovascular: "뇌/심혈관 시술",
+        dental: "치과 시술",
+        general_proc: "일반 시술/처치"
+    },
+    surgery: {
+        neuro: "뇌/신경 수술",
+        eye_ent: "안과/이비인후과 수술",
+        chest: "흉부/심혈관 수술",
+        abdomen: "복부/소화기 수술",
+        urology_ob: "비뇨기/산부인과 수술",
+        ortho: "정형외과 수술"
+    },
+    etc: {
+        anesthesia: "마취료",
+        injection: "수액/주사제",
+        rehab: "물리/재활치료",
+        korean: "한방치료",
+        other: "기타 보조처치"
+    }
+};
+
+const DETAIL_CAT_LABELS = {
+    imaging: {
+        xray: "일반 X-ray 촬영",
+        ct: "전산화단층촬영 (CT)",
+        mri: "자기공명영상 (MRI)",
+        ultrasound: "초음파 검사",
+        angio: "조영검사 (Angio)",
+        special: "기타 특수/핵의학 검사"
+    },
+    specimen: {
+        blood: "일반 혈액/혈액형 검사",
+        chemistry: "생화학/간·신기능/지질 검사",
+        tumor: "종양표지자 (암 수치)",
+        urine: "요경검/소변 검사"
+    },
+    functional: {
+        cardio: "심장기능 (심전도/홀터)",
+        neuro: "뇌/신경/근전도 검사",
+        sleep: "수면다원검사 (PSG)",
+        respiratory: "폐기능 검사",
+        sensory: "청력/안구 검사"
+    },
+    endoscopy: {
+        gastro: "위내시경 검사",
+        colono: "대장내시경 검사",
+        etc: "내시경 처치/마취 추가"
+    }
+};
+
+
+
+
+
+// 인기 검색어 동적 노출 기능
+let popularSearches = [];
+
+async function loadPopularSearches() {
+    try {
+        const res = await fetch('/api/top-searches');
+        if (res.ok) {
+            const data = await res.json();
+            if (data && data.ok && Array.isArray(data.topSearches)) {
+                popularSearches = data.topSearches;
+            }
+        }
+    } catch (e) {
+        console.error("인기 검색어 로드 실패", e);
+    }
+}
+
+// =========================================================
+// 9. 신규 통합 오버라이드: 3단계 계층 분류, 실시간 KCD/수가 통합 검색 및 탭 연동 엔진
+// =========================================================
+
+function switchTab(tabId) {
+    activeTab = tabId;
+    
+    // 탭 버튼 active 클래스 전환 적용
+    document.querySelectorAll('.category-tabs .tab-btn').forEach(btn => {
+        if (btn.getAttribute('data-tab') === tabId) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+    
+    // 3단계 직접 선택 드롭다운 연동
+    const mainSelect = document.getElementById('main-category-select');
+    if (mainSelect) {
+        mainSelect.value = tabId;
+        handleMainCategoryChange();
+    }
+    
+    // 하단 추천 검색어 키워드 칩 목록 갱신
+    renderRecommendChips(tabId);
+    
+    // 검색 입력값 및 검색 결과 목록 초기화
+    const searchInput = document.getElementById('category-search-input');
+    const btnClear = document.getElementById('btn-clear-category-search');
+    const resultsList = document.getElementById('category-search-results');
+    const btnRun = document.getElementById('btn-run-category-search');
+    
+    if (searchInput) searchInput.value = '';
+    if (btnClear) btnClear.classList.add('hidden');
+    if (btnRun) {
+        btnRun.disabled = true;
+        btnRun.classList.remove('active');
+    }
+    if (resultsList) {
+        resultsList.innerHTML = '';
+        resultsList.classList.add('hidden');
+    }
+}
+
+function addKcdDisease(code, name) {
+    const hasDiseaseCheck = document.getElementById('has_disease_code');
+    const diseaseDetails = document.getElementById('disease_code_details');
+    const diseaseInput = document.getElementById('disease_code_input');
+
+    if (hasDiseaseCheck) {
+        hasDiseaseCheck.checked = true;
+    }
+    if (diseaseDetails) {
+        diseaseDetails.classList.remove('hidden');
+    }
+    if (diseaseInput) {
+        diseaseInput.value = code;
+    }
+    calculate();
+}
+
+function initSearchEvents() {
+    // A. 대분류 탭 검색창 리스너 바인딩
+    const categorySearchInput = document.getElementById('category-search-input');
+    const categoryResultsList = document.getElementById('category-search-results');
+    const btnClearCategory = document.getElementById('btn-clear-category-search');
+    const btnRunCategory = document.getElementById('btn-run-category-search');
+    
+    if (categorySearchInput && categoryResultsList) {
+        categorySearchInput.addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+            updateSearchControlState(categorySearchInput, btnClearCategory, btnRunCategory);
+            if (query.length > 0) {
+                performSearch(query, activeTab, { logSearch: false });
+            } else {
+                categoryResultsList.innerHTML = '';
+                categoryResultsList.classList.add('hidden');
+            }
+        });
+
+        categorySearchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                executeSearchFromInput(categorySearchInput, activeTab);
+            }
+        });
+        
+        if (btnClearCategory) {
+            btnClearCategory.addEventListener('click', (e) => {
+                e.stopPropagation();
+                categorySearchInput.value = '';
+                updateSearchControlState(categorySearchInput, btnClearCategory, btnRunCategory);
+                categoryResultsList.innerHTML = '';
+                categoryResultsList.classList.add('hidden');
+                categorySearchInput.focus();
+            });
+        }
+
+        if (btnRunCategory) {
+            btnRunCategory.addEventListener('click', (e) => {
+                e.stopPropagation();
+                executeSearchFromInput(categorySearchInput, activeTab);
+            });
+        }
+    }
+
+    // B. 기타 처치 검색창 리스너 바인딩
+    const etcSearchInput = document.getElementById('etc-search-input');
+    const etcResultsList = document.getElementById('etc-search-results');
+    const btnClearEtc = document.getElementById('btn-clear-etc-search');
+    const btnRunEtc = document.getElementById('btn-run-etc-search');
+    
+    if (etcSearchInput && etcResultsList) {
+        etcSearchInput.addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+            updateSearchControlState(etcSearchInput, btnClearEtc, btnRunEtc);
+            if (query.length > 0) {
+                performSearch(query, 'etc', { logSearch: false });
+            } else {
+                etcResultsList.innerHTML = '';
+                etcResultsList.classList.add('hidden');
+            }
+        });
+
+        etcSearchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                executeSearchFromInput(etcSearchInput, 'etc');
+            }
+        });
+        
+        if (btnClearEtc) {
+            btnClearEtc.addEventListener('click', (e) => {
+                e.stopPropagation();
+                etcSearchInput.value = '';
+                updateSearchControlState(etcSearchInput, btnClearEtc, btnRunEtc);
+                etcResultsList.innerHTML = '';
+                etcResultsList.classList.add('hidden');
+                etcSearchInput.focus();
+            });
+        }
+
+        if (btnRunEtc) {
+            btnRunEtc.addEventListener('click', (e) => {
+                e.stopPropagation();
+                executeSearchFromInput(etcSearchInput, 'etc');
+            });
+        }
+    }
+
+    // C. 주상병코드(KCD) 실시간 검색 및 자동완성
+    const diseaseInput = document.getElementById('disease_code_input');
+    const diseaseResultsList = document.getElementById('disease-search-results');
+    
+    if (diseaseInput && diseaseResultsList) {
+        diseaseInput.addEventListener('input', (e) => {
+            const query = e.target.value.trim().toLowerCase();
+            if (query.length > 0) {
+                const cleanQuery = query.replace(/\s+/g, '');
+                
+                // 1. 다빈도 혹은 로드된 KCD 데이터베이스 매칭
+                const dbToSearch = (ALL_KCD_DATABASE && ALL_KCD_DATABASE.length > 0) ? ALL_KCD_DATABASE : KCD_DATABASE;
+                let matched = dbToSearch.filter(item => {
+                    if (item.code.toLowerCase().includes(cleanQuery)) return true;
+                    if (item.name.toLowerCase().replace(/\s+/g, '').includes(cleanQuery)) return true;
+                    if (item.name_en && item.name_en.toLowerCase().replace(/\s+/g, '').includes(cleanQuery)) return true;
+                    if (item.keywords && item.keywords.some(k => k.toLowerCase().replace(/\s+/g, '').includes(cleanQuery))) return true;
+                    return false;
+                });
+                
+                // 2. KCD 상병코드 형태(예: I63, M51, A09 등 영문1자+숫자2~3자)를 직접 친 경우
+                //    일치하는 질병 정보가 없다면 가상의 직접 지정 상병 아이템을 자동완성 처음에 생성
+                const kcdPattern = /^[a-z][0-9]{2,3}$/i;
+                if (kcdPattern.test(cleanQuery)) {
+                    const exactMatch = matched.some(item => item.code.toLowerCase() === cleanQuery);
+                    if (!exactMatch) {
+                        matched.unshift({
+                            code: query.toUpperCase(),
+                            name: `상병코드 ${query.toUpperCase()} (직접 입력)`,
+                            keywords: [query]
+                        });
+                    }
+                }
+                
+                diseaseResultsList.innerHTML = '';
+                if (matched.length === 0) {
+                    diseaseResultsList.innerHTML = '<div style="padding: 8px; color: var(--text-muted); font-size: 12px; text-align: center;">매칭되는 질병명이 없습니다.</div>';
+                } else {
+                    // 상위 50개 항목 제한
+                    const limitMatched = matched.slice(0, 50);
+                    limitMatched.forEach(item => {
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'search-result-item';
+                        btn.style.width = '100%';
+                        btn.style.textAlign = 'left';
+                        btn.style.padding = '8px 12px';
+                        btn.style.border = 'none';
+                        btn.style.background = 'none';
+                        btn.style.cursor = 'pointer';
+                        
+                        const displayName = item.name_en ? `${item.name} (${item.name_en})` : item.name;
+                        btn.innerHTML = `
+                            <div style="display: flex; justify-content: space-between; font-size: 13px; width: 100%;">
+                                <span><span class="badge" style="padding: 1px 4px; font-size: 10px; margin-right: 5px; background: #3b82f6; color: white;">질병</span><strong>${displayName}</strong></span>
+                                <span style="color: var(--text-muted); font-weight: 600;">코드: ${item.code}</span>
+                            </div>
+                        `;
+                        
+                        btn.addEventListener('click', () => {
+                            diseaseInput.value = item.code;
+                            diseaseResultsList.innerHTML = '';
+                            diseaseResultsList.classList.add('hidden');
+                            calculate();
+                        });
+                        diseaseResultsList.appendChild(btn);
+                    });
+                }
+                diseaseResultsList.classList.remove('hidden');
+            } else {
+                diseaseResultsList.innerHTML = '';
+                diseaseResultsList.classList.add('hidden');
+            }
+        });
+    }
+    
+    // D. 드롭다운 바깥 영역 클릭 시 검색창 드롭다운 레이어 닫기
+    document.addEventListener('click', (e) => {
+        if (categorySearchInput && categoryResultsList && !categorySearchInput.contains(e.target) && !categoryResultsList.contains(e.target)) {
+            categoryResultsList.innerHTML = '';
+            categoryResultsList.classList.add('hidden');
+        }
+        if (etcSearchInput && etcResultsList && !etcSearchInput.contains(e.target) && !etcResultsList.contains(e.target)) {
+            etcResultsList.innerHTML = '';
+            etcResultsList.classList.add('hidden');
+        }
+        if (diseaseInput && diseaseResultsList && !diseaseInput.contains(e.target) && !diseaseResultsList.contains(e.target)) {
+            diseaseResultsList.innerHTML = '';
+            diseaseResultsList.classList.add('hidden');
+        }
+    });
+}
+
+function performSearch(query, targetGroup, options = {}) {
+    const resultsList = targetGroup === 'etc' 
+        ? document.getElementById('etc-search-results')
+        : document.getElementById('category-search-results');
+        
+    if (!resultsList) return;
+    
+    // 1단계: 전체 DB에서 수가 항목 매칭
+    let matched = getMedicalItemDatabase().filter(item => isMatch(query, item) && !isEmergencyManagementItem(item));
+    
+    // 2단계: KCD 질환 매칭 데이터도 검색 결과에 통합하여 함께 렌더링 (통합검색 실현)
+    let matchedKcd = KCD_DATABASE.filter(item => {
+        const cleanQuery = query.replace(/\s+/g, '').toLowerCase();
+        if (item.code.toLowerCase().includes(cleanQuery)) return true;
+        if (item.name.toLowerCase().replace(/\s+/g, '').includes(cleanQuery)) return true;
+        if (item.keywords && item.keywords.some(k => k.toLowerCase().replace(/\s+/g, '').includes(cleanQuery))) return true;
+        return false;
+    }).map(item => ({
+        ...item,
+        isKcd: true, // KCD 질병 객체임을 마킹
+        price: 0,
+        isBenefit: true
+    }));
+    
+    // 3단계: KCD 질병과 수가 목록을 합친다 (KCD 질병 우선 노출)
+    let combinedResults = [...matchedKcd, ...matched];
+
+    if (options.logSearch) {
+        sendSearchLog(query, matched.length);
+    }
+    
+    resultsList.innerHTML = '';
+    
+    // 매칭 결과가 없을 때
+    if (combinedResults.length === 0) {
+        const emptyDiv = document.createElement('div');
+        emptyDiv.className = 'empty-search-results';
+        emptyDiv.innerHTML = `
+            <i data-lucide="search"></i>
+            <p>'<strong>${query}</strong>'에 매칭되는 항목이 없습니다.</p>
+            <span style="font-size:0.75rem; color:var(--text-muted);">부위나 오타를 확인하거나, 다른 검색어로 시도해보세요.</span>
+        `;
+        resultsList.appendChild(emptyDiv);
+    } 
+    // 매칭 결과가 있을 때 최대 15개 렌더링
+    else {
+        const limitResults = combinedResults.slice(0, 15);
+        limitResults.forEach(item => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'search-result-item';
+            
+            if (item.isKcd) {
+                // KCD 상병코드 질병인 경우 렌더링 방식
+                const categoryBadge = `<span class="badge" style="padding: 0.15rem 0.35rem; font-size: 0.68rem; margin-right: 0.4rem; background: #3b82f6; color: white;">질병</span>`;
+                btn.innerHTML = `
+                    <div class="search-result-info" style="text-align: left;">
+                        <span class="search-result-name">${categoryBadge}${item.name}</span>
+                        <span class="search-result-keywords">상병코드: ${item.code} (선택 시 평균 진료비 자동 연동)</span>
+                    </div>
+                    <div class="search-result-meta">
+                        <span class="btn-result-add" style="color: #3b82f6;"><i data-lucide="check" style="width:12px; height:12px; display:inline-block; vertical-align:middle;"></i> 적용</span>
+                    </div>
+                `;
+                
+                btn.addEventListener('click', () => {
+                    addKcdDisease(item.code, item.name);
+                    
+                    const searchInput = targetGroup === 'etc' 
+                        ? document.getElementById('etc-search-input')
+                        : document.getElementById('category-search-input');
+                        
+                    const btnClear = targetGroup === 'etc'
+                        ? document.getElementById('btn-clear-etc-search')
+                        : document.getElementById('btn-clear-category-search');
+
+                    const btnRun = targetGroup === 'etc'
+                        ? document.getElementById('btn-run-etc-search')
+                        : document.getElementById('btn-run-category-search');
+                        
+                    if (searchInput) searchInput.value = '';
+                    if (searchInput) updateSearchControlState(searchInput, btnClear, btnRun);
+                    resultsList.innerHTML = '';
+                    resultsList.classList.add('hidden');
+                    if (searchInput) searchInput.focus();
+                });
+            } else {
+                // 일반 수가 항목인 경우 렌더링 방식
+                const groupLabels = {
+                    test: '검사',
+                    procedure_hira: '시술',
+                    surgery: '수술',
+                    etc: '기타'
+                };
+                const itemGroup = getItemTypeGroup(item);
+                
+                const categoryBadge = `<span class="badge badge-benefit" style="padding: 0.15rem 0.35rem; font-size: 0.68rem; margin-right: 0.4rem;">${groupLabels[itemGroup] || itemGroup}</span>`;
+                const benefitBadge = item.isBenefit 
+                    ? '<span class="badge badge-benefit" style="font-size: 0.65rem;">급여</span>' 
+                    : '<span class="badge badge-non-benefit" style="font-size: 0.65rem;">비급여</span>';
+                const drgBadge = item.isDRG ? '<span class="badge badge-drg">DRG</span>' : '';
+                
+                // 영어 동의어 표시 보강 (PICC, TFCA 등 영문 약어를 공식 명칭 옆에 자동 병기)
+                let nameSuffix = '';
+                if (item.keywords) {
+                    const englishKeywords = item.keywords.filter(k => /^[a-z0-9\s\-]+$/i.test(k) && k.length >= 2 && k.length <= 15);
+                    const nameLower = item.name.toLowerCase();
+                    const missingEng = englishKeywords.filter(k => !nameLower.includes(k.toLowerCase()));
+                    if (missingEng.length > 0) {
+                        nameSuffix = ` (${missingEng[0].toUpperCase()})`;
+                    }
+                }
+                const displayName = item.name + nameSuffix;
+                const keywordSnippet = item.keywords ? item.keywords.slice(0, 4).join(', ') : '';
+                
+                btn.innerHTML = `
+                    <div class="search-result-info">
+                        <span class="search-result-name">${categoryBadge}${displayName}${drgBadge}</span>
+                        <span class="search-result-keywords">동의어: ${keywordSnippet}</span>
+                    </div>
+                    <div class="search-result-meta">
+                        <span class="search-result-price">${formatNumber(item.price)}원</span>
+                        ${benefitBadge}
+                        <span class="btn-result-add"><i data-lucide="plus" style="width:12px; height:12px;"></i> 추가</span>
+                    </div>
+                `;
+                
+                // 검색 결과 항목 선택(클릭) 이벤트
+                btn.addEventListener('click', () => {
+                    sendSearchClickLog(query, item);
+                    addHiraItem(item);
+                    
+                    // 입력창 및 결과 목록 클리어
+                    const searchInput = targetGroup === 'etc' 
+                        ? document.getElementById('etc-search-input')
+                        : document.getElementById('category-search-input');
+                        
+                    const btnClear = targetGroup === 'etc'
+                        ? document.getElementById('btn-clear-etc-search')
+                        : document.getElementById('btn-clear-category-search');
+
+                    const btnRun = targetGroup === 'etc'
+                        ? document.getElementById('btn-run-etc-search')
+                        : document.getElementById('btn-run-category-search');
+                        
+                    if (searchInput) searchInput.value = '';
+                    if (searchInput) updateSearchControlState(searchInput, btnClear, btnRun);
+                    resultsList.innerHTML = '';
+                    resultsList.classList.add('hidden');
+                    if (searchInput) searchInput.focus();
+                });
+            }
+            
+            resultsList.appendChild(btn);
+        });
+    }
+    
+    resultsList.classList.remove('hidden');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+// 3단계 정밀 규칙 분류 헬퍼 함수 (심평원 고시 분류 EDI 코드 분석 포함 대폭 개편)
+function getHierarchicalClassification(item) {
+    let main = getItemTypeGroup(item);
+    let sub = '';
+    let detail = 'all';
+
+    const name = item.name || '';
+    const lowerName = name.toLowerCase();
+    const code = (item.publicActionCode || item.actionCode || item.ediCode || item.code || '').toUpperCase();
+
+    // 임상적 직관을 감안해 PICC(중심정맥관 삽입술)는 시술(procedure_hira)로 강제 분류
+    if (lowerName.includes('picc') || lowerName.includes('중심정맥')) {
+        main = 'procedure_hira';
+    }
+
+    if (main === 'test') {
+        // 검사 대분류 (imaging, specimen, endoscopy, functional)
+        if (item.category === 'imaging' || code.startsWith('G') || code.startsWith('F') || lowerName.includes('촬영') || lowerName.includes('초음파') || lowerName.includes('mri') || lowerName.includes('ct') || lowerName.includes('x-ray') || lowerName.includes('엑스레이')) {
+            sub = 'imaging';
+            if (lowerName.includes('mri') || lowerName.includes('자기공명') || code.startsWith('HE')) detail = 'mri';
+            else if (lowerName.includes('ct') || lowerName.includes('전산화단층') || code.startsWith('HA')) detail = 'ct';
+            else if (lowerName.includes('x-ray') || lowerName.includes('엑스레이') || lowerName.includes('단순촬영') || code.startsWith('F0') || code.startsWith('F1') || code.startsWith('F2')) detail = 'xray';
+            else if (lowerName.includes('초음파') || code.startsWith('EB') || code.startsWith('EZ')) detail = 'ultrasound';
+            else if (lowerName.includes('조영') || lowerName.includes('angio') || code.startsWith('HC')) detail = 'angio';
+            else detail = 'special';
+        } else if (item.category === 'specimen' || code.startsWith('D') || lowerName.includes('검사') && (lowerName.includes('혈액') || lowerName.includes('소변') || lowerName.includes('뇨') || lowerName.includes('검경') || lowerName.includes('체액'))) {
+            sub = 'specimen';
+            if (lowerName.includes('혈액형') || lowerName.includes('cbc') || lowerName.includes('적혈구') || lowerName.includes('백혈구') || lowerName.includes('혈소판') || lowerName.includes('헤모글로빈') || code.startsWith('D0') || code.startsWith('D1') || code.startsWith('D15')) {
+                detail = 'blood';
+            } else if (lowerName.includes('암') || lowerName.includes('종양') || lowerName.includes('psa') || lowerName.includes('afp') || lowerName.includes('cea') || code.startsWith('D8') || code.startsWith('D9')) {
+                detail = 'tumor';
+            } else if (lowerName.includes('뇨') || lowerName.includes('요') || lowerName.includes('소변') || lowerName.includes('urinalysis') || code.startsWith('D3')) {
+                detail = 'urine';
+            } else {
+                detail = 'chemistry';
+            }
+        } else if (item.category === 'endoscopy' || lowerName.includes('내시경')) {
+            sub = 'endoscopy';
+            if (lowerName.includes('위') || lowerName.includes('상부위장')) detail = 'gastro';
+            else if (lowerName.includes('대장') || lowerName.includes('결장') || lowerName.includes('직장')) detail = 'colono';
+            else detail = 'etc';
+        } else {
+            sub = 'functional';
+            if (lowerName.includes('심장') || lowerName.includes('심전도') || lowerName.includes('홀터') || lowerName.includes('ecg') || code.startsWith('E1')) detail = 'cardio';
+            else if (lowerName.includes('뇌') || lowerName.includes('신경') || lowerName.includes('근전도') || code.startsWith('E2')) detail = 'neuro';
+            else if (lowerName.includes('수면') || lowerName.includes('psg')) detail = 'sleep';
+            else if (lowerName.includes('폐기능') || lowerName.includes('pft') || lowerName.includes('호흡')) detail = 'respiratory';
+            else detail = 'sensory';
+        }
+    } else if (main === 'procedure_hira') {
+        // 시술 대분류 (cardiovascular, dental, general_proc)
+        if (code.startsWith('U') || lowerName.includes('치과') || lowerName.includes('치아') || lowerName.includes('발치') || lowerName.includes('치주') || lowerName.includes('잇몸') || lowerName.includes('치석') || lowerName.includes('스케일링') || lowerName.includes('임플란트')) {
+            sub = 'dental';
+        } else if (lowerName.includes('심장') || lowerName.includes('혈관') || lowerName.includes('색전술') || lowerName.includes('스텐트') || lowerName.includes('카테터') || lowerName.includes('조영술') || lowerName.includes('중심정맥') || lowerName.includes('picc') || lowerName.includes('정맥관') || lowerName.includes('동맥관')) {
+            sub = 'cardiovascular';
+        } else {
+            sub = 'general_proc';
+        }
+    } else if (main === 'surgery') {
+        // 수술 대분류 (neuro, eye_ent, chest, abdomen, urology_ob, ortho)
+        // 1. 신경외과(neuro) : EDI 코드가 S4, S51, S52, O1, SY로 시작하거나 뇌/신경 한글 명칭 매칭
+        if (code.startsWith('S4') || code.startsWith('S51') || code.startsWith('S52') || code.startsWith('O1') || code.startsWith('SY') || 
+            lowerName.includes('뇌') || lowerName.includes('척추') || lowerName.includes('신경') || lowerName.includes('척수') || lowerName.includes('경막') || lowerName.includes('천공') || lowerName.includes('종양제거') || lowerName.includes('두개') || lowerName.includes('개두') || lowerName.includes('미세혈관')) {
+            sub = 'neuro';
+        } 
+        // 2. 안과/이비인후과(eye_ent) : EDI 코드가 SZ로 시작하거나, S5로 시작하되 S51, S52가 아닌 경우 (S53~S58) 및 안과/이비인후과 한글 명칭 매칭
+        else if (code.startsWith('SZ') || (code.startsWith('S5') && !code.startsWith('S51') && !code.startsWith('S52')) || 
+                 lowerName.includes('안과') || lowerName.includes('이비인후과') || lowerName.includes('눈') || lowerName.includes('안구') || lowerName.includes('공막') || lowerName.includes('홍채') || lowerName.includes('각막') || lowerName.includes('백내장') || lowerName.includes('녹내장') || lowerName.includes('망막') || lowerName.includes('귀') || lowerName.includes('이개') || lowerName.includes('고막') || lowerName.includes('이소골') || lowerName.includes('보청기') || lowerName.includes('코') || lowerName.includes('비강') || lowerName.includes('부비동') || lowerName.includes('편도')) {
+            sub = 'eye_ent';
+        } 
+        // 3. 흉부/심혈관(chest) : EDI 코드가 S61~S63, O3로 시작하거나 흉부/심혈관 한글 명칭 매칭
+        else if (code.startsWith('S61') || code.startsWith('S62') || code.startsWith('S63') || code.startsWith('O3') || 
+                 lowerName.includes('가슴') || lowerName.includes('폐') || lowerName.includes('심장') || lowerName.includes('식도') || lowerName.includes('흉부') || lowerName.includes('판막') || lowerName.includes('동맥') || lowerName.includes('정맥') || lowerName.includes('혈관') || lowerName.includes('우회술')) {
+            sub = 'chest';
+        } 
+        // 4. 복부/소화기(abdomen) : EDI 코드가 S70~S77, O5로 시작하거나 복부/소화기 한글 명칭 매칭
+        else if ((code.startsWith('S7') && !code.startsWith('S78') && !code.startsWith('S79')) || code.startsWith('O5') || 
+                 lowerName.includes('위') || lowerName.includes('대장') || lowerName.includes('결장') || lowerName.includes('충수') || lowerName.includes('맹장') || lowerName.includes('담낭') || lowerName.includes('쓸개') || lowerName.includes('항문') || lowerName.includes('치핵') || lowerName.includes('치질') || lowerName.includes('췌장') || lowerName.includes('담도') || lowerName.includes('비장') || lowerName.includes('복부')) {
+            sub = 'abdomen';
+        } 
+        // 5. 비뇨기/산부인과(urology_ob) : EDI 코드가 S80~S99, R2~R6, RA, RB, RY, RZ, O6로 시작하거나 비뇨기/산부인과 한글 명칭 매칭
+        else if (code.startsWith('S8') || code.startsWith('S9') || code.startsWith('R2') || code.startsWith('R3') || code.startsWith('R4') || code.startsWith('R5') || code.startsWith('R6') || code.startsWith('RA') || code.startsWith('RB') || code.startsWith('RY') || code.startsWith('RZ') || code.startsWith('O6') || 
+                 lowerName.includes('비뇨') || lowerName.includes('방광') || lowerName.includes('요관') || lowerName.includes('요도') || lowerName.includes('전립선') || lowerName.includes('신장') || lowerName.includes('신우') || lowerName.includes('음경') || lowerName.includes('고환') || lowerName.includes('자궁') || lowerName.includes('난소') || lowerName.includes('질') || lowerName.includes('난관') || lowerName.includes('태아') || lowerName.includes('임신') || lowerName.includes('분만') || lowerName.includes('유도분만') || lowerName.includes('제왕절개') || lowerName.includes('포경')) {
+            sub = 'urology_ob';
+        } 
+        // 6. 정형외과(ortho) : EDI 코드가 S10~S39로 시작하거나 기본 fallback 처리
+        else {
+            sub = 'ortho';
+        }
+    } else if (main === 'etc') {
+        // 기타 대분류 (anesthesia, injection, rehab, korean, other)
+        if (code.startsWith('H') || lowerName.includes('마취')) sub = 'anesthesia';
+        else if (lowerName.includes('주사') || lowerName.includes('수혈') || lowerName.includes('수액') || lowerName.includes('링거') || lowerName.includes('포도당') || lowerName.includes('식염수')) sub = 'injection';
+        else if (code.startsWith('I') || lowerName.includes('물리치료') || lowerName.includes('재활') || lowerName.includes('도수') || lowerName.includes('운동치료') || lowerName.includes('온열') || lowerName.includes('한냉')) sub = 'rehab';
+        else if (lowerName.includes('한방') || lowerName.includes('침') || lowerName.includes('뜸') || lowerName.includes('부항') || lowerName.includes('침술')) sub = 'korean';
+        else sub = 'other';
+    }
+
+    return { main, sub, detail };
+}
+
+function initHierarchicalSelects() {
+    const mainSelect = document.getElementById('main-category-select');
+    if (mainSelect) {
+        mainSelect.value = activeTab;
+    }
+    
+    const subSelect = document.getElementById('sub-category-select');
+    const detailSelect = document.getElementById('detail-item-select');
+    const itemsList = document.getElementById('hierarchical-items-list');
+    
+    if (subSelect) {
+        subSelect.innerHTML = '<option value="" disabled selected>-- 중분류 선택 --</option>';
+        subSelect.disabled = true;
+    }
+    if (detailSelect) {
+        detailSelect.innerHTML = '<option value="" disabled selected>-- 소분류 선택 --</option>';
+        detailSelect.disabled = true;
+    }
+    if (itemsList) {
+        itemsList.innerHTML = '';
+        itemsList.classList.add('hidden');
+    }
+
+    // 현재 활성화된 탭 기준으로 중분류 목록 즉시 연동 채우기
+    updateSubCategoriesForTab(activeTab);
+}
+
+function updateSubCategoriesForTab(tabId) {
+    const subSelect = document.getElementById('sub-category-select');
+    const detailSelect = document.getElementById('detail-item-select');
+    const itemsList = document.getElementById('hierarchical-items-list');
+    
+    if (!subSelect) return;
+    
+    // 중분류 채우기
+    subSelect.innerHTML = '<option value="" disabled selected>-- 중분류 선택 --</option>';
+    const subs = SUB_CAT_LABELS[tabId] || {};
+    Object.entries(subs).forEach(([code, label]) => {
+        const opt = document.createElement('option');
+        opt.value = code;
+        opt.textContent = label;
+        subSelect.appendChild(opt);
+    });
+    subSelect.disabled = false;
+    
+    // 소분류 및 리스트 초기화
+    if (detailSelect) {
+        detailSelect.innerHTML = '<option value="" disabled selected>-- 소분류 선택 --</option>';
+        detailSelect.disabled = true;
+    }
+    if (itemsList) {
+        itemsList.innerHTML = '';
+        itemsList.classList.add('hidden');
+    }
+}
+
+function handleMainCategoryChange() {
+    const mainSelect = document.getElementById('main-category-select');
+    if (!mainSelect) return;
+    activeTab = mainSelect.value;
+    updateSubCategoriesForTab(activeTab);
+}
+
+function handleSubCategoryChange() {
+    const subSelect = document.getElementById('sub-category-select');
+    const detailSelect = document.getElementById('detail-item-select');
+    const itemsList = document.getElementById('hierarchical-items-list');
+    
+    if (!subSelect || !detailSelect) return;
+    
+    const mainVal = activeTab; // activeTab 전역 변수 직접 사용
+    const subVal = subSelect.value;
+    
+    if (mainVal === 'test') {
+        // 검사 대분류인 경우 소분류 필요
+        detailSelect.innerHTML = '<option value="" disabled selected>-- 소분류 선택 --</option>';
+        const details = DETAIL_CAT_LABELS[subVal] || {};
+        Object.entries(details).forEach(([code, label]) => {
+            const opt = document.createElement('option');
+            opt.value = code;
+            opt.textContent = label;
+            detailSelect.appendChild(opt);
+        });
+        detailSelect.disabled = false;
+        if (itemsList) {
+            itemsList.innerHTML = '';
+            itemsList.classList.add('hidden');
+        }
+    } else {
+        // 시술/수술/기타는 소분류가 필요 없으므로 건너뛰고 아이템 리스트 렌더링
+        detailSelect.innerHTML = '<option value="all" selected>해당 분야 전체 항목</option>';
+        detailSelect.disabled = true;
+        renderHierarchicalItemsList(mainVal, subVal, 'all');
+    }
+}
+
+function handleDetailItemChange() {
+    const subSelect = document.getElementById('sub-category-select');
+    const detailSelect = document.getElementById('detail-item-select');
+    
+    if (!subSelect || !detailSelect) return;
+    
+    renderHierarchicalItemsList(activeTab, subSelect.value, detailSelect.value);
+}
+
+function renderHierarchicalItemsList(mainVal, subVal, detailVal) {
+    const itemsList = document.getElementById('hierarchical-items-list');
+    if (!itemsList) return;
+    
+    itemsList.innerHTML = '';
+    
+    // 조건 필터링
+    const items = getMedicalItemDatabase().filter(item => {
+        if (isEmergencyManagementItem(item)) return false;
+        const classification = getHierarchicalClassification(item);
+        if (classification.main !== mainVal) return false;
+        if (classification.sub !== subVal) return false;
+        if (detailVal !== 'all' && classification.detail !== detailVal) return false;
+        return true;
+    });
+    
+    // EDI 코드순 정렬 개편
+    items.sort((a, b) => {
+        const codeA = (a.publicActionCode || a.actionCode || a.ediCode || a.code || '').toString().toUpperCase();
+        const codeB = (b.publicActionCode || b.actionCode || b.ediCode || b.code || '').toString().toUpperCase();
+        return codeA.localeCompare(codeB);
+    });
+    
+    if (items.length === 0) {
+        itemsList.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:12px;">선택 조건에 해당하는 수가 항목이 없습니다.</p>';
+    } else {
+        items.forEach(item => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.style.display = 'flex';
+            btn.style.justifyContent = 'space-between';
+            btn.style.alignItems = 'center';
+            btn.style.width = '100%';
+            btn.style.padding = '8px 12px';
+            btn.style.border = '1px solid #e2e8f0';
+            btn.style.borderRadius = '6px';
+            btn.style.background = '#ffffff';
+            btn.style.cursor = 'pointer';
+            btn.style.textAlign = 'left';
+            btn.style.fontSize = '12px';
+            btn.style.transition = 'all 0.2s';
+            
+            // 호버 및 클릭 액션 연동
+            btn.onmouseover = () => { btn.style.background = '#f1f5f9'; btn.style.borderColor = '#cbd5e1'; };
+            btn.onmouseout = () => { btn.style.background = '#ffffff'; btn.style.borderColor = '#e2e8f0'; };
+            
+            const benefitText = item.isBenefit ? '급여' : '비급여';
+            const badgeClass = item.isBenefit ? 'badge-benefit' : 'badge-non-benefit';
+            
+            btn.innerHTML = '<div>' +
+                '<span class="badge ' + badgeClass + '" style="font-size:10px;padding:1px 4px;margin-right:6px;">' + benefitText + '</span>' +
+                '<strong style="color:#1e293b;">' + item.name + '</strong>' +
+                '</div>' +
+                '<div style="display:flex;align-items:center;gap:6px;">' +
+                '<span style="color:#64748b;font-weight:600;">' + formatNumber(item.price) + '원</span>' +
+                '<span style="color:var(--primary);font-weight:700;font-size:11px;"><i data-lucide="plus" style="width:10px;height:10px;display:inline-block;vertical-align:middle;"></i> 추가</span>' +
+                '</div>';
+            
+            btn.addEventListener('click', () => {
+                sendSearchLog(item.name, 1);
+                sendSearchClickLog(item.name, item);
+                addHiraItem(item);
+            });
+            
+            itemsList.appendChild(btn);
+        });
+    }
+    
+    itemsList.classList.remove('hidden');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function toggleDiseaseCodeSection() {
+    const hasDisease = document.getElementById('has_disease_code').checked;
+    const details = document.getElementById('disease_code_details');
+    const input = document.getElementById('disease_code_input');
+    
+    if (hasDisease) {
+        details.classList.remove('hidden');
+    } else {
+        details.classList.add('hidden');
+        if (input) {
+            input.value = '';
+        }
+        calculate();
+    }
+}
+
+// =========================================================
+// 9. 신규 오버라이드: 실시간 자동완성, 탭 연동 및 영어 약어 병기 검색 엔진
+// =========================================================
+
+function switchTab(tabId) {
+    activeTab = tabId;
+    
+    // 탭 버튼 active 클래스 전환 적용
+    document.querySelectorAll('.category-tabs .tab-btn').forEach(btn => {
+        if (btn.getAttribute('data-tab') === tabId) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+    
+    // 3단계 직접 선택 드롭다운 연동
+    const mainSelect = document.getElementById('main-category-select');
+    if (mainSelect) {
+        mainSelect.value = tabId;
+        handleMainCategoryChange();
+    }
+    
+    // 하단 추천 검색어 키워드 칩 목록 갱신
+    renderRecommendChips(tabId);
+    
+    // 검색 입력값 및 검색 결과 목록 초기화
+    const searchInput = document.getElementById('category-search-input');
+    const btnClear = document.getElementById('btn-clear-category-search');
+    const resultsList = document.getElementById('category-search-results');
+    const btnRun = document.getElementById('btn-run-category-search');
+    
+    if (searchInput) searchInput.value = '';
+    if (btnClear) btnClear.classList.add('hidden');
+    if (btnRun) {
+        btnRun.disabled = true;
+        btnRun.classList.remove('active');
+    }
+    if (resultsList) {
+        resultsList.innerHTML = '';
+        resultsList.classList.add('hidden');
+    }
+}
+
+function initSearchEvents() {
+    // A. 대분류 탭 검색창 리스너 바인딩
+    const categorySearchInput = document.getElementById('category-search-input');
+    const categoryResultsList = document.getElementById('category-search-results');
+    const btnClearCategory = document.getElementById('btn-clear-category-search');
+    const btnRunCategory = document.getElementById('btn-run-category-search');
+    
+    if (categorySearchInput && categoryResultsList) {
+        categorySearchInput.addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+            updateSearchControlState(categorySearchInput, btnClearCategory, btnRunCategory);
+            if (query.length > 0) {
+                performSearch(query, activeTab, { logSearch: false });
+            } else {
+                categoryResultsList.innerHTML = '';
+                categoryResultsList.classList.add('hidden');
+            }
+        });
+
+        categorySearchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                executeSearchFromInput(categorySearchInput, activeTab);
+            }
+        });
+        
+        if (btnClearCategory) {
+            btnClearCategory.addEventListener('click', (e) => {
+                e.stopPropagation();
+                categorySearchInput.value = '';
+                updateSearchControlState(categorySearchInput, btnClearCategory, btnRunCategory);
+                categoryResultsList.innerHTML = '';
+                categoryResultsList.classList.add('hidden');
+                categorySearchInput.focus();
+            });
+        }
+
+        if (btnRunCategory) {
+            btnRunCategory.addEventListener('click', (e) => {
+                e.stopPropagation();
+                executeSearchFromInput(categorySearchInput, activeTab);
+            });
+        }
+    }
+
+    // B. 기타 처치 검색창 리스너 바인딩
+    const etcSearchInput = document.getElementById('etc-search-input');
+    const etcResultsList = document.getElementById('etc-search-results');
+    const btnClearEtc = document.getElementById('btn-clear-etc-search');
+    const btnRunEtc = document.getElementById('btn-run-etc-search');
+    
+    if (etcSearchInput && etcResultsList) {
+        etcSearchInput.addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+            updateSearchControlState(etcSearchInput, btnClearEtc, btnRunEtc);
+            if (query.length > 0) {
+                performSearch(query, 'etc', { logSearch: false });
+            } else {
+                etcResultsList.innerHTML = '';
+                etcResultsList.classList.add('hidden');
+            }
+        });
+
+        etcSearchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                executeSearchFromInput(etcSearchInput, 'etc');
+            }
+        });
+        
+        if (btnClearEtc) {
+            btnClearEtc.addEventListener('click', (e) => {
+                e.stopPropagation();
+                etcSearchInput.value = '';
+                updateSearchControlState(etcSearchInput, btnClearEtc, btnRunEtc);
+                etcResultsList.innerHTML = '';
+                etcResultsList.classList.add('hidden');
+                etcSearchInput.focus();
+            });
+        }
+
+        if (btnRunEtc) {
+            btnRunEtc.addEventListener('click', (e) => {
+                e.stopPropagation();
+                executeSearchFromInput(etcSearchInput, 'etc');
+            });
+        }
+    }
+    
+    // C. 드롭다운 바깥 영역 클릭 시 검색창 드롭다운 레이어 닫기
+    document.addEventListener('click', (e) => {
+        if (categorySearchInput && categoryResultsList && !categorySearchInput.contains(e.target) && !categoryResultsList.contains(e.target)) {
+            categorySearchInput.blur();
+        }
+        if (etcSearchInput && etcResultsList && !etcSearchInput.contains(e.target) && !etcResultsList.contains(e.target)) {
+            etcSearchInput.blur();
+        }
+    });
+}
+
+function performSearch(query, targetGroup, options = {}) {
+    const resultsList = targetGroup === 'etc' 
+        ? document.getElementById('etc-search-results')
+        : document.getElementById('category-search-results');
+        
+    if (!resultsList) return;
+    
+    // 1단계: 전체 DB에서 수가 항목 매칭
+    let matched = getMedicalItemDatabase().filter(item => isMatch(query, item) && !isEmergencyManagementItem(item));
+    
+    // 2단계: KCD 질환 매칭 데이터도 검색 결과에 통합하여 함께 렌더링 (통합검색 실현)
+    const dbToSearch = (ALL_KCD_DATABASE && ALL_KCD_DATABASE.length > 0) ? ALL_KCD_DATABASE : KCD_DATABASE;
+    let matchedKcd = dbToSearch.filter(item => {
+        const cleanQuery = query.replace(/\s+/g, '').toLowerCase();
+        if (item.code.toLowerCase().includes(cleanQuery)) return true;
+        if (item.name.toLowerCase().replace(/\s+/g, '').includes(cleanQuery)) return true;
+        if (item.name_en && item.name_en.toLowerCase().replace(/\s+/g, '').includes(cleanQuery)) return true;
+        if (item.keywords && item.keywords.some(k => k.toLowerCase().replace(/\s+/g, '').includes(cleanQuery))) return true;
+        return false;
+    }).slice(0, 30).map(item => ({
+        ...item,
+        isKcd: true, // KCD 질병 객체임을 마킹
+        price: 0,
+        isBenefit: true
+    }));
+    
+    // 3단계: KCD 질병과 수가 목록을 합친다 (KCD 질병 우선 노출)
+    let combinedResults = [...matchedKcd, ...matched];
+
+    if (options.logSearch) {
+        sendSearchLog(query, matched.length);
+    }
+    
+    resultsList.innerHTML = '';
+    
+    // 매칭 결과가 없을 때
+    if (combinedResults.length === 0) {
+        const emptyDiv = document.createElement('div');
+        emptyDiv.className = 'empty-search-results';
+        emptyDiv.innerHTML = `
+            <i data-lucide="search"></i>
+            <p>'<strong>${query}</strong>'에 매칭되는 항목이 없습니다.</p>
+            <span style="font-size:0.75rem; color:var(--text-muted);">부위나 오타를 확인하거나, 다른 검색어로 시도해보세요.</span>
+        `;
+        resultsList.appendChild(emptyDiv);
+    } 
+    // 매칭 결과가 있을 때 최대 15개 렌더링
+    else {
+        const limitResults = combinedResults.slice(0, 15);
+        limitResults.forEach(item => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'search-result-item';
+            
+            if (item.isKcd) {
+                // KCD 상병코드 질병인 경우 렌더링 방식
+                const displayName = item.name_en ? `${item.name} (${item.name_en})` : item.name;
+                const categoryBadge = `<span class="badge" style="padding: 0.15rem 0.35rem; font-size: 0.68rem; margin-right: 0.4rem; background: #3b82f6; color: white;">질병</span>`;
+                btn.innerHTML = `
+                    <div class="search-result-info" style="text-align: left;">
+                        <span class="search-result-name">${categoryBadge}${displayName}</span>
+                        <span class="search-result-keywords">상병코드: ${item.code} (선택 시 평균 진료비 자동 연동)</span>
+                    </div>
+                    <div class="search-result-meta">
+                        <span class="btn-result-add" style="color: #3b82f6;"><i data-lucide="check" style="width:12px; height:12px; display:inline-block; vertical-align:middle;"></i> 적용</span>
+                    </div>
+                `;
+                
+                btn.addEventListener('click', () => {
+                    addKcdDisease(item.code, item.name);
+                    
+                    const searchInput = targetGroup === 'etc' 
+                        ? document.getElementById('etc-search-input')
+                        : document.getElementById('category-search-input');
+                        
+                    const btnClear = targetGroup === 'etc'
+                        ? document.getElementById('btn-clear-etc-search')
+                        : document.getElementById('btn-clear-category-search');
+
+                    const btnRun = targetGroup === 'etc'
+                        ? document.getElementById('btn-run-etc-search')
+                        : document.getElementById('btn-run-category-search');
+                        
+                    if (searchInput) searchInput.value = '';
+                    if (searchInput) updateSearchControlState(searchInput, btnClear, btnRun);
+                    resultsList.innerHTML = '';
+                    resultsList.classList.add('hidden');
+                    if (searchInput) searchInput.focus();
+                });
+            } else {
+                // 일반 수가 항목인 경우 렌더링 방식
+                const groupLabels = {
+                    test: '검사',
+                    procedure_hira: '시술',
+                    surgery: '수술',
+                    etc: '기타'
+                };
+                const itemGroup = getItemTypeGroup(item);
+                
+                const categoryBadge = `<span class="badge badge-benefit" style="padding: 0.15rem 0.35rem; font-size: 0.68rem; margin-right: 0.4rem;">${groupLabels[itemGroup] || itemGroup}</span>`;
+                const benefitBadge = item.isBenefit 
+                    ? '<span class="badge badge-benefit" style="font-size: 0.65rem;">급여</span>' 
+                    : '<span class="badge badge-non-benefit" style="font-size: 0.65rem;">비급여</span>';
+                const drgBadge = item.isDRG ? '<span class="badge badge-drg">DRG</span>' : '';
+                
+                // 영어 동의어 표시 보강 (PICC, TFCA 등 영문 약어를 공식 명칭 옆에 자동 병기)
+                let nameSuffix = '';
+                if (item.keywords) {
+                    const englishKeywords = item.keywords.filter(k => /^[a-z0-9\s\-]+$/i.test(k) && k.length >= 2 && k.length <= 15);
+                    const nameLower = item.name.toLowerCase();
+                    const missingEng = englishKeywords.filter(k => !nameLower.includes(k.toLowerCase()));
+                    if (missingEng.length > 0) {
+                        nameSuffix = ` (${missingEng[0].toUpperCase()})`;
+                    }
+                }
+                const displayName = item.name + nameSuffix;
+                const keywordSnippet = item.keywords ? item.keywords.slice(0, 4).join(', ') : '';
+                
+                btn.innerHTML = `
+                    <div class="search-result-info">
+                        <span class="search-result-name">${categoryBadge}${displayName}${drgBadge}</span>
+                        <span class="search-result-keywords">동의어: ${keywordSnippet}</span>
+                    </div>
+                    <div class="search-result-meta">
+                        <span class="search-result-price">${formatNumber(item.price)}원</span>
+                        ${benefitBadge}
+                        <span class="btn-result-add"><i data-lucide="plus" style="width:12px; height:12px;"></i> 추가</span>
+                    </div>
+                `;
+                
+                btn.addEventListener('click', () => {
+                    sendSearchClickLog(query, item);
+                    addHiraItem(item);
+                    
+                    const searchInput = targetGroup === 'etc' 
+                        ? document.getElementById('etc-search-input')
+                        : document.getElementById('category-search-input');
+                        
+                    const btnClear = targetGroup === 'etc'
+                        ? document.getElementById('btn-clear-etc-search')
+                        : document.getElementById('btn-clear-category-search');
+
+                    const btnRun = targetGroup === 'etc'
+                        ? document.getElementById('btn-run-etc-search')
+                        : document.getElementById('btn-run-category-search');
+                        
+                    if (searchInput) searchInput.value = '';
+                    if (searchInput) updateSearchControlState(searchInput, btnClear, btnRun);
+                    resultsList.innerHTML = '';
+                    resultsList.classList.add('hidden');
+                    if (searchInput) searchInput.focus();
+                });
+            }
+            resultsList.appendChild(btn);
+        });
+    }
+    
+    resultsList.classList.remove('hidden');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }

@@ -57,6 +57,19 @@
             color: #b91c1c;
             margin-top: 12px;
         }
+        .btn-delete {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-delete:hover {
+            background: #dc2626;
+        }
     </style>
 </head>
 <body>
@@ -82,7 +95,7 @@
                     <h2>많이 검색된 키워드</h2>
                     <table>
                         <thead>
-                            <tr><th>검색어</th><th>횟수</th><th>평균 결과</th></tr>
+                            <tr><th>검색어</th><th>횟수</th><th>평균 결과</th><th>기능</th></tr>
                         </thead>
                         <tbody id="top-searches"></tbody>
                     </table>
@@ -92,7 +105,7 @@
                     <h2>결과 없는 검색어</h2>
                     <table>
                         <thead>
-                            <tr><th>검색어</th><th>횟수</th></tr>
+                            <tr><th>검색어</th><th>횟수</th><th>기능</th></tr>
                         </thead>
                         <tbody id="zero-searches"></tbody>
                     </table>
@@ -102,7 +115,7 @@
                     <h2>많이 클릭된 항목</h2>
                     <table>
                         <thead>
-                            <tr><th>항목</th><th>클릭</th></tr>
+                            <tr><th>항목</th><th>클릭</th><th>기능</th></tr>
                         </thead>
                         <tbody id="clicked-items"></tbody>
                     </table>
@@ -112,7 +125,7 @@
                     <h2>최근 검색</h2>
                     <table>
                         <thead>
-                            <tr><th>검색어</th><th>결과</th><th>시간</th></tr>
+                            <tr><th>검색어</th><th>결과</th><th>시간</th><th>기능</th></tr>
                         </thead>
                         <tbody id="recent-searches"></tbody>
                     </table>
@@ -122,7 +135,7 @@
                     <h2>계산 조건 로그</h2>
                     <table>
                         <thead>
-                            <tr><th>병원</th><th>진료</th><th>지역</th><th>횟수</th></tr>
+                            <tr><th>병원</th><th>진료</th><th>지역</th><th>횟수</th><th>기능</th></tr>
                         </thead>
                         <tbody id="calculation-conditions"></tbody>
                     </table>
@@ -170,30 +183,34 @@
                         <td>${escapeHtml(row.normalized_query)}</td>
                         <td>${escapeHtml(row.search_count)}</td>
                         <td>${Math.round(Number(row.avg_result_count || 0))}</td>
+                        <td><button class="btn-delete" type="button" onclick="deleteLog('top-search', '${escapeHtml(row.normalized_query)}')">삭제</button></td>
                     </tr>
-                `, 3);
+                `, 4);
 
                 renderRows('zero-searches', data.zeroResultSearches, row => `
                     <tr>
                         <td>${escapeHtml(row.normalized_query)}</td>
                         <td>${escapeHtml(row.zero_result_count)}</td>
+                        <td><button class="btn-delete" type="button" onclick="deleteLog('zero-search', '${escapeHtml(row.normalized_query)}')">삭제</button></td>
                     </tr>
-                `, 2);
+                `, 3);
 
                 renderRows('clicked-items', data.clickedItems, row => `
                     <tr>
                         <td>${escapeHtml(row.clicked_item_name)}</td>
                         <td>${escapeHtml(row.click_count)}</td>
+                        <td><button class="btn-delete" type="button" onclick="deleteLog('click-log', '${escapeHtml(row.clicked_item_name)}')">삭제</button></td>
                     </tr>
-                `, 2);
+                `, 3);
 
                 renderRows('recent-searches', data.recentSearches, row => `
                     <tr>
                         <td>${escapeHtml(row.query)}</td>
                         <td>${escapeHtml(row.result_count)}</td>
                         <td>${escapeHtml(row.created_at)}</td>
+                        <td><button class="btn-delete" type="button" onclick="deleteLog('recent-search', '${escapeHtml(row.id)}')">삭제</button></td>
                     </tr>
-                `, 3);
+                `, 4);
 
                 renderRows('calculation-conditions', data.calculationConditions, row => `
                     <tr>
@@ -201,10 +218,37 @@
                         <td>${escapeHtml(row.treatment_type)}</td>
                         <td>${escapeHtml(row.nonbenefit_region)}</td>
                         <td>${escapeHtml(row.calculation_count)}</td>
+                        <td><button class="btn-delete" type="button" onclick="deleteLog('calc-log', '', { hospitalClass: '${escapeHtml(row.hospital_class)}', treatmentType: '${escapeHtml(row.treatment_type)}', nonbenefitRegion: '${escapeHtml(row.nonbenefit_region)}' })">삭제</button></td>
                     </tr>
-                `, 4);
+                `, 5);
             } catch (error) {
                 status.textContent = error.message;
+            }
+        }
+
+        async function deleteLog(type, value, extra = {}) {
+            if (!confirm('정말 삭제하시겠습니까? 관련 로그가 모두 삭제됩니다.')) return;
+            try {
+                const response = await fetch('/api/admin/delete-log', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type,
+                        value,
+                        hospitalClass: extra.hospitalClass,
+                        treatmentType: extra.treatmentType,
+                        nonbenefitRegion: extra.nonbenefitRegion
+                    })
+                });
+
+                const data = await response.json();
+                if (!response.ok || !data.ok) {
+                    throw new Error(data.error || '삭제 처리 실패');
+                }
+                alert('정상적으로 삭제되었습니다.');
+                await loadStats();
+            } catch (error) {
+                alert('에러: ' + error.message);
             }
         }
     </script>
