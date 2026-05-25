@@ -1642,6 +1642,249 @@ function renderSearchResults(query, targetGroup, resultsList, items) {
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
+// =========================================================
+// 11. Final search binding override
+// This block must stay at file end because earlier generated code defines
+// duplicate search functions.
+// =========================================================
+
+const KCD_COMMON_ALIASES = [
+    { code: 'J00', name: '감기', keywords: ['감기', '코감기', '목감기', '급성 비인두염', 'cold'] },
+    { code: 'J10', name: '독감', keywords: ['독감', '인플루엔자', 'flu'] },
+    { code: 'J20', name: '기관지염', keywords: ['기관지염', '기침', 'bronchitis'] },
+    { code: 'J18', name: '폐렴', keywords: ['폐렴', 'pneumonia'] },
+    { code: 'K35', name: '맹장염', keywords: ['맹장염', '충수염', 'appendicitis'] },
+    { code: 'K29', name: '위염', keywords: ['위염', '소화불량', 'gastritis'] },
+    { code: 'K21', name: '역류성 식도염', keywords: ['역류성 식도염', '식도염', 'gerd'] },
+    { code: 'M54', name: '허리통증', keywords: ['허리통증', '요통', '등통증', 'back pain'] },
+    { code: 'M545', name: '요통', keywords: ['요통', '허리 아픔', 'low back pain'] },
+    { code: 'M51', name: '허리디스크', keywords: ['허리디스크', '요추디스크', 'herniated disc'] },
+    { code: 'M50', name: '목디스크', keywords: ['목디스크', '경추디스크'] },
+    { code: 'M17', name: '무릎 관절염', keywords: ['무릎 관절염', '퇴행성 관절염'] },
+    { code: 'I10', name: '고혈압', keywords: ['고혈압', '혈압', 'hypertension'] },
+    { code: 'E11', name: '당뇨병', keywords: ['당뇨', '당뇨병', 'diabetes'] },
+    { code: 'R51', name: '두통', keywords: ['두통', '머리 아픔', 'headache'] },
+    { code: 'R42', name: '어지럼증', keywords: ['어지럼', '어지럼증', '현기증', 'dizziness'] },
+    { code: 'O82', name: '제왕절개 분만', keywords: ['제왕절개', 'c-section', 'cesarean'] }
+];
+
+function normalizeSearchText(value) {
+    return String(value || '').toLowerCase().replace(/\s+/g, '');
+}
+
+function getKcdCode(item) {
+    return String(item.code || '').trim();
+}
+
+function getKcdName(item) {
+    return String(item.name || item.ko || item.name_ko || '').trim();
+}
+
+function getKcdEnglishName(item) {
+    return String(item.name_en || item.en || '').trim();
+}
+
+function getKcdKeywords(item) {
+    return Array.isArray(item.keywords) ? item.keywords : [];
+}
+
+function getKcdSearchDatabase() {
+    const fullDb = Array.isArray(ALL_KCD_DATABASE) ? ALL_KCD_DATABASE : [];
+    const fallbackDb = Array.isArray(KCD_DATABASE) ? KCD_DATABASE : [];
+    const merged = [];
+    const seen = new Set();
+
+    KCD_COMMON_ALIASES.concat(fallbackDb, fullDb).forEach(item => {
+        const code = getKcdCode(item);
+        const name = getKcdName(item);
+        const key = `${code}|${name}`;
+        if (!code || seen.has(key)) return;
+        seen.add(key);
+        merged.push(item);
+    });
+
+    return merged;
+}
+
+function searchKcdDiseases(query) {
+    const cleanQuery = normalizeSearchText(query);
+    if (!cleanQuery) return [];
+
+    return getKcdSearchDatabase().filter(item => {
+        const fields = [
+            getKcdCode(item),
+            getKcdName(item),
+            getKcdEnglishName(item),
+            ...getKcdKeywords(item)
+        ];
+        return fields.some(field => normalizeSearchText(field).includes(cleanQuery));
+    }).slice(0, 40);
+}
+
+function renderDiseaseSearchResults(query) {
+    const input = document.getElementById('disease_code_input');
+    const results = document.getElementById('disease-search-results');
+    if (!input || !results) return;
+
+    const matched = searchKcdDiseases(query);
+    results.innerHTML = '';
+
+    if (matched.length === 0) {
+        results.innerHTML = `<div class="empty-search-results"><i data-lucide="search"></i><p>'<strong>${query}</strong>' 질병명/상병코드 결과가 없습니다.</p></div>`;
+    } else {
+        matched.forEach(item => {
+            const code = getKcdCode(item);
+            const name = getKcdName(item) || getKcdEnglishName(item) || code;
+            const en = getKcdEnglishName(item);
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'search-result-item';
+            btn.innerHTML = `
+                <div class="search-result-info">
+                    <span class="search-result-name"><span class="badge badge-benefit" style="font-size:0.68rem;margin-right:0.4rem;">상병</span>${name}</span>
+                    <span class="search-result-keywords">KCD ${code}${en ? ` · ${en}` : ''}</span>
+                </div>
+                <div class="search-result-meta">
+                    <span class="btn-result-add">적용</span>
+                </div>
+            `;
+            btn.addEventListener('click', () => {
+                addKcdDisease(code, name);
+                input.value = `${code} ${name}`;
+                results.innerHTML = '';
+                results.classList.add('hidden');
+                input.focus();
+            });
+            results.appendChild(btn);
+        });
+    }
+
+    results.classList.remove('hidden');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function bindDiseaseSearchBox() {
+    const input = document.getElementById('disease_code_input');
+    const results = document.getElementById('disease-search-results');
+    if (!input || !results || input.dataset.finalBound === '1') return;
+    input.dataset.finalBound = '1';
+
+    input.addEventListener('input', () => {
+        const query = input.value.trim();
+        if (query.length < 1) {
+            results.innerHTML = '';
+            results.classList.add('hidden');
+            return;
+        }
+        renderDiseaseSearchResults(query);
+    });
+
+    input.addEventListener('keydown', event => {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        const first = results.querySelector('button.search-result-item');
+        if (first) first.click();
+    });
+}
+
+function getSearchElements(targetGroup) {
+    if (targetGroup === 'global') {
+        return {
+            input: document.getElementById('global-search-input'),
+            results: document.getElementById('global-search-results'),
+            clear: document.getElementById('btn-clear-global-search'),
+            run: document.getElementById('btn-run-global-search')
+        };
+    }
+    return {
+        input: document.getElementById('category-search-input'),
+        results: document.getElementById('category-search-results'),
+        clear: document.getElementById('btn-clear-category-search'),
+        run: document.getElementById('btn-run-category-search')
+    };
+}
+
+function performSearch(query, targetGroup = 'scoped', options = {}) {
+    const el = getSearchElements(targetGroup);
+    if (!el.results) return;
+    const cleanQuery = String(query || '').trim();
+    if (!cleanQuery) return;
+
+    let matched = getMedicalItemDatabase().filter(item => isMatch(cleanQuery, item) && !isEmergencyManagementItem(item));
+
+    if (targetGroup !== 'global') {
+        const scope = getScopedSearchFilters();
+        if (!scope.main) {
+            el.results.innerHTML = '<div class="empty-search-results"><i data-lucide="search"></i><p>먼저 검사, 시술, 수술 중 하나를 선택하세요.</p></div>';
+            el.results.classList.remove('hidden');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            return;
+        }
+        matched = matched.filter(item => itemMatchesScope(item, scope));
+    }
+
+    // 질병명/KCD는 통합검색과 항목추가 검색에서 의도적으로 제외한다.
+    if (options.logSearch) sendSearchLog(cleanQuery, matched.length);
+    renderSearchResults(cleanQuery, targetGroup, el.results, matched);
+}
+
+function executeSearchFromInput(searchInput, targetGroup = 'scoped') {
+    if (!searchInput) return;
+    const query = searchInput.value.trim();
+    if (!query) {
+        searchInput.focus();
+        return;
+    }
+    performSearch(query, targetGroup, { logSearch: true });
+    searchInput.focus();
+}
+
+function bindSearchBox(targetGroup) {
+    const el = getSearchElements(targetGroup);
+    if (!el.input || !el.results || el.input.dataset.finalBound === '1') return;
+    el.input.dataset.finalBound = '1';
+
+    el.input.addEventListener('input', () => {
+        updateSearchControlState(el.input, el.clear, el.run);
+    });
+
+    el.input.addEventListener('keydown', event => {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        executeSearchFromInput(el.input, targetGroup);
+    });
+
+    if (el.clear) {
+        el.clear.onclick = event => {
+            event.stopPropagation();
+            el.input.value = '';
+            updateSearchControlState(el.input, el.clear, el.run);
+            el.results.innerHTML = '';
+            el.results.classList.add('hidden');
+            el.input.focus();
+        };
+    }
+
+    if (el.run) {
+        el.run.onclick = event => {
+            event.stopPropagation();
+            executeSearchFromInput(el.input, targetGroup);
+        };
+    }
+}
+
+function initSearchEvents() {
+    bindSearchBox('global');
+    bindSearchBox('scoped');
+    bindDiseaseSearchBox();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    bindSearchBox('global');
+    bindSearchBox('scoped');
+    bindDiseaseSearchBox();
+});
+
 function performSearch(query, targetGroup = 'scoped', options = {}) {
     const el = getSearchElements(targetGroup);
     if (!el.results) return;
