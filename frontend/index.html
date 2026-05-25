@@ -268,10 +268,21 @@
                     <!-- 4. 핵심: 검사/시술/수술 선택 및 검색 -->
                     <div class="form-group">
                         <label class="form-label">4. 치료 및 검사 항목 추가</label>
+
+                        <div class="global-search-panel">
+                            <label class="input-sub-label" for="global-search-input"><i data-lucide="search"></i> 전체 통합검색</label>
+                            <div class="search-input-container">
+                                <i data-lucide="search" class="search-icon"></i>
+                                <input type="text" id="global-search-input" class="form-input search-input" placeholder="검사, 시술, 수술, 주사, 마취, 기타 처치 전체 검색..." autocomplete="off">
+                                <button type="button" id="btn-clear-global-search" class="btn-clear-search hidden"><i data-lucide="x"></i></button>
+                                <button type="button" id="btn-run-global-search" class="btn-run-search" disabled><i data-lucide="search"></i><span>검색</span></button>
+                            </div>
+                            <div id="global-search-results" class="search-results-list hidden"></div>
+                        </div>
                         
                         <!-- 대분류 탭 메뉴 -->
                         <div class="category-tabs" role="tablist">
-                            <button type="button" class="tab-btn active" data-tab="test" onclick="switchTab('test')">
+                            <button type="button" class="tab-btn" data-tab="test" onclick="switchTab('test')">
                                 <i data-lucide="test-tube"></i> 검사
                             </button>
                             <button type="button" class="tab-btn" data-tab="procedure_hira" onclick="switchTab('procedure_hira')">

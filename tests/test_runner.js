@@ -234,7 +234,7 @@ addedProcedures = [];
 calculate();
 
 console.log(`  [결과값] 제왕절개 수술비 포함 최종부담: ${domResults['display_final_cost']}원`);
-assert(domResults['display_final_cost'] === "107,400", "제왕절개 수술비 0%와 자동 마취비 포함 계산 검증 완료");
+assert(domResults['display_final_cost'] === "216,600", "제왕절개 수술비 0%와 자동 마취·주사·처치 포함 계산 검증 완료");
 
 
 console.log(`\n=== 테스트 종료: 성공 ${passCount}건, 실패 ${failCount}건 ===`);

@@ -1308,6 +1308,415 @@ function performSearch(query, targetGroup, options = {}) {
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
+// =========================================================
+// 10. Search UX final override
+// =========================================================
+
+const CONSUMER_SUB_LABELS = {
+    test: {
+        imaging: '영상검사',
+        specimen: '혈액·소변·조직검사',
+        endoscopy: '내시경검사',
+        functional: '심장·호흡·신경 기능검사'
+    },
+    procedure_hira: {
+        cardiovascular: '심장·혈관 시술',
+        interventional: '영상의학·중재 시술',
+        dental: '치과 시술',
+        rehab_pain: '재활·통증 시술',
+        general_proc: '일반 처치·시술'
+    },
+    surgery: {
+        ortho: '정형외과 수술',
+        neuro: '신경외과 수술',
+        chest: '흉부·심장 수술',
+        abdomen: '외과·소화기 수술',
+        urology_ob: '비뇨의학과·산부인과 수술',
+        eye_ent: '안과·이비인후과 수술'
+    }
+};
+
+const CONSUMER_DETAIL_LABELS = {
+    imaging: {
+        xray: 'X-ray·일반촬영',
+        ct: 'CT 촬영',
+        mri: 'MRI 촬영',
+        ultrasound: '초음파',
+        angio: '조영·혈관촬영',
+        special: '기타 영상검사'
+    },
+    specimen: {
+        blood: '혈액검사',
+        urine: '소변검사',
+        chemistry: '간·신장·당뇨·지질검사',
+        tumor: '암표지자·특수검사'
+    },
+    endoscopy: {
+        gastro: '위내시경',
+        colono: '대장내시경',
+        broncho: '기관지내시경',
+        etc: '기타 내시경'
+    },
+    functional: {
+        cardio: '심전도·심장기능',
+        respiratory: '폐기능',
+        neuro: '뇌파·근전도·신경검사',
+        sleep: '수면검사',
+        sensory: '청력·시력·감각검사'
+    }
+};
+
+function clearSelect(selectEl, placeholder) {
+    if (!selectEl) return;
+    selectEl.innerHTML = `<option value="" disabled selected>${placeholder}</option>`;
+}
+
+function resetScopedSearchUi() {
+    activeTab = '';
+    document.querySelectorAll('.category-tabs .tab-btn').forEach(btn => btn.classList.remove('active'));
+    const mainSelect = document.getElementById('main-category-select');
+    const subSelect = document.getElementById('sub-category-select');
+    const detailSelect = document.getElementById('detail-item-select');
+    const itemsList = document.getElementById('hierarchical-items-list');
+    if (mainSelect) mainSelect.value = '';
+    clearSelect(subSelect, '-- 중분류 선택 --');
+    if (subSelect) subSelect.disabled = true;
+    clearSelect(detailSelect, '-- 소분류 선택 --');
+    if (detailSelect) detailSelect.disabled = true;
+    if (itemsList) {
+        itemsList.innerHTML = '';
+        itemsList.classList.add('hidden');
+    }
+    renderRecommendChips('');
+}
+
+function switchTab(tabId) {
+    activeTab = tabId;
+    document.querySelectorAll('.category-tabs .tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-tab') === tabId);
+    });
+
+    const mainSelect = document.getElementById('main-category-select');
+    if (mainSelect) mainSelect.value = tabId;
+
+    updateSubCategoriesForTab(tabId);
+    clearScopedSearchResults();
+    renderRecommendChips(tabId);
+}
+
+function updateSubCategoriesForTab(tabId) {
+    const subSelect = document.getElementById('sub-category-select');
+    const detailSelect = document.getElementById('detail-item-select');
+    const itemsList = document.getElementById('hierarchical-items-list');
+    clearSelect(subSelect, '-- 중분류 선택 --');
+    clearSelect(detailSelect, '-- 소분류 선택 --');
+    if (!tabId || !CONSUMER_SUB_LABELS[tabId]) {
+        if (subSelect) subSelect.disabled = true;
+        if (detailSelect) detailSelect.disabled = true;
+        return;
+    }
+
+    Object.entries(CONSUMER_SUB_LABELS[tabId]).forEach(([code, label]) => {
+        const opt = document.createElement('option');
+        opt.value = code;
+        opt.textContent = label;
+        subSelect.appendChild(opt);
+    });
+    subSelect.disabled = false;
+    if (detailSelect) detailSelect.disabled = true;
+    if (itemsList) {
+        itemsList.innerHTML = '';
+        itemsList.classList.add('hidden');
+    }
+}
+
+function handleMainCategoryChange() {
+    const mainSelect = document.getElementById('main-category-select');
+    if (!mainSelect || !mainSelect.value) {
+        resetScopedSearchUi();
+        return;
+    }
+    switchTab(mainSelect.value);
+}
+
+function handleSubCategoryChange() {
+    const subSelect = document.getElementById('sub-category-select');
+    const detailSelect = document.getElementById('detail-item-select');
+    const subVal = subSelect?.value || '';
+    clearSelect(detailSelect, '-- 소분류 선택 --');
+
+    const details = CONSUMER_DETAIL_LABELS[subVal] || {};
+    if (Object.keys(details).length > 0) {
+        Object.entries(details).forEach(([code, label]) => {
+            const opt = document.createElement('option');
+            opt.value = code;
+            opt.textContent = label;
+            detailSelect.appendChild(opt);
+        });
+        detailSelect.disabled = false;
+    } else if (detailSelect) {
+        detailSelect.disabled = true;
+    }
+
+    renderHierarchicalItemsList(activeTab, subVal, 'all');
+    clearScopedSearchResults(false);
+}
+
+function handleDetailItemChange() {
+    const subSelect = document.getElementById('sub-category-select');
+    const detailSelect = document.getElementById('detail-item-select');
+    renderHierarchicalItemsList(activeTab, subSelect?.value || '', detailSelect?.value || 'all');
+    clearScopedSearchResults(false);
+}
+
+function getHierarchicalClassification(item) {
+    const originalMain = getItemTypeGroup(item);
+    let main = originalMain;
+    let sub = '';
+    let detail = 'all';
+    const code = String(item.publicActionCode || item.actionCode || item.ediCode || item.code || '').toUpperCase();
+    const name = String(item.name || '').toLowerCase();
+    const category = item.category || '';
+
+    if (main === 'test') {
+        if (category === 'imaging' || code.startsWith('G') || code.startsWith('H') || name.includes('ct') || name.includes('mri') || name.includes('촬영') || name.includes('초음파') || name.includes('조영')) {
+            sub = 'imaging';
+            if (name.includes('mri') || name.includes('자기공명') || code.startsWith('HE')) detail = 'mri';
+            else if (name.includes('ct') || name.includes('전산화') || code.startsWith('HA')) detail = 'ct';
+            else if (name.includes('초음파') || code.startsWith('EB') || code.startsWith('EZ')) detail = 'ultrasound';
+            else if (name.includes('조영') || name.includes('혈관촬영') || name.includes('angio')) detail = 'angio';
+            else if (name.includes('x-ray') || name.includes('엑스') || name.includes('촬영')) detail = 'xray';
+            else detail = 'special';
+        } else if (category === 'endoscopy' || name.includes('내시경')) {
+            sub = 'endoscopy';
+            if (name.includes('위') || name.includes('식도') || name.includes('십이지장')) detail = 'gastro';
+            else if (name.includes('대장') || name.includes('결장') || name.includes('직장')) detail = 'colono';
+            else if (name.includes('기관지')) detail = 'broncho';
+            else detail = 'etc';
+        } else if (category === 'specimen' || code.startsWith('D') || name.includes('혈액') || name.includes('소변') || name.includes('검사')) {
+            sub = 'specimen';
+            if (name.includes('혈액') || name.includes('cbc') || name.includes('혈구') || code.startsWith('D0')) detail = 'blood';
+            else if (name.includes('소변') || name.includes('요검')) detail = 'urine';
+            else if (name.includes('종양') || name.includes('암') || name.includes('psa') || name.includes('afp') || name.includes('cea')) detail = 'tumor';
+            else detail = 'chemistry';
+        } else {
+            sub = 'functional';
+            if (name.includes('심전도') || name.includes('심장') || name.includes('ecg')) detail = 'cardio';
+            else if (name.includes('폐기능') || name.includes('호흡')) detail = 'respiratory';
+            else if (name.includes('뇌파') || name.includes('근전도') || name.includes('신경')) detail = 'neuro';
+            else if (name.includes('수면')) detail = 'sleep';
+            else detail = 'sensory';
+        }
+    } else if (main === 'procedure_hira') {
+        if (name.includes('치과') || name.includes('치아') || code.startsWith('U')) sub = 'dental';
+        else if (name.includes('심장') || name.includes('혈관') || name.includes('관상') || name.includes('카테터')) sub = 'cardiovascular';
+        else if (name.includes('조영') || name.includes('색전') || name.includes('스텐트') || name.includes('picc')) sub = 'interventional';
+        else if (name.includes('재활') || name.includes('통증') || name.includes('신경차단') || name.includes('도수')) sub = 'rehab_pain';
+        else sub = 'general_proc';
+    } else if (main === 'surgery') {
+        if (name.includes('척추') || name.includes('뇌') || name.includes('신경') || code.startsWith('S4')) sub = 'neuro';
+        else if (name.includes('눈') || name.includes('백내장') || name.includes('코') || name.includes('귀') || name.includes('후두') || name.includes('편도')) sub = 'eye_ent';
+        else if (name.includes('심장') || name.includes('흉부') || name.includes('폐') || name.includes('대동맥')) sub = 'chest';
+        else if (name.includes('자궁') || name.includes('분만') || name.includes('전립선') || name.includes('방광') || name.includes('요도') || name.includes('신장')) sub = 'urology_ob';
+        else if (name.includes('위') || name.includes('대장') || name.includes('충수') || name.includes('담낭') || name.includes('간') || name.includes('복부')) sub = 'abdomen';
+        else sub = 'ortho';
+    } else {
+        main = 'etc';
+        sub = 'etc';
+    }
+
+    return { main, sub, detail };
+}
+
+function getScopedSearchFilters() {
+    const subVal = document.getElementById('sub-category-select')?.value || '';
+    const detailVal = document.getElementById('detail-item-select')?.value || '';
+    return { main: activeTab || '', sub: subVal, detail: detailVal };
+}
+
+function getSurgeryAutoSupportItems(maxSurgPrice) {
+    const items = [
+        { name: '수술 전후 주사·수액·기본 처치', price: 45000 },
+        { name: '수술실 소모품·회복실 기본 관리', price: 35000 }
+    ];
+
+    if (maxSurgPrice >= 1000000) {
+        items.push({ name: '수술 후 통증 조절 주사·처치', price: 60000 });
+    }
+
+    if (maxSurgPrice >= 3000000) {
+        items.push({ name: '고난도 수술 보조 처치·감시장치', price: 120000 });
+    }
+
+    return items;
+}
+
+function itemMatchesScope(item, scope) {
+    const classification = getHierarchicalClassification(item);
+    if (classification.main !== scope.main) return false;
+    if (scope.sub && classification.sub !== scope.sub) return false;
+    if (scope.detail && scope.detail !== 'all' && classification.detail !== scope.detail) return false;
+    return true;
+}
+
+function clearScopedSearchResults(clearInput = true) {
+    const input = document.getElementById('category-search-input');
+    const results = document.getElementById('category-search-results');
+    const btnClear = document.getElementById('btn-clear-category-search');
+    const btnRun = document.getElementById('btn-run-category-search');
+    if (clearInput && input) input.value = '';
+    if (btnClear) btnClear.classList.add('hidden');
+    if (btnRun) {
+        btnRun.disabled = true;
+        btnRun.classList.remove('active');
+    }
+    if (results) {
+        results.innerHTML = '';
+        results.classList.add('hidden');
+    }
+}
+
+function getSearchElements(targetGroup) {
+    if (targetGroup === 'global') {
+        return {
+            input: document.getElementById('global-search-input'),
+            results: document.getElementById('global-search-results'),
+            clear: document.getElementById('btn-clear-global-search'),
+            run: document.getElementById('btn-run-global-search')
+        };
+    }
+    return {
+        input: document.getElementById('category-search-input'),
+        results: document.getElementById('category-search-results'),
+        clear: document.getElementById('btn-clear-category-search'),
+        run: document.getElementById('btn-run-category-search')
+    };
+}
+
+function renderSearchResults(query, targetGroup, resultsList, items) {
+    resultsList.innerHTML = '';
+    if (items.length === 0) {
+        const emptyDiv = document.createElement('div');
+        emptyDiv.className = 'empty-search-results';
+        emptyDiv.innerHTML = `<i data-lucide="search"></i><p>'<strong>${query}</strong>' 검색 결과가 없습니다.</p>`;
+        resultsList.appendChild(emptyDiv);
+    } else {
+        items.slice(0, 30).forEach(item => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'search-result-item';
+            const itemGroup = getItemTypeGroup(item);
+            const groupLabels = { test: '검사', procedure_hira: '시술', surgery: '수술', etc: '기타' };
+            const classification = getHierarchicalClassification(item);
+            const subLabel = CONSUMER_SUB_LABELS[classification.main]?.[classification.sub] || groupLabels[itemGroup] || '';
+            const detailLabel = CONSUMER_DETAIL_LABELS[classification.sub]?.[classification.detail] || '';
+            const benefitBadge = item.isBenefit
+                ? '<span class="badge badge-benefit" style="font-size: 0.65rem;">급여</span>'
+                : '<span class="badge badge-non-benefit" style="font-size: 0.65rem;">비급여</span>';
+            const code = item.publicActionCode || item.actionCode || item.ediCode || item.code || '';
+            btn.innerHTML = `
+                <div class="search-result-info">
+                    <span class="search-result-name"><span class="badge badge-benefit" style="padding:0.15rem 0.35rem;font-size:0.68rem;margin-right:0.4rem;">${groupLabels[itemGroup] || itemGroup}</span>${item.name}</span>
+                    <span class="search-result-keywords">${subLabel}${detailLabel ? ` · ${detailLabel}` : ''}${code ? ` · 코드 ${code}` : ''}</span>
+                </div>
+                <div class="search-result-meta">
+                    <span class="search-result-price">${formatNumber(item.price)}원</span>
+                    ${benefitBadge}
+                    <span class="btn-result-add"><i data-lucide="plus" style="width:12px;height:12px;"></i> 추가</span>
+                </div>
+            `;
+            btn.addEventListener('click', () => {
+                sendSearchClickLog(query, item);
+                addHiraItem(item);
+                const el = getSearchElements(targetGroup);
+                if (el.input) el.input.value = '';
+                updateSearchControlState(el.input, el.clear, el.run);
+                el.results.innerHTML = '';
+                el.results.classList.add('hidden');
+                if (el.input) el.input.focus();
+            });
+            resultsList.appendChild(btn);
+        });
+    }
+    resultsList.classList.remove('hidden');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function performSearch(query, targetGroup = 'scoped', options = {}) {
+    const el = getSearchElements(targetGroup);
+    if (!el.results) return;
+    const cleanQuery = String(query || '').trim();
+    if (!cleanQuery) return;
+
+    let matched = getMedicalItemDatabase().filter(item => isMatch(cleanQuery, item) && !isEmergencyManagementItem(item));
+
+    if (targetGroup === 'global') {
+        // 통합검색은 검사, 시술, 수술, 기타 처치, 주사, 마취 전체 허용.
+    } else {
+        const scope = getScopedSearchFilters();
+        if (!scope.main) {
+            el.results.innerHTML = '<div class="empty-search-results"><i data-lucide="search"></i><p>먼저 검사, 시술, 수술 중 하나를 선택하세요.</p></div>';
+            el.results.classList.remove('hidden');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            return;
+        }
+        matched = matched.filter(item => itemMatchesScope(item, scope));
+    }
+
+    if (options.logSearch) sendSearchLog(cleanQuery, matched.length);
+    renderSearchResults(cleanQuery, targetGroup, el.results, matched);
+}
+
+function executeSearchFromInput(searchInput, targetGroup) {
+    if (!searchInput) return;
+    const query = searchInput.value.trim();
+    if (!query) {
+        searchInput.focus();
+        return;
+    }
+    performSearch(query, targetGroup, { logSearch: true });
+    searchInput.focus();
+}
+
+function bindSearchBox(targetGroup) {
+    const el = getSearchElements(targetGroup);
+    if (!el.input || !el.results) return;
+    el.input.addEventListener('input', () => {
+        updateSearchControlState(el.input, el.clear, el.run);
+    });
+    el.input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            executeSearchFromInput(el.input, targetGroup);
+        }
+    });
+    if (el.clear) {
+        el.clear.addEventListener('click', e => {
+            e.stopPropagation();
+            el.input.value = '';
+            updateSearchControlState(el.input, el.clear, el.run);
+            el.results.innerHTML = '';
+            el.results.classList.add('hidden');
+            el.input.focus();
+        });
+    }
+    if (el.run) {
+        el.run.addEventListener('click', e => {
+            e.stopPropagation();
+            executeSearchFromInput(el.input, targetGroup);
+        });
+    }
+}
+
+function initSearchEvents() {
+    bindSearchBox('global');
+    bindSearchBox('scoped');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    resetScopedSearchUi();
+});
+
 /** 
  * 추천 검색어 칩 클릭 시 즉시 탭 내부 검색창에 입력 후 검색 실행 
  * @param {string} keyword - 검색할 단어
@@ -1684,6 +2093,11 @@ function simulateCostForClass(targetClass) {
                 patientTotalPay += anesthPay;
                 refundEligibleBenefit += anesthPay;
             }
+            getSurgeryAutoSupportItems(maxSurgPrice).forEach(autoItem => {
+                const autoPay = autoItem.price * hData.gasanRate * patientBenefitRate;
+                patientTotalPay += autoPay;
+                refundEligibleBenefit += autoPay;
+            });
         }
     }
 
@@ -1938,6 +2352,12 @@ function calculate() {
                 // 명세서에만 표시하는 자동 산정 플래그 추가
                 breakdown.push({ name: `[자동산정] ${autoAnesthesia.name}`, type: "benefit", price: anesthPay, isAuto: true });
             }
+            getSurgeryAutoSupportItems(maxSurgPrice).forEach(autoItem => {
+                const autoPay = autoItem.price * hData.gasanRate * patientBenefitRate;
+                patientTotalPay += autoPay;
+                refundEligibleBenefit += autoPay;
+                breakdown.push({ name: `[자동산정] ${autoItem.name}`, type: "benefit", price: autoPay, isAuto: true });
+            });
         }
     }
 

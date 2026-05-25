@@ -1402,6 +1402,18 @@ input:checked + .switch-slider:before { transform: translateX(22px); }
     color: var(--text-muted);
 }
 
+.global-search-panel {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: rgba(59, 130, 246, 0.06);
+}
+
+.etc-accordion-wrapper {
+    display: none !important;
+}
+
 .seo-answer-card {
     grid-column: 1 / -1;
 }
