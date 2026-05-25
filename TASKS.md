@@ -7,21 +7,19 @@
 - 이전 작업 기록은 `docs/TASK_HISTORY.md`에 보관한다.
 - 상태 표기: `[ ]` 미완료, `[/]` 진행 중, `[x]` 완료
 
-## 현재 작업: 관리자 로그 전체 삭제 및 최근 검색 기기 표시
+## 현재 작업: 직접선택 목록 글자색 수정
 
-목표: 관리자 페이지에서 검색/클릭/계산 로그를 전체 삭제할 수 있게 하고, 최근 검색 목록에 어떤 기기에서 검색됐는지 표시한다.
+목표: `치료 및 검사 항목 추가`에서 중분류 선택 후 나오는 항목 목록의 글자가 흰 배경과 겹쳐 안 보이는 문제를 고친다.
 
 ## 작업 범위
 
-- [x] 관리자 페이지/API 구조 확인
-- [x] 최근 검색 API에 user_agent 포함
-- [x] 관리자 화면에 기기 컬럼 추가
-- [x] 전체 삭제 버튼/API 처리 추가
+- [x] 목록 DOM/CSS 위치 확인
+- [x] 직접선택 목록 전용 글자색/배경색 고정
 - [x] 문법/test(테스트) 검증
 - [/] commit(커밋), push(푸시)
 
 ## 진행 메모
 
-- `search_logs`에는 이미 `user_agent` 컬럼이 있음.
-- 전체 삭제는 `search_logs`, `search_click_logs`, `calculation_logs` 3개 로그 테이블만 대상으로 한다.
-- 검증: 관리자 inline script 문법 확인, `script.js` 문법 확인, 기존 계산 테스트 통과.
+- 원인: `#hierarchical-items-list`는 흰 배경인데, 내부 항목이 공통 `.search-result-item`의 밝은 글자색을 상속함.
+- 조치: 직접선택 목록 내부 항목만 어두운 글자색으로 고정했다.
+- 검증: `node --check frontend\assets\js\script.js`, `node tests\test_runner.js` 통과.
