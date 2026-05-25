@@ -19,10 +19,11 @@
 - [x] 상병코드 검색창 질병명 검색 보강
 - [x] 통합검색/항목검색에서 질병명 제외
 - [x] 문법/test(테스트) 검증
-- [/] commit(커밋), push(푸시)
+- [x] commit(커밋), push(푸시)
 
 ## 진행 메모
 
 - 현재 git 상태는 `main...origin/main` 깨끗함.
 - 원인: `script.js` 하단에 같은 `performSearch/initSearchEvents`가 다시 정의되어 통합검색 코드가 덮였음.
 - 질병명/KCD 검색은 상병코드 검색창 전용으로 분리함.
+- commit(커밋) `0b16b42` 생성 및 `origin/main` push(푸시) 완료.
