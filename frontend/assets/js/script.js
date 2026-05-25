@@ -258,6 +258,27 @@ function getBenefitChargeBase(item, hData) {
     return item.alreadyPricedByProvider ? base : base * hData.gasanRate;
 }
 
+function getHospitalGasanInfo(hData) {
+    const ratePercent = Math.max(0, Math.round(((hData?.gasanRate || 1) - 1) * 100));
+    return {
+        ratePercent,
+        label: ratePercent > 0 ? `${hData.name} 종별가산 ${ratePercent}%` : `${hData.name} 종별가산 없음`
+    };
+}
+
+function getBenefitGasanPatientPay(item, hData, patientRate, discountFactor = 1, count = 1) {
+    if (!item || item.alreadyPricedByProvider) return 0;
+    const base = Number(item.basePrice || 0);
+    const gasanRate = Math.max(0, Number(hData?.gasanRate || 1) - 1);
+    return base * gasanRate * discountFactor * patientRate * count;
+}
+
+function getAutoGasanPatientPay(basePrice, hData, patientRate, count = 1) {
+    const base = Number(basePrice || 0);
+    const gasanRate = Math.max(0, Number(hData?.gasanRate || 1) - 1);
+    return base * gasanRate * patientRate * count;
+}
+
 
 // =========================================================
 // 3. 문서 로드 완료 시 초기화
@@ -390,6 +411,8 @@ function updateResultButtonState() {
 function resetResultView() {
     const finalCostEl = document.getElementById('display_final_cost');
     const totalCostEl = document.getElementById('display_total_cost');
+    const gasanCostEl = document.getElementById('display_gasan_cost');
+    const gasanLabelEl = document.getElementById('display_gasan_label');
     const refundCostEl = document.getElementById('display_refund_cost');
     const rangeEl = document.getElementById('display_cost_range');
     const tableBody = document.getElementById('cost-table-body');
@@ -400,6 +423,8 @@ function resetResultView() {
 
     if (finalCostEl) finalCostEl.innerText = '0';
     if (totalCostEl) totalCostEl.innerText = '0';
+    if (gasanCostEl) gasanCostEl.innerText = '0';
+    if (gasanLabelEl) gasanLabelEl.innerText = '병원 등급별 가산율이 급여 항목에 자동 반영됩니다.';
     if (refundCostEl) refundCostEl.innerText = '0';
     if (rangeEl) rangeEl.innerText = '0원 ~ 0원';
     if (tableBody) tableBody.innerHTML = '<tr><td colspan="3" class="empty-row">결과보기를 누르면 세부 산출 내역이 표시됩니다.</td></tr>';
@@ -2520,6 +2545,7 @@ function simulateCostForClass(targetClass) {
     let refundEligibleBenefit = 0;
     let refundEligibleNonBenefit = 0;
     let premiumRoomCharge = 0;
+    let gasanPatientPay = 0;
 
     // A. 진료 기본 비용
     let basePrice = hData.baseConsult;
@@ -2562,6 +2588,7 @@ function simulateCostForClass(targetClass) {
             const discountFactor = (idx === 0) ? 1.0 : 0.5;
             const finalPrice = getBenefitChargeBase(test, hData) * discountFactor;
             const patientPay = finalPrice * patientBenefitRate * test.count;
+            gasanPatientPay += getBenefitGasanPatientPay(test, hData, patientBenefitRate, discountFactor, test.count);
             patientTotalPay += patientPay;
             refundEligibleBenefit += patientPay;
         });
@@ -2584,6 +2611,7 @@ function simulateCostForClass(targetClass) {
                 let rate = patientBenefitRate;
                 if (surg.type === 'c_section' || surg.type === 'SU_OB01') rate = 0; // 제왕절개 0%
                 const patientPay = finalPrice * rate;
+                gasanPatientPay += getBenefitGasanPatientPay(surg, hData, rate, discountFactor, 1);
                 patientTotalPay += patientPay;
                 refundEligibleBenefit += patientPay;
             } else {
@@ -2600,11 +2628,13 @@ function simulateCostForClass(targetClass) {
             const autoAnesthesia = DB.ANESTHESIA_AUTO.find(rule => maxSurgPrice <= rule.maxPrice);
             if (autoAnesthesia) {
                 const anesthPay = autoAnesthesia.price * hData.gasanRate * patientBenefitRate;
+                gasanPatientPay += getAutoGasanPatientPay(autoAnesthesia.price, hData, patientBenefitRate);
                 patientTotalPay += anesthPay;
                 refundEligibleBenefit += anesthPay;
             }
             getSurgeryAutoSupportItems(maxSurgPrice).forEach(autoItem => {
                 const autoPay = autoItem.price * hData.gasanRate * patientBenefitRate;
+                gasanPatientPay += getAutoGasanPatientPay(autoItem.price, hData, patientBenefitRate);
                 patientTotalPay += autoPay;
                 refundEligibleBenefit += autoPay;
             });
@@ -2617,6 +2647,7 @@ function simulateCostForClass(targetClass) {
             if (proc.isBenefit) {
                 const finalPrice = getBenefitChargeBase(proc, hData);
                 const patientPay = finalPrice * patientBenefitRate * proc.count;
+                gasanPatientPay += getBenefitGasanPatientPay(proc, hData, patientBenefitRate, 1, proc.count);
                 patientTotalPay += patientPay;
                 refundEligibleBenefit += patientPay;
             } else {
@@ -2648,7 +2679,6 @@ function simulateCostForClass(targetClass) {
     const finalPatientPay = patientTotalPay - refundTotal;
     const minRange = Math.round(finalPatientPay * 0.85);
     const maxRange = Math.round(finalPatientPay * 1.15);
-
     return {
         finalCost: finalPatientPay,
         minRange,
@@ -2721,7 +2751,8 @@ function calculate() {
     let refundEligibleBenefit = 0;     // 실비보험 환급 대상 급여액
     let refundEligibleNonBenefit = 0;  // 실비보험 환급 대상 비급여액
     let premiumRoomCharge = 0;         // 상급병실 비급여 차액
-    const breakdown = [];              // 명세서 상세 내역 리스트
+    let gasanPatientPay = 0;           // hospital class add-on patient share
+    const breakdown = [];              // detail rows
     let hasDRG = false;                // 포괄수가제 대상 여부 플래그
 
     // ──────────────────────────────────────────
@@ -2799,6 +2830,7 @@ function calculate() {
             const discountFactor = (idx === 0) ? 1.0 : 0.5; // 주검사 100%, 부검사 50%
             const finalPrice = getBenefitChargeBase(test, hData) * discountFactor;
             const patientPay = finalPrice * patientBenefitRate * test.count;
+            gasanPatientPay += getBenefitGasanPatientPay(test, hData, patientBenefitRate, discountFactor, test.count);
             patientTotalPay += patientPay;
             refundEligibleBenefit += patientPay;
             let label = `${test.typeName} (${test.count}회)`;
@@ -2834,6 +2866,7 @@ function calculate() {
                 if (surg.type === 'c_section' || surg.type === 'SU_OB01') rate = 0;
                 
                 const patientPay = finalPrice * rate;
+                gasanPatientPay += getBenefitGasanPatientPay(surg, hData, rate, discountFactor, 1);
                 patientTotalPay += patientPay;
                 refundEligibleBenefit += patientPay;
                 let label = surg.typeName;
@@ -2857,6 +2890,7 @@ function calculate() {
             const autoAnesthesia = DB.ANESTHESIA_AUTO.find(rule => maxSurgPrice <= rule.maxPrice);
             if (autoAnesthesia) {
                 const anesthPay = autoAnesthesia.price * hData.gasanRate * patientBenefitRate;
+                gasanPatientPay += getAutoGasanPatientPay(autoAnesthesia.price, hData, patientBenefitRate);
                 patientTotalPay += anesthPay;
                 refundEligibleBenefit += anesthPay;
                 // 명세서에만 표시하는 자동 산정 플래그 추가
@@ -2864,6 +2898,7 @@ function calculate() {
             }
             getSurgeryAutoSupportItems(maxSurgPrice).forEach(autoItem => {
                 const autoPay = autoItem.price * hData.gasanRate * patientBenefitRate;
+                gasanPatientPay += getAutoGasanPatientPay(autoItem.price, hData, patientBenefitRate);
                 patientTotalPay += autoPay;
                 refundEligibleBenefit += autoPay;
                 breakdown.push({ name: `[자동산정] ${autoItem.name}`, type: "benefit", price: autoPay, isAuto: true });
@@ -2879,6 +2914,7 @@ function calculate() {
             if (proc.isBenefit) {
                 const finalPrice = getBenefitChargeBase(proc, hData);
                 const patientPay = finalPrice * patientBenefitRate * proc.count;
+                gasanPatientPay += getBenefitGasanPatientPay(proc, hData, patientBenefitRate, 1, proc.count);
                 patientTotalPay += patientPay;
                 refundEligibleBenefit += patientPay;
                 breakdown.push({ name: `${proc.typeName} (${proc.count}회)`, type: "benefit", price: patientPay });
@@ -2925,7 +2961,21 @@ function calculate() {
     // ──────────────────────────────────────────
     // G. 화면(UI) 최종 값 매핑 렌더링
     // ──────────────────────────────────────────
+    if (gasanPatientPay > 0) {
+        const gasanInfo = getHospitalGasanInfo(hData);
+        breakdown.unshift({
+            name: `${gasanInfo.label} 자동 반영분(급여 항목에 이미 포함)`,
+            type: "gasan",
+            price: gasanPatientPay
+        });
+    }
+
     document.getElementById('display_total_cost').innerText = formatNumber(patientTotalPay);
+    const gasanCostEl = document.getElementById('display_gasan_cost');
+    const gasanLabelEl = document.getElementById('display_gasan_label');
+    const gasanInfo = getHospitalGasanInfo(hData);
+    if (gasanCostEl) gasanCostEl.innerText = formatNumber(gasanPatientPay);
+    if (gasanLabelEl) gasanLabelEl.innerText = `${gasanInfo.label}이 급여 검사·시술·수술·자동산정 항목에 포함되었습니다.`;
     document.getElementById('display_refund_cost').innerText = formatNumber(refundTotal);
     document.getElementById('display_final_cost').innerText = formatNumber(finalPatientPay);
     document.getElementById('display_cost_range').innerText = `${formatNumber(minRange)}원 ~ ${formatNumber(maxRange)}원`;
@@ -2961,9 +3011,11 @@ function calculate() {
     } else {
         breakdown.forEach(item => {
             const row = document.createElement('tr');
-            const badge = item.type === "benefit"
-                ? '<span class="badge badge-benefit">급여</span>'
-                : '<span class="badge badge-non-benefit">비급여</span>';
+            const badge = item.type === "gasan"
+                ? '<span class="badge badge-benefit">\uc885\ubcc4\uac00\uc0b0</span>'
+                : item.type === "benefit"
+                    ? '<span class="badge badge-benefit">\uae09\uc5ec</span>'
+                    : '<span class="badge badge-non-benefit">\ube44\uae09\uc5ec</span>';
             row.innerHTML = `
                 <td>${item.name}</td>
                 <td>${badge}</td>
