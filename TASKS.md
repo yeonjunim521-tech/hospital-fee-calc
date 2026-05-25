@@ -18,9 +18,10 @@
 - [x] 통합검색/분류검색 버튼 클릭 및 Enter 실행 바인딩 고정
 - [x] 질병명 검색 결과 색상 CSS 수정
 - [x] 문법/test(테스트) 검증
-- [/] commit(커밋), push(푸시)
+- [x] commit(커밋), push(푸시)
 
 ## 진행 메모
 
 - 원인: `script.js` 하단에 같은 `performSearch/initSearchEvents`가 반복 정의되어 이전 수정 코드가 다시 덮였음.
 - 조치: 파일 EOF(끝)에 `eof*` 검색 바인딩을 추가해 최종 동작을 고정함.
+- commit(커밋) `94f19a3` 생성 및 `origin/main` push(푸시) 완료.
