@@ -414,7 +414,17 @@ function markResultStale() {
 }
 
 function handleCalculatorInputChange() {
-    markResultStale();
+    const ready = isCalculationReady();
+    const diseaseInput = document.getElementById('disease_code_input');
+    const hasDisease = diseaseInput && diseaseInput.value.trim() !== '';
+
+    // 병원 등급, 입원 형태, 비급여 자료기준, 상병코드 평균 진료비가 모두 선택/입력되었을 때 실시간 자동 계산
+    if (ready && hasDisease) {
+        resultRequested = true;
+        calculate();
+    } else {
+        markResultStale();
+    }
 }
 
 function requestCalculation() {
@@ -2227,7 +2237,7 @@ function addKcdDisease(code, name) {
     if (diseaseInput) {
         diseaseInput.value = code;
     }
-    calculate();
+    handleCalculatorInputChange();
 }
 
 function initSearchEvents() {
@@ -2382,7 +2392,7 @@ function initSearchEvents() {
                             diseaseInput.value = item.code;
                             diseaseResultsList.innerHTML = '';
                             diseaseResultsList.classList.add('hidden');
-                            calculate();
+                            handleCalculatorInputChange();
                         });
                         diseaseResultsList.appendChild(btn);
                     });
@@ -2888,7 +2898,7 @@ function toggleDiseaseCodeSection() {
         if (input) {
             input.value = '';
         }
-        calculate();
+        handleCalculatorInputChange();
     }
 }
 
