@@ -982,6 +982,13 @@ function convertToEnglishKeys(text) {
     return result;
 }
 
+function normalizeSearchText(text) {
+    const matches = String(text || '')
+        .toLowerCase()
+        .match(/[0-9A-Za-z\u3131-\u318E\uAC00-\uD7A3]+/g);
+    return matches ? matches.join('').replace(/-/g, '') : '';
+}
+
 /** 한글 텍스트에서 초성만 추출합니다. (초성 검색 지원용) */
 function getChosung(text) {
     const choList = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
@@ -1011,7 +1018,7 @@ function isChosungOnly(text) {
  * (한글 초성 매칭, 한영 키보드 오타 교정, 띄어쓰기 생략 검색 완벽 보장)
  */
 function isMatch(query, item) {
-    const cleanQuery = query.replace(/\s+/g, '').toLowerCase();
+    const cleanQuery = normalizeSearchText(query);
     if (!cleanQuery) return false;
 
     // 매칭 대상: 공식 명칭, 카테고리 태그명, DB 지정 일상어 keywords 목록
@@ -1020,7 +1027,7 @@ function isMatch(query, item) {
     // 1단계: 초성 자음만 입력했을 시 초성 일치 대조
     if (isChosungOnly(cleanQuery)) {
         for (const target of targets) {
-            const cleanTarget = target.replace(/\s+/g, '').toLowerCase();
+            const cleanTarget = normalizeSearchText(target);
             const chosungTarget = getChosung(cleanTarget);
             if (chosungTarget.includes(cleanQuery)) return true;
         }
@@ -1029,7 +1036,7 @@ function isMatch(query, item) {
     // 2단계: 양방향 영어 자판 키 코드 일치 대조 (한영 변환 오타 방지 핵심)
     const englishQuery = convertToEnglishKeys(cleanQuery);
     for (const target of targets) {
-        const cleanTarget = target.replace(/\s+/g, '').toLowerCase();
+        const cleanTarget = normalizeSearchText(target);
         const englishTarget = convertToEnglishKeys(cleanTarget);
         if (englishTarget.includes(englishQuery) || cleanTarget.includes(cleanQuery)) return true;
     }
@@ -1961,7 +1968,10 @@ const KCD_COMMON_ALIASES = [
 ];
 
 function normalizeSearchText(value) {
-    return String(value || '').toLowerCase().replace(/\s+/g, '');
+    const matches = String(value || '')
+        .toLowerCase()
+        .match(/[0-9A-Za-z\u3131-\u318E\uAC00-\uD7A3]+/g);
+    return matches ? matches.join('').replace(/-/g, '') : '';
 }
 
 function getKcdCode(item) {
