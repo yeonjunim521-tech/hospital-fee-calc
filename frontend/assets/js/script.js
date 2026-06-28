@@ -3066,6 +3066,21 @@ function calculate() {
         totalCost: patientTotalPay,
         refundCost: refundTotal
     });
+    if (typeof window.trackGAEvent === 'function') {
+        window.trackGAEvent('calculator_complete', {
+            hospital_class: hospitalClass,
+            treatment_type: treatmentType,
+            has_insurance: hasInsurance ? 'yes' : 'no',
+            has_sanjeong: Boolean(sanjeongInfo) ? 'yes' : 'no',
+            selected_tests: addedTests.length,
+            selected_surgeries: addedSurgeries.length,
+            selected_procedures: addedProcedures.length,
+            final_cost: finalPatientPay,
+            total_cost: patientTotalPay,
+            refund_cost: refundTotal,
+            page_path: window.location.pathname
+        });
+    }
 }
 
 // =========================================================
@@ -4372,6 +4387,15 @@ function eofRenderItemResults(query, targetGroup, items) {
         `;
         btn.onclick = () => {
             sendSearchClickLog(query, item);
+            if (typeof window.trackGAEvent === 'function') {
+                window.trackGAEvent('search_result_click', {
+                    search_term: query,
+                    item_code: item.code || item.type || '',
+                    item_name: item.name || '',
+                    item_group: targetGroup,
+                    page_path: window.location.pathname
+                });
+            }
             addHiraItem(item);
             const searchEl = eofSearchElements(targetGroup);
             if (searchEl.input) searchEl.input.value = '';
@@ -4738,6 +4762,21 @@ function performSearch(query, targetGroup = 'scoped', options = {}) {
         matched = matched.filter(eofItemMatchesScope);
     }
     if (options.logSearch) sendSearchLog(clean, matched.length);
+    if (typeof window.trackGAEvent === 'function') {
+        window.trackGAEvent('search', {
+            search_term: clean,
+            result_count: matched.length,
+            search_scope: targetGroup,
+            page_path: window.location.pathname
+        });
+        if (matched.length === 0) {
+            window.trackGAEvent('search_no_result', {
+                search_term: clean,
+                search_scope: targetGroup,
+                page_path: window.location.pathname
+            });
+        }
+    }
     eofRenderItemResults(clean, targetGroup, matched);
 }
 
