@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>hospital fee calc Codex Security Scan</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #fff;
+      --bg-elev: #fafafa;
+      --bg-muted: #f5f5f7;
+      --fg: #111827;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --accent: #2563eb;
+      --code: #f3f4f6;
+      --shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0b0f14;
+        --bg-elev: #0f141b;
+        --bg-muted: #121923;
+        --fg: #e5e7eb;
+        --muted: #9ca3af;
+        --border: #243040;
+        --accent: #60a5fa;
+        --code: #111827;
+        --shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+      }
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 15px/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    body.sidebar-collapsed .layout { grid-template-columns: 44px minmax(0, 1fr); }
+
+    .sidebar {
+      min-height: 100vh;
+      border-right: 1px solid var(--border);
+      background: var(--bg-muted);
+    }
+
+    .toc-inner {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: auto;
+      padding: 10px 8px;
+    }
+
+    .nav-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      margin: 0 0 8px;
+      text-transform: uppercase;
+    }
+
+    .nav-toggle {
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--fg);
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 5px;
+    }
+
+    .nav-toggle:hover { box-shadow: var(--shadow); }
+    .nav-meta { color: var(--muted); font-size: 12px; margin: 0 0 12px; padding: 0 4px; }
+
+    body.sidebar-collapsed .toc-inner {
+      display: flex;
+      align-items: center;
+      padding: 8px 6px;
+    }
+
+    body.sidebar-collapsed .nav-title span,
+    body.sidebar-collapsed .nav-meta,
+    body.sidebar-collapsed .toc { display: none; }
+
+    main { max-width: 1040px; padding: 32px 44px 80px; }
+    h1, h2, h3 { line-height: 1.2; margin-top: 1.7em; }
+    h1:first-child { margin-top: 0; }
+    h2 { border-top: 1px solid var(--border); padding-top: 1em; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code { background: var(--code); border-radius: 4px; padding: 0.1em 0.3em; }
+    pre { background: var(--code); border: 1px solid var(--border); border-radius: 8px; overflow: auto; padding: 16px; }
+    pre code { background: transparent; padding: 0; }
+    table { border-collapse: collapse; width: 100%; margin: 18px 0; }
+    th, td { border: 1px solid var(--border); padding: 8px 10px; vertical-align: top; }
+    th { text-align: left; background: var(--code); }
+
+    main h3[id^="0-"] + table,
+    main h3[id^="1-"] + table,
+    main h3[id^="2-"] + table,
+    main h3[id^="3-"] + table,
+    main h3[id^="4-"] + table,
+    main h3[id^="5-"] + table,
+    main h3[id^="6-"] + table,
+    main h3[id^="7-"] + table,
+    main h3[id^="8-"] + table,
+    main h3[id^="9-"] + table {
+      margin: 10px 0 24px;
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--accent);
+      background: var(--bg-elev);
+      box-shadow: var(--shadow);
+    }
+
+    main h3[id^="0-"] + table th,
+    main h3[id^="1-"] + table th,
+    main h3[id^="2-"] + table th,
+    main h3[id^="3-"] + table th,
+    main h3[id^="4-"] + table th,
+    main h3[id^="5-"] + table th,
+    main h3[id^="6-"] + table th,
+    main h3[id^="7-"] + table th,
+    main h3[id^="8-"] + table th,
+    main h3[id^="9-"] + table th { display: none; }
+
+    main h3[id^="0-"] + table td:first-child,
+    main h3[id^="1-"] + table td:first-child,
+    main h3[id^="2-"] + table td:first-child,
+    main h3[id^="3-"] + table td:first-child,
+    main h3[id^="4-"] + table td:first-child,
+    main h3[id^="5-"] + table td:first-child,
+    main h3[id^="6-"] + table td:first-child,
+    main h3[id^="7-"] + table td:first-child,
+    main h3[id^="8-"] + table td:first-child,
+    main h3[id^="9-"] + table td:first-child {
+      width: 170px;
+      color: var(--muted);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    main h3[id^="0-"] + table td,
+    main h3[id^="1-"] + table td,
+    main h3[id^="2-"] + table td,
+    main h3[id^="3-"] + table td,
+    main h3[id^="4-"] + table td,
+    main h3[id^="5-"] + table td,
+    main h3[id^="6-"] + table td,
+    main h3[id^="7-"] + table td,
+    main h3[id^="8-"] + table td,
+    main h3[id^="9-"] + table td { border-left: 0; border-right: 0; }
+
+    .toc { list-style: none; padding: 0; margin: 0; }
+    .toc a {
+      display: block;
+      border-radius: 6px;
+      color: var(--fg);
+      font-size: 13px;
+      line-height: 1.3;
+      padding: 4px 6px;
+      position: relative;
+      transition: background 160ms ease, color 160ms ease, padding-left 160ms ease;
+    }
+
+    .toc a:hover { background: var(--bg-elev); text-decoration: none; }
+    .toc-item { list-style: none; margin: 1px 0; }
+    .toc-item.depth-1 > a { font-weight: 700; }
+    .toc-item.depth-2 { padding-left: 14px; }
+    .toc-item.depth-3 { padding-left: 28px; }
+
+    .toc-item.active > a {
+      color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 12%, transparent);
+      font-weight: 700;
+      padding-left: 10px;
+    }
+
+    .toc-item.active > a::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 4px;
+      bottom: 4px;
+      width: 3px;
+      border-radius: 2px;
+      background: var(--accent);
+    }
+
+    @media (max-width: 900px) {
+      .layout { display: block; }
+      .sidebar { min-height: 0; border-right: 0; border-bottom: 1px solid var(--border); }
+      .toc-inner { position: static; height: auto; max-height: 45vh; }
+      main { padding: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" aria-label="Table of contents">
+      <div class="toc-inner">
+        <div class="nav-title">
+          <span>Outline</span>
+          <button id="navToggle" class="nav-toggle" aria-pressed="false" aria-label="Collapse sidebar" title="Collapse sidebar">
+            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path id="navToggleIcon" d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+        <div class="nav-meta">hospital fee calc Codex Security Scan</div>
+        <ul class="toc">
+          <li class="toc-item depth-1"><a href="#security-review-hospital-fee-calc">Security Review: hospital fee calc</a></li>
+<li class="toc-item depth-2"><a href="#scope">Scope</a></li>
+<li class="toc-item depth-3"><a href="#scan-summary">Scan Summary</a></li>
+<li class="toc-item depth-2"><a href="#threat-model">Threat Model</a></li>
+<li class="toc-item depth-2"><a href="#overview">Overview</a></li>
+<li class="toc-item depth-2"><a href="#threat-model-trust-boundaries-and-assumptions">Threat Model, Trust Boundaries, and Assumptions</a></li>
+<li class="toc-item depth-2"><a href="#attack-surface-mitigations-and-attacker-stories">Attack Surface, Mitigations, and Attacker Stories</a></li>
+<li class="toc-item depth-2"><a href="#severity-calibration-critical-high-medium-low">Severity Calibration (Critical, High, Medium, Low)</a></li>
+<li class="toc-item depth-2"><a href="#findings">Findings</a></li>
+<li class="toc-item depth-3"><a href="#confidence-scale">Confidence Scale</a></li>
+<li class="toc-item depth-3"><a href="#1-unauthenticated-admin-analytics-read-and-log-deletion-apis">[1] Unauthenticated admin analytics read and log deletion APIs</a></li>
+<li class="toc-item depth-3"><a href="#2-dom-xss-through-unescaped-search-and-data-names-rendered-with-innerhtml">[2] DOM XSS through unescaped search and data names rendered with innerHTML</a></li>
+<li class="toc-item depth-2"><a href="#reviewed-surfaces">Reviewed Surfaces</a></li>
+<li class="toc-item depth-2"><a href="#open-questions-and-follow-up">Open Questions And Follow Up</a></li>
+        </ul>
+      </div>
+    </aside>
+    <main>
+      <h1 id="security-review-hospital-fee-calc">Security Review: hospital fee calc</h1>
+
+<h2 id="scope">Scope</h2>
+
+<ul><li>Scan mode: repository-wide security scan.</li><li>Target: <code>C:\Users\giro0\Desktop\Codex\hospital fee calc</code>.</li><li>Commit baseline: <code>841898a</code>.</li><li>Scan id: <code>841898a_20260607-120724</code>.</li><li>Main artifacts: <code>docs/security-scans/hospital fee calc/841898a_20260607-120724</code>.</li><li>Threat model: generated during Phase 1 and copied to <code>artifacts/01_context/threat_model.md</code>.</li><li>Worklists: <code>rank_input.csv</code> and <code>deep_review_input.csv</code> each contain 470 rows.</li><li>Runtime validation: local HTTP reproduction was attempted for <code>127.0.0.1:8788</code>, but no server was listening. Validation is primarily static source/config trace.</li><li>Explicit limitations: many generated/secondary files in the 470-row worklist are marked deferred in <code>work_ledger.jsonl</code>; high-impact runtime surfaces were prioritized.</li></ul>
+
+<h3 id="scan-summary">Scan Summary</h3>
+
+<table>
+<thead><tr>
+<th>Field</th>
+<th>Value</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Reportable findings</td>
+<td>2</td>
+</tr>
+<tr>
+<td>Severity mix</td>
+<td>High: 1, Medium: 1</td>
+</tr>
+<tr>
+<td>Confidence mix</td>
+<td>High: 1, Medium-high: 1</td>
+</tr>
+<tr>
+<td>Coverage</td>
+<td>Core frontend, Pages Functions, D1 schema, local backend, build scripts reviewed; generated/secondary rows deferred</td>
+</tr>
+<tr>
+<td>Validation mode</td>
+<td>Static source/config trace plus local path calculation; no live server reproduction</td>
+</tr>
+</tbody></table>
+
+<h2 id="threat-model">Threat Model</h2>
+
+<h2 id="overview">Overview</h2>
+
+<p>This repository is a hospital and emergency-room cost calculator deployed mainly as a Cloudflare Pages static frontend with Pages Functions and D1 for search/calculation analytics. It also contains a local Node backend for development/static API fallback, data-generation scripts, generated public-data JavaScript files, and database migrations.</p>
+
+<p>Primary runtime surfaces:</p>
+<ul><li><code>frontend/</code>: public static pages, calculator UI, admin-search page, generated medical data JavaScript.</li><li><code>functions/api/</code>: Cloudflare Pages Functions for search logs, click logs, calculation logs, admin stats/delete, and public top-searches.</li><li><code>database/schema.sql</code>: D1 tables storing analytics and calculation inputs.</li><li><code>backend/server.js</code>: local development backend/static file server.</li><li><code>scripts/</code>: local data/build/GitHub helper scripts.</li></ul>
+
+<h2 id="threat-model-trust-boundaries-and-assumptions">Threat Model, Trust Boundaries, and Assumptions</h2>
+
+<p>Assets that matter:</p>
+<ul><li>D1 analytics logs: search queries, clicked item names, path, user-agent, calculation conditions, selected item JSON, and costs.</li><li>Frontend trust: public pages are served from the site origin, so DOM XSS can run with same-origin access to public/admin APIs reachable from the browser.</li><li>Data integrity: generated JS data drives calculator search and estimates.</li><li>Secrets: environment variables and GitHub/Cloudflare tokens must stay outside committed files.</li></ul>
+
+<p>Trust boundaries:</p>
+<ul><li>Anonymous internet users can load public frontend pages and call unauthenticated public APIs.</li><li>Admin-only analytics pages and deletion functions should require an operator boundary if they expose or mutate logs.</li><li>Public-data CSV/XLSX files are developer/operator-controlled inputs but may still contain untrusted strings when rendered in HTML.</li><li>Local backend is primarily developer-only unless separately deployed.</li></ul>
+
+<p>Attacker-controlled inputs:</p>
+<ul><li>Search query text, clicked search item metadata, calculation form selections, URL path, query string parameters, and HTTP request body fields sent to Pages Functions.</li><li>If the public-data import pipeline is compromised or untrusted data is imported, generated item/disease names become cross-boundary data rendered by the frontend.</li></ul>
+
+<p>Invariants:</p>
+<ul><li>Admin analytics read/delete operations must not be reachable by anonymous users.</li><li>User-controlled or imported text must not be inserted into <code>innerHTML</code> without context-correct escaping or DOM-safe construction.</li><li>File-serving code must not allow path traversal or sibling-directory reads.</li><li>SQL statements must use parameter binding for attacker-supplied values.</li><li>PII-like user input should be rejected or minimized before logging.</li></ul>
+
+<h2 id="attack-surface-mitigations-and-attacker-stories">Attack Surface, Mitigations, and Attacker Stories</h2>
+
+<p>Important attack stories:</p>
+<ul><li>Anonymous user calls admin APIs to read analytics or delete logs.</li><li>Anonymous user enters a crafted search query that is reflected into <code>innerHTML</code> and executes script in the page.</li><li>Imported public-data item names containing markup are rendered into result cards and execute script.</li><li>A local backend request attempts path traversal to read files outside <code>frontend</code>.</li></ul>
+
+<p>Existing mitigations:</p>
+<ul><li>D1 writes use prepared statements and bound parameters.</li><li><code>search-log.ts</code> blocks email, phone number, and resident-registration-number-like patterns before storage.</li><li>Most static select/options use DOM APIs such as <code>.text</code>/<code>.textContent</code> in some areas.</li><li><code>backend/server.js</code> normalizes paths and blocks many traversal attempts, though its prefix check is not boundary-safe.</li></ul>
+
+<h2 id="severity-calibration-critical-high-medium-low">Severity Calibration (Critical, High, Medium, Low)</h2>
+
+<p>Critical: direct unauthenticated code execution, broad account/control-plane compromise, or secret exfiltration from a deployed production surface.</p>
+
+<p>High: unauthenticated access to admin log deletion or sensitive analytics, persistent/stored XSS with same-origin impact, or exploitable file read/write of sensitive files from deployed server code.</p>
+
+<p>Medium: DOM XSS requiring user interaction with limited data access, imported-data XSS dependent on compromised build/source data, or local-only path traversal with no sensitive sibling files currently present.</p>
+
+<p>Low: weak headers, noindex-only admin obscurity, version/banner leakage, or operational data freshness problems without a direct security boundary break.</p>
+
+<h2 id="findings">Findings</h2>
+
+<table>
+<thead><tr>
+<th>#</th>
+<th>Title</th>
+<th>Severity</th>
+<th>Confidence</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><a href="#1-unauthenticated-admin-analytics-read-and-log-deletion-apis">Unauthenticated admin analytics read and log deletion APIs</a></td>
+<td>High</td>
+<td>High</td>
+</tr>
+<tr>
+<td>2</td>
+<td><a href="#2-dom-xss-through-unescaped-search-and-data-names-rendered-with-innerhtml">DOM XSS through unescaped search and data names rendered with innerHTML</a></td>
+<td>Medium</td>
+<td>medium-high</td>
+</tr>
+</tbody></table>
+
+<h3 id="confidence-scale">Confidence Scale</h3>
+
+<table>
+<thead><tr>
+<th>Label</th>
+<th>Meaning</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>high</td>
+<td>Direct source, configuration, or runtime evidence supports the finding, with no material unresolved reachability or exploitability blocker.</td>
+</tr>
+<tr>
+<td>medium</td>
+<td>Source evidence supports a plausible issue, but runtime behavior, deployment configuration, role reachability, type constraints, or exploit reliability still need proof.</td>
+</tr>
+<tr>
+<td>low</td>
+<td>Weak or incomplete evidence; include only when the user explicitly wants follow-up candidates in the final report.</td>
+</tr>
+</tbody></table>
+
+<h3 id="1-unauthenticated-admin-analytics-read-and-log-deletion-apis">[1] Unauthenticated admin analytics read and log deletion APIs</h3>
+
+<table>
+<thead><tr>
+<th>Field</th>
+<th>Value</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Severity</td>
+<td>High</td>
+</tr>
+<tr>
+<td>Confidence</td>
+<td>High</td>
+</tr>
+<tr>
+<td>Confidence rationale</td>
+<td>Source and config trace show admin handlers read/delete D1 logs without any auth check; only live HTTP reproduction is missing.</td>
+</tr>
+<tr>
+<td>Category</td>
+<td>Missing authentication / unauthorized administrative action</td>
+</tr>
+<tr>
+<td>CWE</td>
+<td>CWE-306 Missing Authentication for Critical Function</td>
+</tr>
+<tr>
+<td>Affected lines</td>
+<td><code>functions/api/admin/search-stats.ts:9</code>, <code>functions/api/admin/search-stats.ts:57-65</code>, <code>functions/api/admin/delete-log.ts:5</code>, <code>functions/api/admin/delete-log.ts:23-28</code>, <code>functions/api/admin/delete-log.ts:56</code>, <code>frontend/admin-search.html:219</code>, <code>frontend/admin-search.html:278</code>, <code>frontend/admin-search.html:308</code></td>
+</tr>
+</tbody></table>
+
+<h4 id="summary">Summary</h4>
+
+<p>The admin analytics endpoints expose search statistics, recent searches, clicked items, calculation conditions, and destructive log deletion without an authentication gate. The admin page calls these endpoints with ordinary fetch requests and no token/header. <code>noindex</code> only hides the page from search engines; it does not prevent direct API calls.</p>
+
+<h4 id="validation">Validation</h4>
+
+<p>Method: static source/config trace.</p>
+
+<p>Checklist:</p>
+<ul><li>[x] Anonymous HTTP source identified.</li><li>[x] Admin read and delete sinks identified.</li><li>[x] Missing auth control confirmed in handler files.</li><li>[x] Repository counterevidence checked for <code>_middleware.ts</code>, <code>ADMIN_TOKEN</code>, <code>Authorization</code>, and token checks.</li><li>[ ] Live HTTP reproduction completed; local server was not listening.</li></ul>
+
+<p>Evidence:</p>
+<ul><li><code>search-stats.ts</code> exports <code>onRequestGet</code> and returns log-derived data without auth.</li><li><code>delete-log.ts</code> exports <code>onRequestPost</code>; <code>type === &#x27;all&#x27;</code> deletes <code>search_logs</code>, <code>search_click_logs</code>, and <code>calculation_logs</code>.</li><li><code>wrangler.toml</code> binds D1 as <code>DB</code> and sets Pages output to <code>frontend</code>; no repository-level access control is present.</li></ul>
+
+<h4 id="dataflow">Dataflow</h4>
+
+<p>Anonymous request -&gt; <code>/api/admin/search-stats</code> or <code>/api/admin/delete-log</code> -&gt; Pages Function handler -&gt; D1 prepared query/delete -&gt; analytics data response or permanent log deletion.</p>
+
+<h4 id="reachability">Reachability</h4>
+
+<p>Under normal Cloudflare Pages Functions deployment, <code>/api/admin/*</code> routes are public unless protected by code, middleware, or external Cloudflare Access policy. This repository contains no such code-level protection. External Cloudflare Access could mitigate it, but no repository evidence proves it exists.</p>
+
+<h4 id="severity">Severity</h4>
+
+<p>High. An unauthenticated user can read analytics data and delete all analytics/calculation logs. The impact is narrower than critical because the tables store analytics and calculator metadata rather than credentials or full medical records, and external deployment protection remains unverified.</p>
+
+<p>Additional evidence that would raise severity: proof that logs contain sensitive personal medical information or that the API is publicly reachable in production. Evidence that would lower severity: enforced Cloudflare Access or route middleware protecting <code>/api/admin/*</code>.</p>
+
+<h4 id="remediation">Remediation</h4>
+
+<ul><li>Re-add admin authentication, preferably with <code>ADMIN_TOKEN</code> in Cloudflare Pages environment variables or Cloudflare Access.</li><li>Enforce the auth check in both <code>search-stats.ts</code> and <code>delete-log.ts</code> before any DB access.</li><li>Do not rely on hidden URLs or <code>noindex</code>.</li><li>Add tests for unauthenticated 401 and authenticated success paths.</li></ul>
+
+<h3 id="2-dom-xss-through-unescaped-search-and-data-names-rendered-with-innerhtml">[2] DOM XSS through unescaped search and data names rendered with innerHTML</h3>
+
+<table>
+<thead><tr>
+<th>Field</th>
+<th>Value</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Severity</td>
+<td>Medium</td>
+</tr>
+<tr>
+<td>Confidence</td>
+<td>medium-high</td>
+</tr>
+<tr>
+<td>Confidence rationale</td>
+<td>Static source trace shows direct interpolation into <code>innerHTML</code>; browser payload execution was not run in this scan.</td>
+</tr>
+<tr>
+<td>Category</td>
+<td>DOM-based cross-site scripting</td>
+</tr>
+<tr>
+<td>CWE</td>
+<td>CWE-79 Improper Neutralization of Input During Web Page Generation</td>
+</tr>
+<tr>
+<td>Affected lines</td>
+<td><code>frontend/index.html:256</code>, <code>frontend/index.html:535-539</code>, <code>frontend/assets/js/script.js:4637</code>, <code>frontend/assets/js/script.js:4646-4649</code>, <code>frontend/assets/js/script.js:4673</code>, <code>frontend/assets/js/script.js:4688-4690</code>, <code>frontend/assets/js/script.js:4787-4789</code></td>
+</tr>
+</tbody></table>
+
+<h4 id="summary">Summary</h4>
+
+<p>The frontend renders user search queries and imported medical item/disease names into template strings assigned to <code>innerHTML</code>. If the query or imported name contains markup, the browser treats it as HTML instead of text. Some other UI areas use safer DOM APIs, but these affected lines do not.</p>
+
+<h4 id="validation">Validation</h4>
+
+<p>Method: static DOM sink trace.</p>
+
+<p>Checklist:</p>
+<ul><li>[x] User-controlled or cross-boundary source identified.</li><li>[x] DOM sink identified.</li><li>[x] Missing escaping/control identified at affected lines.</li><li>[x] Active final function definitions identified.</li><li>[ ] Browser PoC completed.</li></ul>
+
+<p>Evidence:</p>
+<ul><li><code>script.js:4637</code> puts <code>${query}</code> inside a no-results <code>innerHTML</code> string.</li><li><code>script.js:4673</code> repeats the same pattern for item search.</li><li><code>script.js:4646-4649</code>, <code>4688-4690</code>, and <code>4787-4789</code> insert disease/item names from generated datasets into <code>innerHTML</code>.</li></ul>
+
+<h4 id="dataflow">Dataflow</h4>
+
+<p>Search input or generated data value -&gt; render function builds HTML string -&gt; assignment to <code>innerHTML</code> -&gt; browser parses as HTML/script-capable DOM.</p>
+
+<h4 id="reachability">Reachability</h4>
+
+<p>The search query path is reachable by a normal site visitor. The generated-data path requires polluted imported data or a compromised build/data source. If script executes on the same origin, it can call APIs available to that page, including the admin APIs while CF-001 remains unfixed.</p>
+
+<h4 id="severity">Severity</h4>
+
+<p>Medium. The user-query XSS is directly reachable, but the scan did not prove credential/session theft or persistent execution. The imported-data path has stronger preconditions. Severity could rise if a browser PoC proves execution against production and same-origin admin APIs remain open.</p>
+
+<h4 id="remediation">Remediation</h4>
+
+<ul><li>Replace <code>innerHTML</code> rendering of dynamic text with DOM nodes and <code>.textContent</code>.</li><li>If HTML templates must remain, escape all dynamic text for HTML context and avoid inline event handlers.</li><li>Add a small browser/test harness using payloads such as <code>&lt;img src=x onerror=alert(1)&gt;</code> to ensure text renders inertly.</li></ul>
+
+<h2 id="reviewed-surfaces">Reviewed Surfaces</h2>
+
+<table>
+<thead><tr>
+<th>Surface</th>
+<th>Risk Area</th>
+<th>Outcome</th>
+<th>Notes</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Cloudflare admin APIs</td>
+<td>Missing auth / destructive action</td>
+<td>Reported</td>
+<td>CF-001.</td>
+</tr>
+<tr>
+<td>Main frontend search rendering</td>
+<td>DOM XSS</td>
+<td>Reported</td>
+<td>CF-002.</td>
+</tr>
+<tr>
+<td>Admin page inline handlers</td>
+<td>Stored/admin XSS</td>
+<td>Needs follow-up</td>
+<td>CF-003 deferred pending browser PoC and final admin-auth design.</td>
+</tr>
+<tr>
+<td>Local backend static server</td>
+<td>Path traversal / sibling read</td>
+<td>Rejected</td>
+<td>Prefix check is unsafe style, but no sibling target or production exposure found. Harden if backend is deployed.</td>
+</tr>
+<tr>
+<td>Public log-write APIs</td>
+<td>SQL injection / PII pattern logging</td>
+<td>No issue found</td>
+<td>Prepared statements used; search-log blocks common PII patterns.</td>
+</tr>
+<tr>
+<td>Public top-searches API</td>
+<td>Data exposure</td>
+<td>Not applicable</td>
+<td>Aggregate public search terms only.</td>
+</tr>
+<tr>
+<td>GitHub helper scripts</td>
+<td>Secret handling</td>
+<td>No issue found</td>
+<td>Tokens read from env vars; no token literals found.</td>
+</tr>
+<tr>
+<td>Raw data files</td>
+<td>Build/data integrity</td>
+<td>Needs follow-up</td>
+<td>Deleted raw CSV/XLSX files will break regeneration scripts; not a direct security vulnerability.</td>
+</tr>
+<tr>
+<td>Generated data files</td>
+<td>Data-to-DOM XSS</td>
+<td>Needs follow-up</td>
+<td>Rendering sinks reviewed; huge generated data not exhaustively line-reviewed.</td>
+</tr>
+</tbody></table>
+
+<h2 id="open-questions-and-follow-up">Open Questions And Follow Up</h2>
+
+<ol><li>Fix CF-001 first: protect <code>/api/admin/search-stats</code> and <code>/api/admin/delete-log</code> with <code>ADMIN_TOKEN</code> or Cloudflare Access.</li><li>Fix CF-002 next: replace dynamic <code>innerHTML</code> with <code>textContent</code>/DOM construction in <code>frontend/assets/js/script.js</code> around lines 4637, 4673, 4690, and 4789.</li><li>Validate CF-003 after CF-001: use a stored search/click value containing quotes and markup, then open <code>frontend/admin-search.html</code> in a browser.</li><li>Decide raw data deletion: restore required CSV/XLSX if future regeneration of <code>medical_statistics.js</code> or <code>fee_schedule_items.js</code> is needed.</li><li>If deploying <code>backend/server.js</code>, harden path boundary check with <code>path.relative</code> or <code>filePath.startsWith(FRONTEND_DIR + path.sep)</code> plus exact root handling.</li></ol>
+    </main>
+  </div>
+  <script>
+    const toggle = document.getElementById('navToggle');
+    const icon = document.getElementById('navToggleIcon');
+    const collapsedKey = 'codex-security-report:sidebar-collapsed';
+
+    function setCollapsed(collapsed) {
+      document.body.classList.toggle('sidebar-collapsed', collapsed);
+      if (toggle) {
+        toggle.setAttribute('aria-pressed', collapsed ? 'true' : 'false');
+        toggle.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+        toggle.setAttribute('title', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+      }
+      if (icon) icon.setAttribute('d', collapsed ? 'M9 6l6 6-6 6' : 'M15 6l-6 6 6 6');
+      try { localStorage.setItem(collapsedKey, collapsed ? '1' : '0'); } catch {}
+    }
+
+    try { setCollapsed(localStorage.getItem(collapsedKey) === '1'); } catch {}
+    if (toggle) toggle.addEventListener('click', () => setCollapsed(!document.body.classList.contains('sidebar-collapsed')));
+
+    const tocLinks = Array.from(document.querySelectorAll('.toc a'));
+    const sections = tocLinks.map((link) => {
+      const id = decodeURIComponent(link.getAttribute('href').slice(1));
+      return [link, document.getElementById(id)];
+    }).filter((pair) => pair[1]);
+
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries
+        .filter((entry) => entry.isIntersecting)
+        .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+      if (!visible) return;
+      tocLinks.forEach((link) => link.parentElement.classList.remove('active'));
+      const active = tocLinks.find((link) => link.getAttribute('href') === '#' + visible.target.id);
+      if (active) active.parentElement.classList.add('active');
+    }, { rootMargin: '-10% 0px -75% 0px', threshold: [0, 1] });
+
+    sections.forEach(([, section]) => observer.observe(section));
+  </script>
+</body>
+</html>

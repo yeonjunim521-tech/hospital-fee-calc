@@ -1,0 +1,3 @@
+﻿{"phase":"discovery","candidate_id":"CF-003","status":"deferred_candidate","artifact":"artifacts/02_discovery/raw_candidates.jsonl","evidence":"Admin page inserts escaped DB values into inline onclick JavaScript string context."}
+{"phase":"validation","candidate_id":"CF-003","status":"deferred","artifact":"artifacts/05_findings/CF-003/validation_report.md","evidence":"Needs browser PoC to prove escapeHtml output can break inline JS context after HTML entity decoding."}
+{"phase":"attack_path","candidate_id":"CF-003","status":"deferred","artifact":"artifacts/05_findings/CF-003/attack_path_analysis_report.md","evidence":"Would require attacker to store a log value and an operator to open admin page; not finalized."}

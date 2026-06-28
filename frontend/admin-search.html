@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
-    <title>검색 로그 관리자 | 병원비 계산기</title>
+    <title>野꺜??嚥≪뮄???온?귐딆쁽 | 癰귣쵐?앶뜮??④쑴沅쎿묾?/title>
     <link rel="stylesheet" href="assets/css/seo-page.css">
     <style>
         .admin-grid {
@@ -95,76 +95,79 @@
             background: #7f1d1d;
         }
     </style>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1927730301151401"
+        crossorigin="anonymous"></script>
+    <script src="assets/js/analytics.js" defer></script>
 </head>
 <body>
     <main class="page">
         <section class="panel">
-            <h1>검색 로그 관리자</h1>
-            <p>많이 검색된 키워드, 결과 없는 검색어, 많이 클릭된 항목을 확인합니다. 이 페이지는 검색엔진에 노출하지 않도록 설정되어 있습니다.</p>
+            <h1>野꺜??嚥≪뮄???온?귐딆쁽</h1>
+            <p>筌띾‘??野꺜??곕쭆 ??쇱뜖?? 野껉퀗????용뮉 野꺜??깅선, 筌띾‘?????????????類ㅼ뵥??몃빍?? ????륁뵠筌왖??野꺜??깅퓦筌욊쑴肉??紐꾪뀱??? ??낅즲嚥???쇱젟??뤿선 ??됰뮸??덈뼄.</p>
 
             <div class="admin-form">
                 <select id="days">
-                    <option value="7">최근 7일</option>
-                    <option value="30" selected>최근 30일</option>
-                    <option value="90">최근 90일</option>
-                    <option value="365">최근 365일</option>
+                    <option value="7">筌ㅼ뮄??7??/option>
+                    <option value="30" selected>筌ㅼ뮄??30??/option>
+                    <option value="90">筌ㅼ뮄??90??/option>
+                    <option value="365">筌ㅼ뮄??365??/option>
                 </select>
-                <button class="cta" type="button" onclick="loadStats()">통계 불러오기</button>
+                <button class="cta" type="button" onclick="loadStats()">?????븍뜄???븍┛</button>
             </div>
 
             <div class="admin-danger-zone">
-                <p>전체 삭제는 검색 로그, 검색 클릭 로그, 계산 조건 로그를 모두 삭제합니다. 복구할 수 없습니다.</p>
-                <button class="btn-delete-all" type="button" onclick="deleteAllLogs()">전체 로그 삭제</button>
+                <p>?袁⑷퍥 ?????野꺜??嚥≪뮄?? 野꺜??????嚥≪뮄?? ?④쑴沅?鈺곌퀗援?嚥≪뮄?뉒몴?筌뤴뫀紐??????몃빍?? 癰귣벀???????곷뮸??덈뼄.</p>
+                <button class="btn-delete-all" type="button" onclick="deleteAllLogs()">?袁⑷퍥 嚥≪뮄??????/button>
             </div>
 
             <p id="status" class="error"></p>
 
             <div class="admin-grid">
                 <section class="admin-card">
-                    <h2>많이 검색된 키워드</h2>
+                    <h2>筌띾‘??野꺜??곕쭆 ??쇱뜖??/h2>
                     <table>
                         <thead>
-                            <tr><th>검색어</th><th>횟수</th><th>평균 결과</th><th>기능</th></tr>
+                            <tr><th>野꺜??깅선</th><th>??쏅땾</th><th>???뇧 野껉퀗??/th><th>疫꿸퀡??/th></tr>
                         </thead>
                         <tbody id="top-searches"></tbody>
                     </table>
                 </section>
 
                 <section class="admin-card">
-                    <h2>결과 없는 검색어</h2>
+                    <h2>野껉퀗????용뮉 野꺜??깅선</h2>
                     <table>
                         <thead>
-                            <tr><th>검색어</th><th>횟수</th><th>기능</th></tr>
+                            <tr><th>野꺜??깅선</th><th>??쏅땾</th><th>疫꿸퀡??/th></tr>
                         </thead>
                         <tbody id="zero-searches"></tbody>
                     </table>
                 </section>
 
                 <section class="admin-card">
-                    <h2>많이 클릭된 항목</h2>
+                    <h2>筌띾‘???????????/h2>
                     <table>
                         <thead>
-                            <tr><th>항목</th><th>클릭</th><th>기능</th></tr>
+                            <tr><th>????/th><th>????/th><th>疫꿸퀡??/th></tr>
                         </thead>
                         <tbody id="clicked-items"></tbody>
                     </table>
                 </section>
 
                 <section class="admin-card">
-                    <h2>최근 검색</h2>
+                    <h2>筌ㅼ뮄??野꺜??/h2>
                     <table>
                         <thead>
-                            <tr><th>검색어</th><th>결과</th><th>기기</th><th>시간</th><th>기능</th></tr>
+                            <tr><th>野꺜??깅선</th><th>野껉퀗??/th><th>疫꿸퀗由?/th><th>??볦퍢</th><th>疫꿸퀡??/th></tr>
                         </thead>
                         <tbody id="recent-searches"></tbody>
                     </table>
                 </section>
 
                 <section class="admin-card">
-                    <h2>계산 조건 로그</h2>
+                    <h2>?④쑴沅?鈺곌퀗援?嚥≪뮄??/h2>
                     <table>
                         <thead>
-                            <tr><th>병원</th><th>진료</th><th>지역</th><th>횟수</th><th>기능</th></tr>
+                            <tr><th>癰귣쵐??/th><th>筌욊쑬利?/th><th>筌왖??/th><th>??쏅땾</th><th>疫꿸퀡??/th></tr>
                         </thead>
                         <tbody id="calculation-conditions"></tbody>
                     </table>
@@ -187,7 +190,7 @@
         function renderRows(targetId, rows, renderer, emptyColspan) {
             const target = document.getElementById(targetId);
             if (!rows || rows.length === 0) {
-                target.innerHTML = `<tr><td colspan="${emptyColspan}">데이터 없음</td></tr>`;
+                target.innerHTML = `<tr><td colspan="${emptyColspan}">?怨쀬뵠????곸벉</td></tr>`;
                 return;
             }
 
@@ -196,17 +199,17 @@
 
         function getDeviceLabel(userAgent) {
             const ua = String(userAgent || '').toLowerCase();
-            if (!ua) return '알 수 없음';
+            if (!ua) return '??????곸벉';
             const browser = ua.includes('edg/') ? 'Edge'
                 : ua.includes('chrome/') ? 'Chrome'
                 : ua.includes('safari/') && !ua.includes('chrome/') ? 'Safari'
                 : ua.includes('firefox/') ? 'Firefox'
-                : '브라우저';
+                : '?됰슢??怨?';
             const device = /iphone|ipad|ipod/.test(ua) ? 'iOS'
                 : ua.includes('android') ? 'Android'
                 : ua.includes('windows') ? 'Windows'
                 : ua.includes('mac os') ? 'Mac'
-                : '기기';
+                : '疫꿸퀗由?;
             return `${device} / ${browser}`;
         }
 
@@ -220,7 +223,7 @@
 
                 const data = await response.json();
                 if (!response.ok || !data.ok) {
-                    throw new Error(data.error || '통계 조회 실패');
+                    throw new Error(data.error || '????鈺곌퀬????쎈솭');
                 }
 
                 renderRows('top-searches', data.topSearches, row => `
@@ -228,7 +231,7 @@
                         <td>${escapeHtml(row.normalized_query)}</td>
                         <td>${escapeHtml(row.search_count)}</td>
                         <td>${Math.round(Number(row.avg_result_count || 0))}</td>
-                        <td><button class="btn-delete" type="button" onclick="deleteLog('top-search', '${escapeHtml(row.normalized_query)}')">삭제</button></td>
+                        <td><button class="btn-delete" type="button" onclick="deleteLog('top-search', '${escapeHtml(row.normalized_query)}')">????/button></td>
                     </tr>
                 `, 4);
 
@@ -236,7 +239,7 @@
                     <tr>
                         <td>${escapeHtml(row.normalized_query)}</td>
                         <td>${escapeHtml(row.zero_result_count)}</td>
-                        <td><button class="btn-delete" type="button" onclick="deleteLog('zero-search', '${escapeHtml(row.normalized_query)}')">삭제</button></td>
+                        <td><button class="btn-delete" type="button" onclick="deleteLog('zero-search', '${escapeHtml(row.normalized_query)}')">????/button></td>
                     </tr>
                 `, 3);
 
@@ -244,7 +247,7 @@
                     <tr>
                         <td>${escapeHtml(row.clicked_item_name)}</td>
                         <td>${escapeHtml(row.click_count)}</td>
-                        <td><button class="btn-delete" type="button" onclick="deleteLog('click-log', '${escapeHtml(row.clicked_item_name)}')">삭제</button></td>
+                        <td><button class="btn-delete" type="button" onclick="deleteLog('click-log', '${escapeHtml(row.clicked_item_name)}')">????/button></td>
                     </tr>
                 `, 3);
 
@@ -254,7 +257,7 @@
                         <td>${escapeHtml(row.result_count)}</td>
                         <td title="${escapeHtml(row.user_agent)}">${escapeHtml(getDeviceLabel(row.user_agent))}</td>
                         <td>${escapeHtml(row.created_at)}</td>
-                        <td><button class="btn-delete" type="button" onclick="deleteLog('recent-search', '${escapeHtml(row.id)}')">삭제</button></td>
+                        <td><button class="btn-delete" type="button" onclick="deleteLog('recent-search', '${escapeHtml(row.id)}')">????/button></td>
                     </tr>
                 `, 5);
 
@@ -264,7 +267,7 @@
                         <td>${escapeHtml(row.treatment_type)}</td>
                         <td>${escapeHtml(row.nonbenefit_region)}</td>
                         <td>${escapeHtml(row.calculation_count)}</td>
-                        <td><button class="btn-delete" type="button" onclick="deleteLog('calc-log', '', { hospitalClass: '${escapeHtml(row.hospital_class)}', treatmentType: '${escapeHtml(row.treatment_type)}', nonbenefitRegion: '${escapeHtml(row.nonbenefit_region)}' })">삭제</button></td>
+                        <td><button class="btn-delete" type="button" onclick="deleteLog('calc-log', '', { hospitalClass: '${escapeHtml(row.hospital_class)}', treatmentType: '${escapeHtml(row.treatment_type)}', nonbenefitRegion: '${escapeHtml(row.nonbenefit_region)}' })">????/button></td>
                     </tr>
                 `, 5);
             } catch (error) {
@@ -273,7 +276,7 @@
         }
 
         async function deleteLog(type, value, extra = {}) {
-            if (!confirm('정말 삭제하시겠습니까? 관련 로그가 모두 삭제됩니다.')) return;
+            if (!confirm('?類ｌ춾 ?????뤿뻻野껋쥙???뉙돱? ?온??嚥≪뮄?뉐첎? 筌뤴뫀紐??????몃빍??')) return;
             try {
                 const response = await fetch('/api/admin/delete-log', {
                     method: 'POST',
@@ -289,19 +292,19 @@
 
                 const data = await response.json();
                 if (!response.ok || !data.ok) {
-                    throw new Error(data.error || '삭제 처리 실패');
+                    throw new Error(data.error || '????筌ｌ꼶????쎈솭');
                 }
-                alert('정상적으로 삭제되었습니다.');
+                alert('?類ㅺ맒?怨몄몵嚥??????뤿???щ빍??');
                 await loadStats();
             } catch (error) {
-                alert('에러: ' + error.message);
+                alert('?癒?쑎: ' + error.message);
             }
         }
 
         async function deleteAllLogs() {
-            const firstConfirm = confirm('전체 로그를 삭제합니다. 검색 로그, 클릭 로그, 계산 조건 로그가 모두 삭제됩니다. 계속할까요?');
+            const firstConfirm = confirm('?袁⑷퍥 嚥≪뮄?뉒몴??????몃빍?? 野꺜??嚥≪뮄?? ????嚥≪뮄?? ?④쑴沅?鈺곌퀗援?嚥≪뮄?뉐첎? 筌뤴뫀紐??????몃빍?? ?④쑴??醫됲돱??');
             if (!firstConfirm) return;
-            const finalConfirm = confirm('복구할 수 없습니다. 정말 전체 삭제할까요?');
+            const finalConfirm = confirm('癰귣벀???????곷뮸??덈뼄. ?類ｌ춾 ?袁⑷퍥 ????醫됲돱??');
             if (!finalConfirm) return;
 
             try {
@@ -313,12 +316,12 @@
 
                 const data = await response.json();
                 if (!response.ok || !data.ok) {
-                    throw new Error(data.error || '전체 삭제 처리 실패');
+                    throw new Error(data.error || '?袁⑷퍥 ????筌ｌ꼶????쎈솭');
                 }
-                alert('전체 로그를 삭제했습니다.');
+                alert('?袁⑷퍥 嚥≪뮄?뉒몴??????됰뮸??덈뼄.');
                 await loadStats();
             } catch (error) {
-                alert('에러: ' + error.message);
+                alert('?癒?쑎: ' + error.message);
             }
         }
     </script>
