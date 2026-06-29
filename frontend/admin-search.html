@@ -4,326 +4,1433 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
-    <title>野꺜??嚥≪뮄???온?귐딆쁽 | 癰귣쵐?앶뜮??④쑴沅쎿묾?/title>
+    <title>검색 통계 관리자 | 병원비 계산기</title>
     <link rel="stylesheet" href="assets/css/seo-page.css">
     <style>
-        .admin-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 18px;
-            margin-top: 24px;
+        :root {
+            --bg-page: #f6f8fc;
+            --bg-panel: #ffffff;
+            --bg-soft: #f2f5fa;
+            --bg-quiet: #fbfcfe;
+            --line-soft: #e6ebf2;
+            --line-strong: #d7deea;
+            --text-strong: #1c2740;
+            --text-base: #344256;
+            --text-muted: #7b8798;
+            --blue-strong: #2f6fed;
+            --blue-deep: #2459c7;
+            --blue-soft: #eaf1ff;
+            --green-strong: #22a96f;
+            --green-soft: #e8f8f0;
+            --orange-strong: #ff8a1f;
+            --orange-soft: #fff4e8;
+            --red-strong: #ef4444;
+            --red-soft: #feecec;
+            --gray-soft: #eef2f7;
+            --shadow-panel: 0 10px 30px rgba(28, 39, 64, 0.08);
+            --shadow-soft: 0 20px 48px rgba(28, 39, 64, 0.06);
+            --radius-panel: 20px;
+            --radius-card: 16px;
         }
 
-        .admin-card {
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            padding: 18px;
-            background: #f8fafc;
+        * {
+            box-sizing: border-box;
         }
 
-        .admin-form {
-            display: grid;
+        html {
+            color-scheme: light;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background:
+                radial-gradient(circle at top center, rgba(47, 111, 237, 0.1), transparent 34%),
+                linear-gradient(180deg, #ffffff 0%, var(--bg-page) 18%, var(--bg-page) 100%);
+            color: var(--text-base);
+            font-family: "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+        }
+
+        button,
+        input,
+        textarea {
+            font: inherit;
+        }
+
+        button {
+            transition: transform 0.18s ease, background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:focus-visible,
+        input:focus-visible,
+        textarea:focus-visible {
+            outline: 2px solid rgba(47, 111, 237, 0.22);
+            outline-offset: 2px;
+        }
+
+        .dashboard-shell {
+            max-width: 1480px;
+            margin: 0 auto;
+            padding: 28px 24px 40px;
+        }
+
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 20px;
+            margin-bottom: 22px;
+        }
+
+        .dashboard-header h1 {
+            margin: 0;
+            color: var(--text-strong);
+            font-size: 40px;
+            font-weight: 700;
+            letter-spacing: -0.04em;
+        }
+
+        .dashboard-header p {
+            margin: 8px 0 0;
+            color: var(--text-muted);
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
             gap: 12px;
-            margin-top: 18px;
+            flex-wrap: wrap;
         }
 
-        .admin-form input,
-        .admin-form select {
-            padding: 12px;
-            border: 1px solid #cbd5e1;
-            border-radius: 10px;
-            font-size: 15px;
+        .period-bar {
+            display: inline-flex;
+            overflow: hidden;
+            border: 1px solid var(--line-strong);
+            border-radius: 14px;
+            background: var(--bg-panel);
+            box-shadow: var(--shadow-panel);
         }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 12px;
+        .period-button {
+            min-width: 58px;
+            height: 40px;
+            padding: 0 16px;
+            border: 0;
+            border-right: 1px solid var(--line-soft);
+            background: transparent;
+            color: var(--text-base);
             font-size: 14px;
-        }
-
-        th,
-        td {
-            padding: 10px;
-            border-bottom: 1px solid #e5e7eb;
-            text-align: left;
-        }
-
-        th {
-            color: #334155;
-        }
-
-        .error {
-            color: #b91c1c;
-            margin-top: 12px;
-        }
-        .btn-delete {
-            background: #ef4444;
-            color: white;
-            border: none;
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 12px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .btn-delete:hover {
-            background: #dc2626;
-        }
-        .admin-danger-zone {
-            margin-top: 14px;
-            padding: 14px;
-            border: 1px solid #fecaca;
-            border-radius: 10px;
-            background: #fff1f2;
-        }
-        .admin-danger-zone p {
-            margin: 0 0 10px;
-            color: #991b1b;
-            font-size: 13px;
-        }
-        .btn-delete-all {
-            background: #991b1b;
-            color: white;
-            border: none;
-            padding: 10px 14px;
-            border-radius: 8px;
             font-weight: 700;
             cursor: pointer;
         }
-        .btn-delete-all:hover {
-            background: #7f1d1d;
+
+        .period-button:last-child {
+            border-right: 0;
+        }
+
+        .period-button.is-active {
+            background: var(--blue-strong);
+            color: #ffffff;
+            box-shadow: inset 0 0 0 1px rgba(36, 89, 199, 0.12);
+        }
+
+        .refresh-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            height: 40px;
+            padding: 0 16px;
+            border: 1px solid var(--line-strong);
+            border-radius: 14px;
+            background: var(--bg-panel);
+            color: var(--text-strong);
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: var(--shadow-panel);
+        }
+
+        .refresh-button svg {
+            width: 16px;
+            height: 16px;
+            stroke: currentColor;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+
+        .summary-card,
+        .board-shell,
+        .detail-panel,
+        .bottom-panel {
+            background: var(--bg-panel);
+            border: 1px solid rgba(215, 222, 234, 0.92);
+            border-radius: var(--radius-panel);
+            box-shadow: var(--shadow-panel);
+        }
+
+        .summary-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            min-height: 104px;
+            padding: 22px 22px 20px;
+        }
+
+        .summary-eyebrow {
+            display: inline-block;
+            margin-bottom: 10px;
+            color: var(--text-base);
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .summary-value {
+            display: block;
+            color: var(--text-strong);
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: -0.04em;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .summary-icon {
+            display: grid;
+            place-items: center;
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            color: var(--blue-strong);
+            background: var(--blue-soft);
+        }
+
+        .summary-icon svg {
+            width: 22px;
+            height: 22px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.9;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .summary-icon.is-green {
+            color: var(--green-strong);
+            background: var(--green-soft);
+        }
+
+        .summary-icon.is-orange {
+            color: var(--orange-strong);
+            background: var(--orange-soft);
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 332px;
+            gap: 16px;
+            align-items: start;
+        }
+
+        .main-left {
+            display: grid;
+            gap: 16px;
+            min-width: 0;
+        }
+
+        .board-shell,
+        .bottom-panel {
+            overflow: hidden;
+        }
+
+        .triple-board {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .board-column {
+            min-width: 0;
+            border-right: 1px solid var(--line-soft);
+        }
+
+        .board-column:last-child {
+            border-right: 0;
+        }
+
+        .board-head {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 16px 16px 14px;
+            border-bottom: 1px solid var(--line-soft);
+            color: var(--text-strong);
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .board-symbol {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            color: var(--text-base);
+            font-size: 15px;
+        }
+
+        .count-chip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 22px;
+            height: 22px;
+            padding: 0 8px;
+            border-radius: 999px;
+            background: var(--gray-soft);
+            color: var(--text-base);
+            font-size: 12px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .board-table,
+        .bottom-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .board-table th,
+        .board-table td,
+        .bottom-table th,
+        .bottom-table td {
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--line-soft);
+            text-align: left;
+            font-size: 13px;
+            vertical-align: middle;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .board-table th,
+        .bottom-table th {
+            background: var(--bg-quiet);
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .board-table tbody tr,
+        .bottom-table tbody tr {
+            cursor: pointer;
+            transition: background-color 0.18s ease;
+        }
+
+        .board-table tbody tr:hover,
+        .bottom-table tbody tr:hover {
+            background: #f8fbff;
+        }
+
+        .board-table tbody tr.is-selected,
+        .bottom-table tbody tr.is-selected {
+            background: var(--blue-soft);
+        }
+
+        .keyword-cell {
+            color: var(--text-strong);
+            font-weight: 600;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 28px;
+            padding: 0 10px;
+            border-radius: 9px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .status-no-result {
+            background: var(--orange-soft);
+            color: var(--orange-strong);
+        }
+
+        .status-ok {
+            background: var(--green-soft);
+            color: var(--green-strong);
+        }
+
+        .status-pending {
+            background: #eef3ff;
+            color: var(--blue-deep);
+        }
+
+        .status-rejected {
+            background: var(--red-soft);
+            color: var(--red-strong);
+        }
+
+        .more-link {
+            display: inline-flex;
+            padding: 14px 16px;
+            color: var(--blue-strong);
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .bottom-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+            gap: 16px;
+        }
+
+        .bottom-head {
+            padding: 16px 18px 12px;
+            color: var(--text-strong);
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+        }
+
+        .rate-cell {
+            color: var(--orange-strong);
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .detail-panel {
+            position: sticky;
+            top: 20px;
+            display: flex;
+            flex-direction: column;
+            min-height: 840px;
+            padding: 18px;
+            box-shadow: var(--shadow-soft);
+        }
+
+        .detail-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            color: var(--text-strong);
+        }
+
+        .detail-top strong {
+            font-size: 17px;
+            font-weight: 700;
+        }
+
+        .clear-selection {
+            border: 0;
+            background: transparent;
+            color: var(--text-base);
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .detail-title {
+            display: grid;
+            gap: 10px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--line-soft);
+        }
+
+        .detail-label {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .detail-keyword-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .detail-keyword {
+            color: var(--text-strong);
+            font-size: 34px;
+            font-weight: 700;
+            letter-spacing: -0.04em;
+            word-break: break-all;
+        }
+
+        .detail-list {
+            display: grid;
+            gap: 0;
+            margin: 18px 0 20px;
+        }
+
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--line-soft);
+            font-size: 14px;
+        }
+
+        .detail-item span:first-child {
+            color: var(--text-base);
+        }
+
+        .detail-item span:last-child {
+            color: var(--text-strong);
+            font-weight: 600;
+            text-align: right;
+            word-break: break-all;
+        }
+
+        .section-caption {
+            margin: 0 0 10px;
+            color: var(--text-base);
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .chip-wrap {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 10px 0 18px;
+        }
+
+        .keyword-chip {
+            display: inline-flex;
+            align-items: center;
+            min-height: 32px;
+            padding: 0 12px;
+            border-radius: 10px;
+            background: var(--gray-soft);
+            color: var(--text-base);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .muted-note {
+            margin: 0 0 16px;
+            color: var(--text-muted);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .field {
+            margin-bottom: 12px;
+        }
+
+        .field label {
+            display: block;
+            margin-bottom: 6px;
+            color: var(--text-base);
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .field input,
+        .field textarea {
+            width: 100%;
+            border: 1px solid var(--line-strong);
+            border-radius: 12px;
+            background: #ffffff;
+            color: var(--text-strong);
+            padding: 11px 12px;
+        }
+
+        .field textarea {
+            min-height: 116px;
+            resize: vertical;
+        }
+
+        .detail-actions {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px;
+            margin-top: auto;
+            padding-top: 16px;
+        }
+
+        .action-button {
+            height: 42px;
+            border: 0;
+            border-radius: 10px;
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .action-primary {
+            background: var(--blue-strong);
+        }
+
+        .action-secondary {
+            background: #3778f6;
+        }
+
+        .action-light {
+            background: #f1f4f8;
+            color: var(--text-base);
+        }
+
+        .action-danger {
+            background: var(--red-strong);
+        }
+
+        .status-line {
+            margin: 12px 0 0;
+            color: var(--text-muted);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .empty-row {
+            padding: 22px 14px;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        @media (max-width: 1400px) {
+            .summary-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 1180px) {
+            .main-grid,
+            .summary-grid,
+            .bottom-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .detail-panel {
+                position: static;
+                min-height: 0;
+            }
+
+            .triple-board {
+                grid-template-columns: 1fr;
+            }
+
+            .board-column {
+                border-right: 0;
+                border-bottom: 1px solid var(--line-soft);
+            }
+
+            .board-column:last-child {
+                border-bottom: 0;
+            }
+        }
+
+        @media (max-width: 760px) {
+            .dashboard-shell {
+                padding: 18px 12px 28px;
+            }
+
+            .dashboard-header {
+                flex-direction: column;
+            }
+
+            .dashboard-header h1 {
+                font-size: 32px;
+            }
+
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header-actions {
+                justify-content: flex-start;
+            }
+
+            .period-bar {
+                width: 100%;
+                overflow-x: auto;
+            }
+
+            .period-button {
+                flex: 1 0 auto;
+            }
+
+            .detail-actions {
+                grid-template-columns: 1fr 1fr;
+            }
         }
     </style>
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1927730301151401"
-        crossorigin="anonymous"></script>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1927730301151401" crossorigin="anonymous"></script>
     <script src="assets/js/analytics.js" defer></script>
 </head>
 <body>
-    <main class="page">
-        <section class="panel">
-            <h1>野꺜??嚥≪뮄???온?귐딆쁽</h1>
-            <p>筌띾‘??野꺜??곕쭆 ??쇱뜖?? 野껉퀗????용뮉 野꺜??깅선, 筌띾‘?????????????類ㅼ뵥??몃빍?? ????륁뵠筌왖??野꺜??깅퓦筌욊쑴肉??紐꾪뀱??? ??낅즲嚥???쇱젟??뤿선 ??됰뮸??덈뼄.</p>
+    <main class="dashboard-shell">
+        <section class="dashboard-header">
+            <div>
+                <h1>검색 통계 관리자</h1>
+                <p>방문자가 자주 찾지만 결과가 부족한 검색어를 확인하고, 실제 추가 후보 항목을 정리합니다.</p>
+            </div>
+            <div class="header-actions">
+                <div class="period-bar" id="period-bar"></div>
+                <button class="refresh-button" id="refresh-button" type="button">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M20 11a8 8 0 0 0-14.86-4"></path>
+                        <path d="M4 5v4h4"></path>
+                        <path d="M4 13a8 8 0 0 0 14.86 4"></path>
+                        <path d="M20 19v-4h-4"></path>
+                    </svg>
+                    새로고침
+                </button>
+            </div>
+        </section>
 
-            <div class="admin-form">
-                <select id="days">
-                    <option value="7">筌ㅼ뮄??7??/option>
-                    <option value="30" selected>筌ㅼ뮄??30??/option>
-                    <option value="90">筌ㅼ뮄??90??/option>
-                    <option value="365">筌ㅼ뮄??365??/option>
-                </select>
-                <button class="cta" type="button" onclick="loadStats()">?????븍뜄???븍┛</button>
+        <section class="summary-grid">
+            <article class="summary-card">
+                <div>
+                    <span class="summary-eyebrow">총 검색수</span>
+                    <strong class="summary-value" id="metric-total-searches">0</strong>
+                </div>
+                <div class="summary-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="11" cy="11" r="6"></circle>
+                        <path d="M20 20l-4.2-4.2"></path>
+                    </svg>
+                </div>
+            </article>
+            <article class="summary-card">
+                <div>
+                    <span class="summary-eyebrow">결과 있음</span>
+                    <strong class="summary-value" id="metric-result-searches">0</strong>
+                </div>
+                <div class="summary-icon is-green">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6.5 12.5l3.2 3.2 7.8-7.8"></path>
+                        <circle cx="12" cy="12" r="9"></circle>
+                    </svg>
+                </div>
+            </article>
+            <article class="summary-card">
+                <div>
+                    <span class="summary-eyebrow">무결과 검색수</span>
+                    <strong class="summary-value" id="metric-zero-searches">0</strong>
+                </div>
+                <div class="summary-icon is-orange">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12 4l8 14H4l8-14z"></path>
+                        <path d="M12 9v4"></path>
+                        <path d="M12 16h.01"></path>
+                    </svg>
+                </div>
+            </article>
+            <article class="summary-card">
+                <div>
+                    <span class="summary-eyebrow">무결과율</span>
+                    <strong class="summary-value" id="metric-zero-rate">0%</strong>
+                </div>
+                <div class="summary-icon is-orange">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M19 5L5 19"></path>
+                        <circle cx="7" cy="7" r="2"></circle>
+                        <circle cx="17" cy="17" r="2"></circle>
+                    </svg>
+                </div>
+            </article>
+            <article class="summary-card">
+                <div>
+                    <span class="summary-eyebrow">클릭수</span>
+                    <strong class="summary-value" id="metric-clicks">0</strong>
+                </div>
+                <div class="summary-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 4l11 8-11 8 2.8-8L6 4z"></path>
+                    </svg>
+                </div>
+            </article>
+        </section>
+
+        <section class="main-grid">
+            <div class="main-left">
+                <section class="board-shell">
+                    <div class="triple-board">
+                        <div class="board-column">
+                            <div class="board-head">
+                                <span class="board-symbol">!</span>
+                                긴급 확인
+                                <span class="count-chip" id="urgent-count">0</span>
+                            </div>
+                            <table class="board-table">
+                                <thead>
+                                    <tr>
+                                        <th>키워드</th>
+                                        <th>검색수</th>
+                                        <th>최근 검색</th>
+                                        <th>추천 분류</th>
+                                        <th>상태</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="urgent-body"></tbody>
+                            </table>
+                            <span class="more-link">무결과 검색어 우선 확인</span>
+                        </div>
+                        <div class="board-column">
+                            <div class="board-head">
+                                <span class="board-symbol">+</span>
+                                후보 보강
+                                <span class="count-chip" id="candidate-count">0</span>
+                            </div>
+                            <table class="board-table">
+                                <thead>
+                                    <tr>
+                                        <th>키워드</th>
+                                        <th>검색수</th>
+                                        <th>최근 검색</th>
+                                        <th>추천 분류</th>
+                                        <th>상태</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="candidate-body"></tbody>
+                            </table>
+                            <span class="more-link">저장된 후보 검토</span>
+                        </div>
+                        <div class="board-column">
+                            <div class="board-head">
+                                <span class="board-symbol">✓</span>
+                                추가 완료
+                                <span class="count-chip" id="approved-count">0</span>
+                            </div>
+                            <table class="board-table">
+                                <thead>
+                                    <tr>
+                                        <th>키워드</th>
+                                        <th>검색수</th>
+                                        <th>최근 검색</th>
+                                        <th>추천 분류</th>
+                                        <th>상태</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="approved-body"></tbody>
+                            </table>
+                            <span class="more-link">추가 완료 이력</span>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="bottom-grid">
+                    <section class="bottom-panel">
+                        <div class="bottom-head">많이 검색된 키워드</div>
+                        <table class="bottom-table">
+                            <thead>
+                                <tr>
+                                    <th>순위</th>
+                                    <th>키워드</th>
+                                    <th>검색수</th>
+                                    <th>무결과 검색수</th>
+                                    <th>무결과율</th>
+                                </tr>
+                            </thead>
+                            <tbody id="top-searches-body"></tbody>
+                        </table>
+                    </section>
+                    <section class="bottom-panel">
+                        <div class="bottom-head">최근 검색 로그</div>
+                        <table class="bottom-table">
+                            <thead>
+                                <tr>
+                                    <th>검색 일시</th>
+                                    <th>검색어</th>
+                                    <th>결과</th>
+                                    <th>페이지</th>
+                                    <th>사용 환경</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recent-searches-body"></tbody>
+                        </table>
+                    </section>
+                </section>
             </div>
 
-            <div class="admin-danger-zone">
-                <p>?袁⑷퍥 ?????野꺜??嚥≪뮄?? 野꺜??????嚥≪뮄?? ?④쑴沅?鈺곌퀗援?嚥≪뮄?뉒몴?筌뤴뫀紐??????몃빍?? 癰귣벀???????곷뮸??덈뼄.</p>
-                <button class="btn-delete-all" type="button" onclick="deleteAllLogs()">?袁⑷퍥 嚥≪뮄??????/button>
-            </div>
+            <aside class="detail-panel">
+                <div class="detail-top">
+                    <strong>선택 상세</strong>
+                    <button class="clear-selection" id="clear-selection" type="button">선택 해제</button>
+                </div>
 
-            <p id="status" class="error"></p>
-
-            <div class="admin-grid">
-                <section class="admin-card">
-                    <h2>筌띾‘??野꺜??곕쭆 ??쇱뜖??/h2>
-                    <table>
-                        <thead>
-                            <tr><th>野꺜??깅선</th><th>??쏅땾</th><th>???뇧 野껉퀗??/th><th>疫꿸퀡??/th></tr>
-                        </thead>
-                        <tbody id="top-searches"></tbody>
-                    </table>
+                <section class="detail-title">
+                    <span class="detail-label">선택 키워드</span>
+                    <div class="detail-keyword-row">
+                        <div class="detail-keyword" id="detail-keyword">없음</div>
+                        <span class="status-badge status-pending" id="detail-status">대기</span>
+                    </div>
                 </section>
 
-                <section class="admin-card">
-                    <h2>野껉퀗????용뮉 野꺜??깅선</h2>
-                    <table>
-                        <thead>
-                            <tr><th>野꺜??깅선</th><th>??쏅땾</th><th>疫꿸퀡??/th></tr>
-                        </thead>
-                        <tbody id="zero-searches"></tbody>
-                    </table>
+                <section class="detail-list">
+                    <div class="detail-item"><span>총 검색수</span><span id="detail-total-searches">0</span></div>
+                    <div class="detail-item"><span>무결과 검색수</span><span id="detail-zero-searches">0</span></div>
+                    <div class="detail-item"><span>검색된 페이지</span><span id="detail-path">-</span></div>
+                    <div class="detail-item"><span>최근 검색 일시</span><span id="detail-last-at">-</span></div>
                 </section>
 
-                <section class="admin-card">
-                    <h2>筌띾‘???????????/h2>
-                    <table>
-                        <thead>
-                            <tr><th>????/th><th>????/th><th>疫꿸퀡??/th></tr>
-                        </thead>
-                        <tbody id="clicked-items"></tbody>
-                    </table>
-                </section>
+                <p class="section-caption">연관 키워드</p>
+                <div class="chip-wrap" id="related-keywords"></div>
 
-                <section class="admin-card">
-                    <h2>筌ㅼ뮄??野꺜??/h2>
-                    <table>
-                        <thead>
-                            <tr><th>野꺜??깅선</th><th>野껉퀗??/th><th>疫꿸퀗由?/th><th>??볦퍢</th><th>疫꿸퀡??/th></tr>
-                        </thead>
-                        <tbody id="recent-searches"></tbody>
-                    </table>
-                </section>
+                <p class="section-caption">추가 완료 항목</p>
+                <div class="chip-wrap" id="approved-items"></div>
 
-                <section class="admin-card">
-                    <h2>?④쑴沅?鈺곌퀗援?嚥≪뮄??/h2>
-                    <table>
-                        <thead>
-                            <tr><th>癰귣쵐??/th><th>筌욊쑬利?/th><th>筌왖??/th><th>??쏅땾</th><th>疫꿸퀡??/th></tr>
-                        </thead>
-                        <tbody id="calculation-conditions"></tbody>
-                    </table>
-                </section>
-            </div>
+                <p class="muted-note" id="detail-clicked-item">클릭한 항목 없음</p>
+
+                <div class="field">
+                    <label for="item-category-input">항목 분류</label>
+                    <input id="item-category-input" type="text" placeholder="예: 검사 / 치료 / 약제">
+                </div>
+
+                <div class="field">
+                    <label for="item-name-input">항목명</label>
+                    <input id="item-name-input" type="text" placeholder="실제 추가할 항목명">
+                </div>
+
+                <div class="field">
+                    <label for="item-id-input">항목 ID</label>
+                    <input id="item-id-input" type="text" placeholder="내부 식별자 또는 slug">
+                </div>
+
+                <div class="field">
+                    <label for="memo-input">메모</label>
+                    <textarea id="memo-input" placeholder="검토 메모를 남길 수 있습니다."></textarea>
+                </div>
+
+                <div class="detail-actions">
+                    <button class="action-button action-primary" type="button" data-save-status="pending">대기 저장</button>
+                    <button class="action-button action-secondary" type="button" data-save-status="approved">추가 완료</button>
+                    <button class="action-button action-light" type="button" data-save-status="rejected">보류</button>
+                    <button class="action-button action-danger" type="button" id="clear-form">입력 초기화</button>
+                </div>
+
+                <p class="status-line" id="status-text">데이터를 불러오는 중입니다.</p>
+            </aside>
         </section>
     </main>
 
     <script>
+        const PERIOD_OPTIONS = [
+            { value: "today", label: "오늘" },
+            { value: "24h", label: "24시간" },
+            { value: "3", label: "3일" },
+            { value: "7", label: "7일" },
+            { value: "30", label: "30일" },
+            { value: "90", label: "90일" }
+        ];
+
+        const state = {
+            activePeriod: "30",
+            stats: null,
+            candidates: [],
+            selectedQuery: ""
+        };
+
         function escapeHtml(value) {
-            return String(value ?? '').replace(/[&<>"']/g, char => ({
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;',
-                "'": '&#039;'
-            }[char]));
+            return String(value ?? "").replace(/[&<>"']/g, function(char) {
+                return {
+                    "&": "&amp;",
+                    "<": "&lt;",
+                    ">": "&gt;",
+                    "\"": "&quot;",
+                    "'": "&#039;"
+                }[char];
+            });
         }
 
-        function renderRows(targetId, rows, renderer, emptyColspan) {
-            const target = document.getElementById(targetId);
-            if (!rows || rows.length === 0) {
-                target.innerHTML = `<tr><td colspan="${emptyColspan}">?怨쀬뵠????곸벉</td></tr>`;
-                return;
-            }
+        function formatCount(value) {
+            const number = Number(value || 0);
+            return Number.isFinite(number) ? number.toLocaleString("ko-KR") : "0";
+        }
 
-            target.innerHTML = rows.map(renderer).join('');
+        function formatDate(value) {
+            if (!value) {
+                return "-";
+            }
+            const date = new Date(String(value).replace(" ", "T"));
+            return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString("ko-KR");
+        }
+
+        function setStatus(message, isError) {
+            const node = document.getElementById("status-text");
+            node.textContent = message;
+            node.style.color = isError ? "var(--red-strong)" : "var(--text-muted)";
+        }
+
+        function normalizeQuery(value) {
+            return String(value || "").trim().toLowerCase();
+        }
+
+        function getTopSearches() {
+            return state.stats && Array.isArray(state.stats.topSearches) ? state.stats.topSearches : [];
+        }
+
+        function getZeroResultSearches() {
+            return state.stats && Array.isArray(state.stats.zeroResultSearches) ? state.stats.zeroResultSearches : [];
+        }
+
+        function getClickedItems() {
+            return state.stats && Array.isArray(state.stats.clickedItems) ? state.stats.clickedItems : [];
+        }
+
+        function getRecentSearches() {
+            return state.stats && Array.isArray(state.stats.recentSearches) ? state.stats.recentSearches : [];
+        }
+
+        function inferCategory(query) {
+            const text = normalizeQuery(query);
+            if (text.includes("mri") || text.includes("ct") || text.includes("xray") || text.includes("엑스레이") || text.includes("초음파")) {
+                return "검사";
+            }
+            if (text.includes("입원") || text.includes("병실") || text.includes("상급병실")) {
+                return "입원";
+            }
+            if (text.includes("수술") || text.includes("치료") || text.includes("시술")) {
+                return "치료";
+            }
+            if (text.includes("약") || text.includes("주사") || text.includes("마취")) {
+                return "약제";
+            }
+            return "기타";
         }
 
         function getDeviceLabel(userAgent) {
-            const ua = String(userAgent || '').toLowerCase();
-            if (!ua) return '??????곸벉';
-            const browser = ua.includes('edg/') ? 'Edge'
-                : ua.includes('chrome/') ? 'Chrome'
-                : ua.includes('safari/') && !ua.includes('chrome/') ? 'Safari'
-                : ua.includes('firefox/') ? 'Firefox'
-                : '?됰슢??怨?';
-            const device = /iphone|ipad|ipod/.test(ua) ? 'iOS'
-                : ua.includes('android') ? 'Android'
-                : ua.includes('windows') ? 'Windows'
-                : ua.includes('mac os') ? 'Mac'
-                : '疫꿸퀗由?;
-            return `${device} / ${browser}`;
+            const ua = String(userAgent || "").toLowerCase();
+            if (!ua) {
+                return "환경 정보 없음";
+            }
+            const browser = ua.includes("edg/") ? "Edge"
+                : ua.includes("chrome/") ? "Chrome"
+                : ua.includes("safari/") && !ua.includes("chrome/") ? "Safari"
+                : ua.includes("firefox/") ? "Firefox"
+                : "기타 브라우저";
+            const device = /iphone|ipad|ipod/.test(ua) ? "iOS"
+                : ua.includes("android") ? "Android"
+                : ua.includes("windows") ? "Windows"
+                : ua.includes("mac os") ? "Mac"
+                : "기타 기기";
+            return device + " / " + browser;
+        }
+
+        function sortCandidatesByLatest(list) {
+            return list.slice().sort(function(a, b) {
+                const aTime = new Date(a.updated_at || a.created_at || 0).getTime();
+                const bTime = new Date(b.updated_at || b.created_at || 0).getTime();
+                return bTime - aTime;
+            });
+        }
+
+        function getStatusMeta(status, variant) {
+            if (status === "approved") {
+                return {
+                    className: "status-badge status-ok",
+                    label: "완료"
+                };
+            }
+            if (status === "rejected") {
+                return {
+                    className: "status-badge status-rejected",
+                    label: "보류"
+                };
+            }
+            if (variant === "urgent") {
+                return {
+                    className: "status-badge status-no-result",
+                    label: "무결과"
+                };
+            }
+            return {
+                className: "status-badge status-pending",
+                label: "대기"
+            };
+        }
+
+        function resultBadge(resultCount) {
+            return Number(resultCount || 0) > 0
+                ? '<span class="status-badge status-ok">결과 있음</span>'
+                : '<span class="status-badge status-no-result">무결과</span>';
+        }
+
+        async function fetchJson(url, options) {
+            const response = await fetch(url, options);
+            const data = await response.json();
+            if (!response.ok || !data.ok) {
+                throw new Error(data.error || "요청에 실패했습니다.");
+            }
+            return data;
+        }
+
+        function renderPeriodButtons() {
+            document.getElementById("period-bar").innerHTML = PERIOD_OPTIONS.map(function(option) {
+                const className = option.value === state.activePeriod ? "period-button is-active" : "period-button";
+                return '<button class="' + className + '" type="button" data-period="' + option.value + '">' + option.label + "</button>";
+            }).join("");
+        }
+
+        function findRecentRecord(query) {
+            return getRecentSearches().find(function(item) {
+                return normalizeQuery(item.normalized_query || item.query) === normalizeQuery(query);
+            }) || null;
+        }
+
+        function findTopRecord(query) {
+            return getTopSearches().find(function(item) {
+                return normalizeQuery(item.normalized_query || item.query) === normalizeQuery(query);
+            }) || null;
+        }
+
+        function findCandidateRecords(query) {
+            return sortCandidatesByLatest(state.candidates.filter(function(item) {
+                return normalizeQuery(item.normalized_query || item.query) === normalizeQuery(query);
+            }));
+        }
+
+        function findClickedRecord(query) {
+            return getClickedItems().find(function(item) {
+                return normalizeQuery(item.normalized_query || item.query || item.clicked_item_name) === normalizeQuery(query);
+            }) || null;
+        }
+
+        function relatedKeywords(query) {
+            const base = normalizeQuery(query);
+            const tokens = base.split(/\s+/).filter(Boolean);
+            return getTopSearches()
+                .filter(function(item) {
+                    const current = normalizeQuery(item.normalized_query || item.query);
+                    return current && current !== base && tokens.some(function(token) {
+                        return current.includes(token) || token.includes(current);
+                    });
+                })
+                .slice(0, 5)
+                .map(function(item) {
+                    return item.normalized_query || item.query;
+                });
+        }
+
+        function renderSummary() {
+            const totalSearches = getTopSearches().reduce(function(sum, item) {
+                return sum + Number(item.search_count || 0);
+            }, 0);
+            const zeroSearches = getZeroResultSearches().reduce(function(sum, item) {
+                return sum + Number(item.zero_result_count || 0);
+            }, 0);
+            const clickCount = getClickedItems().reduce(function(sum, item) {
+                return sum + Number(item.click_count || 0);
+            }, 0);
+            const resultSearches = Math.max(0, totalSearches - zeroSearches);
+            const zeroRate = totalSearches ? Math.round((zeroSearches / totalSearches) * 100) : 0;
+
+            document.getElementById("metric-total-searches").textContent = formatCount(totalSearches);
+            document.getElementById("metric-result-searches").textContent = formatCount(resultSearches);
+            document.getElementById("metric-zero-searches").textContent = formatCount(zeroSearches);
+            document.getElementById("metric-zero-rate").textContent = zeroRate + "%";
+            document.getElementById("metric-clicks").textContent = formatCount(clickCount);
+        }
+
+        function renderEmpty(colspan, message) {
+            return '<tr><td class="empty-row" colspan="' + colspan + '">' + escapeHtml(message) + "</td></tr>";
+        }
+
+        function renderBoardRow(query, count, recentAt, status, selected, variant) {
+            const meta = getStatusMeta(status, variant);
+            return [
+                '<tr class="' + (selected ? "is-selected" : "") + '" data-query="' + escapeHtml(query) + '">',
+                '<td class="keyword-cell">' + escapeHtml(query) + "</td>",
+                "<td>" + formatCount(count) + "</td>",
+                "<td>" + escapeHtml(recentAt) + "</td>",
+                "<td>" + escapeHtml(inferCategory(query)) + "</td>",
+                '<td><span class="' + meta.className + '">' + meta.label + "</span></td>",
+                "</tr>"
+            ].join("");
+        }
+
+        function renderTripleBoards() {
+            const urgentRows = getZeroResultSearches().slice(0, 6);
+            const pendingRows = sortCandidatesByLatest(state.candidates.filter(function(item) {
+                return item.status === "pending";
+            })).slice(0, 7);
+            const approvedRows = sortCandidatesByLatest(state.candidates.filter(function(item) {
+                return item.status === "approved";
+            })).slice(0, 6);
+
+            document.getElementById("urgent-count").textContent = String(urgentRows.length);
+            document.getElementById("candidate-count").textContent = String(pendingRows.length);
+            document.getElementById("approved-count").textContent = String(approvedRows.length);
+
+            document.getElementById("urgent-body").innerHTML = urgentRows.length ? urgentRows.map(function(row) {
+                const query = row.normalized_query || row.query;
+                const recent = findRecentRecord(query);
+                return renderBoardRow(
+                    query,
+                    row.zero_result_count,
+                    formatDate(recent && recent.created_at),
+                    "pending",
+                    state.selectedQuery === normalizeQuery(query),
+                    "urgent"
+                );
+            }).join("") : renderEmpty(5, "긴급 확인할 검색어가 없습니다.");
+
+            document.getElementById("candidate-body").innerHTML = pendingRows.length ? pendingRows.map(function(row) {
+                const query = row.query || row.normalized_query;
+                const top = findTopRecord(query);
+                const recent = findRecentRecord(query);
+                return renderBoardRow(
+                    query,
+                    top ? top.search_count : 0,
+                    formatDate(recent && recent.created_at),
+                    row.status,
+                    state.selectedQuery === normalizeQuery(query),
+                    "candidate"
+                );
+            }).join("") : renderEmpty(5, "대기 중인 후보가 없습니다.");
+
+            document.getElementById("approved-body").innerHTML = approvedRows.length ? approvedRows.map(function(row) {
+                const query = row.query || row.normalized_query;
+                const top = findTopRecord(query);
+                const recent = findRecentRecord(query);
+                return renderBoardRow(
+                    query,
+                    top ? top.search_count : 0,
+                    formatDate(recent && recent.created_at),
+                    row.status,
+                    state.selectedQuery === normalizeQuery(query),
+                    "approved"
+                );
+            }).join("") : renderEmpty(5, "완료된 추가 이력이 없습니다.");
+        }
+
+        function renderTopSearches() {
+            const rows = getTopSearches().slice(0, 5);
+            document.getElementById("top-searches-body").innerHTML = rows.length ? rows.map(function(row, index) {
+                const query = row.normalized_query || row.query;
+                const searchCount = Number(row.search_count || 0);
+                const zeroCount = Number(row.zero_result_count || 0);
+                const zeroRate = searchCount ? Math.round((zeroCount / searchCount) * 100) : 0;
+                return [
+                    '<tr class="' + (state.selectedQuery === normalizeQuery(query) ? "is-selected" : "") + '" data-query="' + escapeHtml(query) + '">',
+                    "<td>" + (index + 1) + "</td>",
+                    '<td class="keyword-cell">' + escapeHtml(query) + "</td>",
+                    "<td>" + formatCount(searchCount) + "</td>",
+                    "<td>" + formatCount(zeroCount) + "</td>",
+                    '<td class="rate-cell">' + zeroRate + "%</td>",
+                    "</tr>"
+                ].join("");
+            }).join("") : renderEmpty(5, "검색 데이터가 없습니다.");
+        }
+
+        function renderRecentSearches() {
+            const rows = getRecentSearches().slice(0, 5);
+            document.getElementById("recent-searches-body").innerHTML = rows.length ? rows.map(function(row) {
+                const query = row.normalized_query || row.query;
+                return [
+                    '<tr class="' + (state.selectedQuery === normalizeQuery(query) ? "is-selected" : "") + '" data-query="' + escapeHtml(query) + '">',
+                    "<td>" + escapeHtml(formatDate(row.created_at)) + "</td>",
+                    '<td class="keyword-cell">' + escapeHtml(row.query || query) + "</td>",
+                    "<td>" + resultBadge(row.result_count) + "</td>",
+                    "<td>" + escapeHtml(row.path || "/fee/search") + "</td>",
+                    '<td title="' + escapeHtml(row.user_agent || "") + '">' + escapeHtml(getDeviceLabel(row.user_agent)) + "</td>",
+                    "</tr>"
+                ].join("");
+            }).join("") : renderEmpty(5, "최근 검색 로그가 없습니다.");
+        }
+
+        function renderKeywordChips(targetId, values, emptyLabel) {
+            const target = document.getElementById(targetId);
+            target.innerHTML = values.length ? values.map(function(value) {
+                return '<span class="keyword-chip">' + escapeHtml(value) + "</span>";
+            }).join("") : '<span class="keyword-chip">' + escapeHtml(emptyLabel) + "</span>";
+        }
+
+        function renderDetail() {
+            const query = state.selectedQuery;
+            const top = query ? findTopRecord(query) : null;
+            const recent = query ? findRecentRecord(query) : null;
+            const clicked = query ? findClickedRecord(query) : null;
+            const candidateRows = query ? findCandidateRecords(query) : [];
+            const zeroCount = top ? Number(top.zero_result_count || 0) : 0;
+            const totalCount = top ? Number(top.search_count || 0) : 0;
+            const latestRow = candidateRows[0] || null;
+            const latestStatus = latestRow ? latestRow.status : (zeroCount > 0 ? "pending" : "approved");
+            const statusMeta = getStatusMeta(latestStatus, candidateRows.length ? "detail" : (zeroCount > 0 ? "urgent" : "approved"));
+            const approvedNames = candidateRows.filter(function(item) {
+                return item.status === "approved";
+            }).map(function(item) {
+                if (item.item_id && item.item_name) {
+                    return item.item_name + " (" + item.item_id + ")";
+                }
+                return item.item_name || item.item_id || item.query;
+            });
+            const related = query ? relatedKeywords(query) : [];
+
+            document.getElementById("detail-keyword").textContent = query || "없음";
+            document.getElementById("detail-status").className = statusMeta.className;
+            document.getElementById("detail-status").textContent = statusMeta.label;
+            document.getElementById("detail-total-searches").textContent = formatCount(totalCount);
+            document.getElementById("detail-zero-searches").textContent = zeroCount ? formatCount(zeroCount) + " (" + (totalCount ? Math.round((zeroCount / totalCount) * 100) : 100) + "%)" : "0";
+            document.getElementById("detail-path").textContent = recent && recent.path ? recent.path : "/fee/search";
+            document.getElementById("detail-last-at").textContent = recent ? formatDate(recent.created_at) : "-";
+
+            if (clicked) {
+                document.getElementById("detail-clicked-item").textContent = "클릭한 항목 " + (clicked.item_name || clicked.item_id || clicked.clicked_item_name || "-") + " · 클릭수 " + formatCount(clicked.click_count);
+            } else if (latestRow) {
+                document.getElementById("detail-clicked-item").textContent = "최근 저장 상태: " + statusMeta.label;
+            } else {
+                document.getElementById("detail-clicked-item").textContent = "클릭한 항목 없음";
+            }
+
+            if (query) {
+                document.getElementById("item-category-input").value = latestRow && latestRow.item_category ? latestRow.item_category : inferCategory(query);
+            }
+            if (latestRow && latestRow.item_name) {
+                document.getElementById("item-name-input").value = document.getElementById("item-name-input").value || latestRow.item_name;
+            }
+            if (latestRow && latestRow.item_id) {
+                document.getElementById("item-id-input").value = document.getElementById("item-id-input").value || latestRow.item_id;
+            }
+            if (latestRow && latestRow.memo) {
+                document.getElementById("memo-input").value = document.getElementById("memo-input").value || latestRow.memo;
+            }
+
+            renderKeywordChips("related-keywords", related, "유사 키워드가 없습니다.");
+            renderKeywordChips("approved-items", approvedNames, "추가 완료 항목이 없습니다.");
+        }
+
+        function renderAll() {
+            renderPeriodButtons();
+            renderSummary();
+            renderTripleBoards();
+            renderTopSearches();
+            renderRecentSearches();
+            renderDetail();
         }
 
         async function loadStats() {
-            const days = document.getElementById('days').value;
-            const status = document.getElementById('status');
-            status.textContent = '';
-
-            try {
-                const response = await fetch(`/api/admin/search-stats?days=${encodeURIComponent(days)}`);
-
-                const data = await response.json();
-                if (!response.ok || !data.ok) {
-                    throw new Error(data.error || '????鈺곌퀬????쎈솭');
-                }
-
-                renderRows('top-searches', data.topSearches, row => `
-                    <tr>
-                        <td>${escapeHtml(row.normalized_query)}</td>
-                        <td>${escapeHtml(row.search_count)}</td>
-                        <td>${Math.round(Number(row.avg_result_count || 0))}</td>
-                        <td><button class="btn-delete" type="button" onclick="deleteLog('top-search', '${escapeHtml(row.normalized_query)}')">????/button></td>
-                    </tr>
-                `, 4);
-
-                renderRows('zero-searches', data.zeroResultSearches, row => `
-                    <tr>
-                        <td>${escapeHtml(row.normalized_query)}</td>
-                        <td>${escapeHtml(row.zero_result_count)}</td>
-                        <td><button class="btn-delete" type="button" onclick="deleteLog('zero-search', '${escapeHtml(row.normalized_query)}')">????/button></td>
-                    </tr>
-                `, 3);
-
-                renderRows('clicked-items', data.clickedItems, row => `
-                    <tr>
-                        <td>${escapeHtml(row.clicked_item_name)}</td>
-                        <td>${escapeHtml(row.click_count)}</td>
-                        <td><button class="btn-delete" type="button" onclick="deleteLog('click-log', '${escapeHtml(row.clicked_item_name)}')">????/button></td>
-                    </tr>
-                `, 3);
-
-                renderRows('recent-searches', data.recentSearches, row => `
-                    <tr>
-                        <td>${escapeHtml(row.query)}</td>
-                        <td>${escapeHtml(row.result_count)}</td>
-                        <td title="${escapeHtml(row.user_agent)}">${escapeHtml(getDeviceLabel(row.user_agent))}</td>
-                        <td>${escapeHtml(row.created_at)}</td>
-                        <td><button class="btn-delete" type="button" onclick="deleteLog('recent-search', '${escapeHtml(row.id)}')">????/button></td>
-                    </tr>
-                `, 5);
-
-                renderRows('calculation-conditions', data.calculationConditions, row => `
-                    <tr>
-                        <td>${escapeHtml(row.hospital_class)}</td>
-                        <td>${escapeHtml(row.treatment_type)}</td>
-                        <td>${escapeHtml(row.nonbenefit_region)}</td>
-                        <td>${escapeHtml(row.calculation_count)}</td>
-                        <td><button class="btn-delete" type="button" onclick="deleteLog('calc-log', '', { hospitalClass: '${escapeHtml(row.hospital_class)}', treatmentType: '${escapeHtml(row.treatment_type)}', nonbenefitRegion: '${escapeHtml(row.nonbenefit_region)}' })">????/button></td>
-                    </tr>
-                `, 5);
-            } catch (error) {
-                status.textContent = error.message;
+            const data = await fetchJson("/api/admin/search-stats?period=" + encodeURIComponent(state.activePeriod));
+            state.stats = data;
+            if (!state.selectedQuery) {
+                const zeroRows = Array.isArray(data.zeroResultSearches) ? data.zeroResultSearches : [];
+                state.selectedQuery = zeroRows[0] ? normalizeQuery(zeroRows[0].normalized_query || zeroRows[0].query) : "";
             }
         }
 
-        async function deleteLog(type, value, extra = {}) {
-            if (!confirm('?類ｌ춾 ?????뤿뻻野껋쥙???뉙돱? ?온??嚥≪뮄?뉐첎? 筌뤴뫀紐??????몃빍??')) return;
+        async function loadCandidates() {
+            const data = await fetchJson("/api/admin/search-candidates");
+            state.candidates = sortCandidatesByLatest(Array.isArray(data.candidates) ? data.candidates : []);
+        }
+
+        async function refreshAll() {
+            setStatus("데이터를 불러오는 중입니다.", false);
             try {
-                const response = await fetch('/api/admin/delete-log', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                await Promise.all([loadStats(), loadCandidates()]);
+                renderAll();
+                const activeLabel = (PERIOD_OPTIONS.find(function(item) {
+                    return item.value === state.activePeriod;
+                }) || { label: state.activePeriod }).label;
+                setStatus("조회 기간: " + activeLabel, false);
+            } catch (error) {
+                setStatus(error instanceof Error ? error.message : "조회에 실패했습니다.", true);
+            }
+        }
+
+        async function saveCandidate(status) {
+            const query = state.selectedQuery || normalizeQuery(document.getElementById("detail-keyword").textContent);
+            const itemName = document.getElementById("item-name-input").value.trim();
+            const itemId = document.getElementById("item-id-input").value.trim();
+            const itemCategory = document.getElementById("item-category-input").value.trim();
+            const memo = document.getElementById("memo-input").value.trim();
+
+            if (!query) {
+                setStatus("선택된 키워드가 없습니다.", true);
+                return;
+            }
+
+            if (!itemName) {
+                setStatus("항목명 입력이 필요합니다.", true);
+                return;
+            }
+
+            try {
+                await fetchJson("/api/admin/search-candidates", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        type,
-                        value,
-                        hospitalClass: extra.hospitalClass,
-                        treatmentType: extra.treatmentType,
-                        nonbenefitRegion: extra.nonbenefitRegion
+                        query: query,
+                        itemId: itemId,
+                        itemName: itemName,
+                        itemCategory: itemCategory,
+                        memo: memo,
+                        status: status
                     })
                 });
-
-                const data = await response.json();
-                if (!response.ok || !data.ok) {
-                    throw new Error(data.error || '????筌ｌ꼶????쎈솭');
-                }
-                alert('?類ㅺ맒?怨몄몵嚥??????뤿???щ빍??');
-                await loadStats();
+                await loadCandidates();
+                renderAll();
+                setStatus("후보 저장을 완료했습니다.", false);
             } catch (error) {
-                alert('?癒?쑎: ' + error.message);
+                setStatus(error instanceof Error ? error.message : "후보 저장에 실패했습니다.", true);
             }
         }
 
-        async function deleteAllLogs() {
-            const firstConfirm = confirm('?袁⑷퍥 嚥≪뮄?뉒몴??????몃빍?? 野꺜??嚥≪뮄?? ????嚥≪뮄?? ?④쑴沅?鈺곌퀗援?嚥≪뮄?뉐첎? 筌뤴뫀紐??????몃빍?? ?④쑴??醫됲돱??');
-            if (!firstConfirm) return;
-            const finalConfirm = confirm('癰귣벀???????곷뮸??덈뼄. ?類ｌ춾 ?袁⑷퍥 ????醫됲돱??');
-            if (!finalConfirm) return;
-
-            try {
-                const response = await fetch('/api/admin/delete-log', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ type: 'all' })
-                });
-
-                const data = await response.json();
-                if (!response.ok || !data.ok) {
-                    throw new Error(data.error || '?袁⑷퍥 ????筌ｌ꼶????쎈솭');
-                }
-                alert('?袁⑷퍥 嚥≪뮄?뉒몴??????됰뮸??덈뼄.');
-                await loadStats();
-            } catch (error) {
-                alert('?癒?쑎: ' + error.message);
-            }
+        function clearInputs() {
+            document.getElementById("item-name-input").value = "";
+            document.getElementById("item-id-input").value = "";
+            document.getElementById("item-category-input").value = "";
+            document.getElementById("memo-input").value = "";
         }
+
+        document.addEventListener("click", function(event) {
+            const target = event.target;
+
+            const periodButton = target.closest("[data-period]");
+            if (periodButton) {
+                state.activePeriod = periodButton.getAttribute("data-period");
+                refreshAll();
+                return;
+            }
+
+            const row = target.closest("[data-query]");
+            if (row) {
+                state.selectedQuery = normalizeQuery(row.getAttribute("data-query"));
+                clearInputs();
+                renderAll();
+                return;
+            }
+
+            const actionButton = target.closest("[data-save-status]");
+            if (actionButton) {
+                saveCandidate(actionButton.getAttribute("data-save-status"));
+            }
+        });
+
+        document.getElementById("refresh-button").addEventListener("click", refreshAll);
+        document.getElementById("clear-selection").addEventListener("click", function() {
+            state.selectedQuery = "";
+            clearInputs();
+            renderAll();
+            setStatus("선택을 해제했습니다.", false);
+        });
+        document.getElementById("clear-form").addEventListener("click", function() {
+            clearInputs();
+            setStatus("입력값을 초기화했습니다.", false);
+        });
+
+        refreshAll();
     </script>
 </body>
 </html>

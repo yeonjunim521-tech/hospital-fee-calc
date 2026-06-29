@@ -14,6 +14,25 @@ ON search_logs(normalized_query);
 CREATE INDEX IF NOT EXISTS idx_search_logs_created_at
 ON search_logs(created_at);
 
+CREATE TABLE IF NOT EXISTS search_candidates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  query TEXT NOT NULL,
+  normalized_query TEXT NOT NULL,
+  item_id TEXT,
+  item_name TEXT NOT NULL,
+  item_category TEXT,
+  status TEXT NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending', 'approved', 'rejected')),
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_search_candidates_normalized_query
+ON search_candidates(normalized_query);
+
+CREATE INDEX IF NOT EXISTS idx_search_candidates_status
+ON search_candidates(status);
+
 CREATE TABLE IF NOT EXISTS search_click_logs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   search_query TEXT NOT NULL,

@@ -25,3 +25,9 @@
 - 확인: `DB.HOSPITAL_CLASS`에 의원 15%, 병원 20%, 종합병원 25%, 상급종합병원 30% 가산율 존재.
 - 변경: 급여 항목의 가산 전/후 차이를 계산 상세와 결과 요약에서 확인 가능하게 처리.
 - 검증: `node --check frontend\assets\js\script.js`, `node tests\test_runner.js`, `git diff --check` 통과 기록.
+
+## 구글 애드센스 소유권 확인 코드 삽입
+
+- 목표: AdSense(애드센스) 사이트 검토를 위해 배포되는 HTML 페이지의 `<head>`에 애드센스 코드 snippet(스니펫)을 삽입하고 `ads.txt`를 실제 publisher id(게시자 ID)로 갱신.
+- 범위: 공개 HTML 페이지에 애드센스 스크립트 삽입, `ads.txt` publisher id 갱신, 삽입 검증 및 Git 상태 확인.
+- 메모: 애드센스 client id는 `ca-pub-1927730301151401`.

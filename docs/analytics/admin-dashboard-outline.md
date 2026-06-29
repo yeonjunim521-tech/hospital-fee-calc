@@ -1,97 +1,124 @@
-# Admin Dashboard Outline
+# 관리자 검색 통계 대시보드 초안
 
-## Goal
-- Help internal operators and content owners quickly see what visitors are searching for.
-- Surface search terms with no results so missing content can be identified fast.
-- Turn search demand into concrete content decisions, not passive reporting.
-- Keep this dashboard separate from GA4 and focused on day-to-day operations.
+## 목적
+- 방문자가 많이 찾는 검색어를 빠르게 확인한다.
+- 결과가 없는 검색어를 모아서 DB에 추가할 항목을 찾는다.
+- 단순 조회용이 아니라 "무엇을 추가/수정할지" 결정하는 운영 화면으로 쓴다.
+- Google Analytics와 분리한다. 이 화면은 프로젝트 내부 관리자용이다.
 
-## Primary Sections
-1. Search Overview
-   - Total searches
-   - Searches with results
-   - Searches with no results
-   - Top searched terms
+## 화면 구조
 
-2. No-Result Searches
-   - Search terms that returned zero matches
-   - Repeated failed searches
-   - Terms with high volume over the selected period
+### 1. 상단 요약
+- 총 검색수
+- 결과 있음 검색수
+- 결과 없음 검색수
+- 결과 없음 비율
+- 결과 클릭수
+- 최근 7일 증가 검색어
 
-3. Content Gap Opportunities
-   - Search terms that map to missing or weak content
-   - Suggested content topics or pages
-   - Priority queue for editorial follow-up
+용도: 오늘 바로 봐야 할 상태를 한눈에 확인.
 
-4. Drilldown Detail
-   - Term-level history
-   - Result availability over time
-   - Related content currently available
+### 2. 많이 검색된 키워드
+- 검색어 순위
+- 검색 횟수
+- 평균 결과 수
+- 클릭된 항목
+- 마지막 검색일
 
-## Key Metrics
-- Total search queries
-- Unique search terms
-- Searches with results
-- Searches with no results
-- No-result rate
-- Repeat no-result rate
-- Search volume by term
-- Trend change versus prior period
-- Content gap count
-- Terms with potential content matches but weak coverage
+용도: 실제 수요가 많은 진료/검사/시술 키워드 확인.
 
-## Suggested Filters
-- Date range
-- Search result status: result / no result / partial result
-- Search term
-- Frequency threshold
-- Content category or site section
-- Device type
-- Traffic source or entry point, if available
-- Language or locale, if available
-- New vs returning visitor, if available
+### 3. 결과 없는 검색어
+- 검색어
+- 검색 횟수
+- 결과 없음 횟수
+- 결과 없음 비율
+- 관련 후보 키워드
+- 추가 필요 여부
 
-## Table Columns
-### Search Terms Table
-- Search term
-- Search count
-- Unique visitors
-- No-result count
-- No-result rate
-- First seen
-- Last seen
-- Trend direction
-- Suggested content action
+용도: 없는 기능이나 DB 누락 항목을 찾는 핵심 영역.
 
-### No-Result Detail Table
-- Search term
-- Timestamp or date bucket
-- Visitor count
-- Session count
-- Entry page or context
-- Category or section
-- Related content found: yes / no
-- Suggested next step
+### 4. 추가 후보 큐
+- 추가할 키워드
+- 연결할 수가/항목 코드
+- 예상 분류: 검사 / 시술 / 수술 / 기타
+- 우선순위
+- 상태: 검토 전 / 추가 예정 / 추가 완료 / 보류
+- 메모
 
-### Content Gap Queue
-- Topic or term
-- Demand level
-- Coverage status
-- Proposed page or update
-- Owner
-- Priority
-- Status
-- Notes
+용도: 검색 로그를 실제 작업 목록으로 바꾸는 영역.
 
-## Decisions This Dashboard Should Support
-- What search terms should become new content?
-- Which existing pages need better coverage or clearer navigation?
-- Which no-result terms are high-priority fixes?
-- Which terms are noise and can be ignored?
-- Which topics should be assigned to content, product, or support teams?
-- What should be reviewed weekly versus handled immediately?
+### 5. 상세 보기
+- 특정 검색어의 날짜별 추이
+- 검색한 페이지
+- 결과 수 변화
+- 클릭된 항목
+- 관리자 메모
 
-## Review Notes
-- Keep the dashboard operational, not exploratory.
-- Favor action-oriented language over analytics jargon.
-- Prefer simple counts and rates that help owners decide what to do next.
+용도: 애매한 검색어가 진짜 추가 대상인지 확인.
+
+## 필터
+- 기간: 오늘 / 7일 / 30일 / 직접 선택
+- 결과 상태: 전체 / 결과 있음 / 결과 없음
+- 검색어
+- 분류: 검사 / 시술 / 수술 / 기타
+- 최소 검색 횟수
+- 상태: 검토 전 / 추가 예정 / 추가 완료 / 보류
+
+## 표 컬럼
+
+### 검색어 표
+- 검색어
+- 검색수
+- 결과수 평균
+- 결과 없음 횟수
+- 결과 없음 비율
+- 클릭수
+- 마지막 검색일
+- 추천 조치
+
+### 결과 없음 표
+- 검색어
+- 검색수
+- 마지막 검색일
+- 입력 페이지
+- 유사 키워드
+- 추천 분류
+- 추가 후보
+- 메모
+
+### 추가 후보 표
+- 키워드
+- 항목명
+- 코드
+- 분류
+- 우선순위
+- 상태
+- 담당자
+- 수정일
+
+## 우선순위 규칙
+- 검색수 많고 결과 없음이면 1순위.
+- 검색수 적어도 병원비 계산에 중요한 항목이면 2순위.
+- 오타나 띄어쓰기 문제면 DB 추가보다 키워드 alias 추가.
+- 너무 넓은 단어는 보류. 예: 항생제, 검사, 치료.
+
+## 운영 흐름
+1. 결과 없는 검색어를 확인한다.
+2. 같은 의미 검색어를 묶는다.
+3. 로컬 DB에 항목이 있는지 확인한다.
+4. 있으면 키워드만 추가한다.
+5. 없으면 HIRA 원본 수가표에서 코드와 수가를 확인한다.
+6. 추가 후보 큐 상태를 업데이트한다.
+
+## 첫 구현 범위
+- 상단 요약
+- 많이 검색된 키워드 표
+- 결과 없는 검색어 표
+- 삭제 버튼 유지
+- 추가 후보 상태값은 아직 수동 메모로 처리
+
+## 나중에 추가할 것
+- 키워드 자동 묶기
+- HIRA 코드 후보 자동 추천
+- 추가 완료 후 검색 결과 개선 여부 추적
+- CSV 내보내기
