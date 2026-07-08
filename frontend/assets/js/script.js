@@ -4519,6 +4519,16 @@ const EOF2_GROUP_LABELS = {
     etc: '\uae30\ud0c0'
 };
 
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    })[ch]);
+}
+
 function eof2Option(value, label, selected = false, disabled = false) {
     const opt = document.createElement('option');
     opt.value = value;
@@ -4636,22 +4646,25 @@ function renderHierarchicalItemsList(mainVal, subVal, detailVal = 'all') {
         .slice(0, 80);
 
     if (!items.length) {
-        itemsList.innerHTML = `<div class="empty-search-results"><p>${EOF2_TEXT.noResult}</p></div>`;
+        itemsList.innerHTML = `<div class="empty-search-results"><p>${escapeHtml(EOF2_TEXT.noResult)}</p></div>`;
         return;
     }
 
     items.forEach(item => {
         const code = item.publicActionCode || item.actionCode || item.ediCode || item.code || '';
         const benefitLabel = item.isBenefit ? EOF2_TEXT.benefit : EOF2_TEXT.nonBenefit;
+        const safeName = escapeHtml(item.name);
+        const safeCode = escapeHtml(code);
+        const safeBenefitLabel = escapeHtml(benefitLabel);
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'search-result-item hierarchical-result-item';
         btn.innerHTML = `
             <div class="search-result-info">
-                <span class="search-result-name"><span class="badge badge-benefit" style="padding:0.15rem 0.35rem;font-size:0.68rem;margin-right:0.4rem;">${benefitLabel}</span>${item.name}</span>
-                <span class="search-result-keywords">${code ? `${EOF2_TEXT.code} ${code}` : ''}</span>
+                <span class="search-result-name"><span class="badge badge-benefit" style="padding:0.15rem 0.35rem;font-size:0.68rem;margin-right:0.4rem;">${safeBenefitLabel}</span>${safeName}</span>
+                <span class="search-result-keywords">${code ? `${escapeHtml(EOF2_TEXT.code)} ${safeCode}` : ''}</span>
             </div>
-            <div class="search-result-meta"><span class="search-result-price">${formatNumber(item.price)}${EOF2_TEXT.won}</span><span class="btn-result-add">${EOF2_TEXT.add}</span></div>
+            <div class="search-result-meta"><span class="search-result-price">${escapeHtml(formatNumber(item.price))}${escapeHtml(EOF2_TEXT.won)}</span><span class="btn-result-add">${escapeHtml(EOF2_TEXT.add)}</span></div>
         `;
         btn.onclick = () => {
             sendSearchClickLog('', item);
@@ -4669,21 +4682,24 @@ function eofRenderDiseaseResults(query) {
     const matched = eofSearchKcd(query);
     results.innerHTML = '';
     if (!matched.length) {
-        results.innerHTML = `<div class="empty-search-results"><p>'<strong>${query}</strong>' ${EOF2_TEXT.noResult}</p></div>`;
+        results.innerHTML = `<div class="empty-search-results"><p>'<strong>${escapeHtml(query)}</strong>' ${escapeHtml(EOF2_TEXT.noResult)}</p></div>`;
     } else {
         matched.forEach(item => {
             const code = eofKcdCode(item);
             const name = eofKcdName(item) || eofKcdEnglish(item) || code;
             const en = eofKcdEnglish(item);
+            const safeCode = escapeHtml(code);
+            const safeName = escapeHtml(name);
+            const safeEn = escapeHtml(en);
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'search-result-item';
             btn.innerHTML = `
                 <div class="search-result-info">
-                    <span class="search-result-name"><span class="badge badge-benefit" style="font-size:0.68rem;margin-right:0.4rem;">KCD</span>${name}</span>
-                    <span class="search-result-keywords">KCD ${code}${en ? ` / ${en}` : ''}</span>
+                    <span class="search-result-name"><span class="badge badge-benefit" style="font-size:0.68rem;margin-right:0.4rem;">KCD</span>${safeName}</span>
+                    <span class="search-result-keywords">KCD ${safeCode}${en ? ` / ${safeEn}` : ''}</span>
                 </div>
-                <div class="search-result-meta"><span class="btn-result-add">${EOF2_TEXT.add}</span></div>
+                <div class="search-result-meta"><span class="btn-result-add">${escapeHtml(EOF2_TEXT.add)}</span></div>
             `;
             btn.onclick = () => {
                 addKcdDisease(code, name);
@@ -4705,7 +4721,7 @@ function eofRenderItemResults(query, targetGroup, items) {
     if (!el.results) return;
     el.results.innerHTML = '';
     if (!items.length) {
-        el.results.innerHTML = `<div class="empty-search-results"><p>'<strong>${query}</strong>' ${EOF2_TEXT.noResult}</p></div>`;
+        el.results.innerHTML = `<div class="empty-search-results"><p>'<strong>${escapeHtml(query)}</strong>' ${escapeHtml(EOF2_TEXT.noResult)}</p></div>`;
         el.results.classList.remove('hidden');
         return;
     }
@@ -4717,15 +4733,22 @@ function eofRenderItemResults(query, targetGroup, items) {
         const code = item.publicActionCode || item.actionCode || item.ediCode || item.code || '';
         const benefitLabel = item.isBenefit ? EOF2_TEXT.benefit : EOF2_TEXT.nonBenefit;
         const benefitClass = item.isBenefit ? 'badge-benefit' : 'badge-non-benefit';
+        const safeGroup = escapeHtml(EOF2_GROUP_LABELS[group] || group);
+        const safeName = escapeHtml(item.name);
+        const safeSub = escapeHtml(sub);
+        const safeDetail = escapeHtml(detail);
+        const safeCode = escapeHtml(code);
+        const safePrice = escapeHtml(formatNumber(item.price));
+        const safeBenefitLabel = escapeHtml(benefitLabel);
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'search-result-item';
         btn.innerHTML = `
             <div class="search-result-info">
-                <span class="search-result-name"><span class="badge badge-benefit" style="padding:0.15rem 0.35rem;font-size:0.68rem;margin-right:0.4rem;">${EOF2_GROUP_LABELS[group] || group}</span>${item.name}</span>
-                <span class="search-result-keywords">${sub}${detail ? ` / ${detail}` : ''}${code ? ` / ${EOF2_TEXT.code} ${code}` : ''}</span>
+                <span class="search-result-name"><span class="badge badge-benefit" style="padding:0.15rem 0.35rem;font-size:0.68rem;margin-right:0.4rem;">${safeGroup}</span>${safeName}</span>
+                <span class="search-result-keywords">${safeSub}${detail ? ` / ${safeDetail}` : ''}${code ? ` / ${escapeHtml(EOF2_TEXT.code)} ${safeCode}` : ''}</span>
             </div>
-            <div class="search-result-meta"><span class="search-result-price">${formatNumber(item.price)}${EOF2_TEXT.won}</span><span class="badge ${benefitClass}" style="font-size:0.65rem;">${benefitLabel}</span><span class="btn-result-add">${EOF2_TEXT.add}</span></div>
+            <div class="search-result-meta"><span class="search-result-price">${safePrice}${escapeHtml(EOF2_TEXT.won)}</span><span class="badge ${benefitClass}" style="font-size:0.65rem;">${safeBenefitLabel}</span><span class="btn-result-add">${escapeHtml(EOF2_TEXT.add)}</span></div>
         `;
         btn.onclick = () => {
             sendSearchClickLog(query, item);
@@ -4824,22 +4847,25 @@ function renderHierarchicalItemsList(mainVal, subVal, detailVal = 'all') {
         .slice(0, 80);
 
     if (!items.length) {
-        itemsList.innerHTML = `<div class="empty-search-results"><p>${EOF2_TEXT.noResult}</p></div>`;
+        itemsList.innerHTML = `<div class="empty-search-results"><p>${escapeHtml(EOF2_TEXT.noResult)}</p></div>`;
         return;
     }
 
     items.forEach(item => {
         const code = item.publicActionCode || item.actionCode || item.ediCode || item.code || '';
         const benefitLabel = item.isBenefit ? EOF2_TEXT.benefit : EOF2_TEXT.nonBenefit;
+        const safeName = escapeHtml(item.name);
+        const safeCode = escapeHtml(code);
+        const safeBenefitLabel = escapeHtml(benefitLabel);
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'search-result-item hierarchical-result-item';
         btn.innerHTML = `
             <div class="search-result-info">
-                <span class="search-result-name"><span class="badge badge-benefit" style="padding:0.15rem 0.35rem;font-size:0.68rem;margin-right:0.4rem;">${benefitLabel}</span>${item.name}</span>
-                <span class="search-result-keywords">${code ? `${EOF2_TEXT.code} ${code}` : ''}</span>
+                <span class="search-result-name"><span class="badge badge-benefit" style="padding:0.15rem 0.35rem;font-size:0.68rem;margin-right:0.4rem;">${safeBenefitLabel}</span>${safeName}</span>
+                <span class="search-result-keywords">${code ? `${escapeHtml(EOF2_TEXT.code)} ${safeCode}` : ''}</span>
             </div>
-            <div class="search-result-meta"><span class="search-result-price">${formatNumber(item.price)}${EOF2_TEXT.won}</span><span class="btn-result-add">${EOF2_TEXT.add}</span></div>
+            <div class="search-result-meta"><span class="search-result-price">${escapeHtml(formatNumber(item.price))}${escapeHtml(EOF2_TEXT.won)}</span><span class="btn-result-add">${escapeHtml(EOF2_TEXT.add)}</span></div>
         `;
         btn.onclick = () => {
             sendSearchClickLog('', item);
