@@ -7,6 +7,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
 
 console.log("=== MEDICost Pro v2.0 로직 정밀 검증 시작 ===");
 
@@ -243,6 +244,11 @@ assert(domResults['display_final_cost'] === "216,600", "제왕절개 수술비 0
 console.log(`\n=== 테스트 종료: 성공 ${passCount}건, 실패 ${failCount}건 ===`);
 assert(isMatch("고압산소치료", HIRA_DATABASE.find(item => item.code === "M0586")), "'고압산소치료' should match M0586");
 assert(isMatch("무통", HIRA_DATABASE.find(item => item.code === "LA204")), "'무통' should match LA204");
+
+console.log("\n--- XSS 회귀 테스트 실행 ---");
+execFileSync(process.execPath, [path.join(__dirname, 'script_xss_regression.js')], {
+    stdio: 'inherit'
+});
 
 if (failCount > 0) {
     process.exit(1);

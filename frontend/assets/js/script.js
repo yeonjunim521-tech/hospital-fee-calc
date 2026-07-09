@@ -1762,19 +1762,22 @@ function finalRenderDiseaseResults(query) {
     const matched = finalSearchKcd(query);
     results.innerHTML = '';
     if (matched.length === 0) {
-        results.innerHTML = `<div class="empty-search-results"><p>'<strong>${query}</strong>' 질병명/상병코드 결과가 없습니다.</p></div>`;
+        results.innerHTML = `<div class="empty-search-results"><p>'<strong>${escapeHtml(query)}</strong>' 질병명/상병코드 결과가 없습니다.</p></div>`;
     } else {
         matched.forEach(item => {
             const code = finalKcdCode(item);
             const name = finalKcdName(item) || finalKcdEnglish(item) || code;
             const en = finalKcdEnglish(item);
+            const safeCode = escapeHtml(code);
+            const safeName = escapeHtml(name);
+            const safeEn = escapeHtml(en);
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'search-result-item';
             btn.innerHTML = `
                 <div class="search-result-info">
-                    <span class="search-result-name"><span class="badge badge-benefit" style="font-size:0.68rem;margin-right:0.4rem;">상병</span>${name}</span>
-                    <span class="search-result-keywords">KCD ${code}${en ? ` · ${en}` : ''}</span>
+                    <span class="search-result-name"><span class="badge badge-benefit" style="font-size:0.68rem;margin-right:0.4rem;">상병</span>${safeName}</span>
+                    <span class="search-result-keywords">KCD ${safeCode}${en ? ` · ${safeEn}` : ''}</span>
                 </div>
                 <div class="search-result-meta"><span class="btn-result-add">적용</span></div>
             `;
@@ -2032,19 +2035,22 @@ function renderDiseaseSearchResults(query) {
     results.innerHTML = '';
 
     if (matched.length === 0) {
-        results.innerHTML = `<div class="empty-search-results"><i data-lucide="search"></i><p>'<strong>${query}</strong>' 질병명/상병코드 결과가 없습니다.</p></div>`;
+        results.innerHTML = `<div class="empty-search-results"><i data-lucide="search"></i><p>'<strong>${escapeHtml(query)}</strong>' 질병명/상병코드 결과가 없습니다.</p></div>`;
     } else {
         matched.forEach(item => {
             const code = getKcdCode(item);
             const name = getKcdName(item) || getKcdEnglishName(item) || code;
             const en = getKcdEnglishName(item);
+            const safeCode = escapeHtml(code);
+            const safeName = escapeHtml(name);
+            const safeEn = escapeHtml(en);
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'search-result-item';
             btn.innerHTML = `
                 <div class="search-result-info">
-                    <span class="search-result-name"><span class="badge badge-benefit" style="font-size:0.68rem;margin-right:0.4rem;">상병</span>${name}</span>
-                    <span class="search-result-keywords">KCD ${code}${en ? ` · ${en}` : ''}</span>
+                    <span class="search-result-name"><span class="badge badge-benefit" style="font-size:0.68rem;margin-right:0.4rem;">상병</span>${safeName}</span>
+                    <span class="search-result-keywords">KCD ${safeCode}${en ? ` · ${safeEn}` : ''}</span>
                 </div>
                 <div class="search-result-meta">
                     <span class="btn-result-add">적용</span>
@@ -4319,19 +4325,22 @@ function eofRenderDiseaseResults(query) {
     const matched = eofSearchKcd(query);
     results.innerHTML = '';
     if (!matched.length) {
-        results.innerHTML = `<div class="empty-search-results"><p>'<strong>${query}</strong>' ???/???? ??? ????.</p></div>`;
+        results.innerHTML = `<div class="empty-search-results"><p>'<strong>${escapeHtml(query)}</strong>' ???/???? ??? ????.</p></div>`;
     } else {
         matched.forEach(item => {
             const code = eofKcdCode(item);
             const name = eofKcdName(item) || eofKcdEnglish(item) || code;
             const en = eofKcdEnglish(item);
+            const safeCode = escapeHtml(code);
+            const safeName = escapeHtml(name);
+            const safeEn = escapeHtml(en);
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'search-result-item';
             btn.innerHTML = `
                 <div class="search-result-info">
-                    <span class="search-result-name"><span class="badge badge-benefit" style="font-size:0.68rem;margin-right:0.4rem;">??</span>${name}</span>
-                    <span class="search-result-keywords">KCD ${code}${en ? ` ? ${en}` : ''}</span>
+                    <span class="search-result-name"><span class="badge badge-benefit" style="font-size:0.68rem;margin-right:0.4rem;">??</span>${safeName}</span>
+                    <span class="search-result-keywords">KCD ${safeCode}${en ? ` ? ${safeEn}` : ''}</span>
                 </div>
                 <div class="search-result-meta"><span class="btn-result-add">??</span></div>
             `;
