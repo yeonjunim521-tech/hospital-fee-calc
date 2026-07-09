@@ -1,11 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <meta http-equiv="refresh" content="15">
-  <title>보안 점검 진행상황</title>
+  <title>보안 작업 진행상황</title>
   <style>
     :root {
       color-scheme: light;
@@ -173,67 +173,65 @@
 </head>
 <body>
   <main class="wrap">
-    <div class="eyebrow">실시간 점검판</div>
-    <h1>hospital-fee-calc 보안 점검 진행상황</h1>
+    <div class="eyebrow">실시간 진행상황</div>
+    <h1>hospital-fee-calc 보안 작업 진행상황</h1>
     <p class="summary">
-      현재 작업은 보안 점검 우선 순서로 진행 중이다. 발견된 후보는 검증과 공격 경로 분석을 분리해서 정리하고,
-      최종적으로 PR 전에 보고서와 GitHub 반영 여부를 결정한다.
+      현재는 남은 DOM XSS 경로를 닫고, 회귀 테스트로 확인한 상태다. 이 페이지는 15초마다 새로고침되며,
+      작업 상태를 원격에서 바로 확인할 수 있게 만든다.
     </p>
 
-    <section class="meta" aria-label="점검 요약">
-      <div class="card"><span class="label">현재 단계</span><span class="value">검증 진행 중</span></div>
-      <div class="card"><span class="label">후보 수</span><span class="value">13개</span></div>
-      <div class="card"><span class="label">진행 방식</span><span class="value">서브에이전트 병렬</span></div>
-      <div class="card"><span class="label">마지막 갱신</span><span class="value" id="updated-at">수동 갱신</span></div>
+    <section class="meta" aria-label="작업 요약">
+      <div class="card"><span class="label">현재 단계</span><span class="value">보안 수정 완료</span></div>
+      <div class="card"><span class="label">확인한 항목</span><span class="value">3개 경로</span></div>
+      <div class="card"><span class="label">검증 방식</span><span class="value">문법 + 회귀 테스트</span></div>
+      <div class="card"><span class="label">마지막 갱신</span><span class="value" id="updated-at">갱신 중</span></div>
     </section>
 
     <section class="grid">
       <div class="panel">
-        <h2>검증 대상</h2>
+        <h2>완료 항목</h2>
         <table>
           <thead>
             <tr>
-              <th>후보</th>
+              <th>항목</th>
               <th>상태</th>
               <th>메모</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td>관리자 조회 API 노출</td>
-              <td><span class="tag progress">검증 중</span></td>
-              <td>search-stats, search-candidates, prototype page</td>
+              <td>검색 결과 렌더링 안전화</td>
+              <td><span class="tag done">완료</span></td>
+              <td>query, 이름, 코드, 가격을 escape 처리</td>
             </tr>
             <tr>
-              <td>로그 삭제 API 노출</td>
-              <td><span class="tag progress">검증 중</span></td>
-              <td>delete-log.ts의 5개 분기</td>
+              <td>추가 항목 렌더링 안전화</td>
+              <td><span class="tag done">완료</span></td>
+              <td>검사 / 수술 / 처치 목록의 동적 텍스트 이스케이프</td>
             </tr>
             <tr>
-              <td>공용 검색 DOM XSS</td>
-              <td><span class="tag progress">검증 중</span></td>
-              <td>script.js의 query / imported data 렌더링</td>
+              <td>결과 표 항목명 안전화</td>
+              <td><span class="tag done">완료</span></td>
+              <td>breakdown 표에서 item.name 직접 삽입 제거</td>
             </tr>
             <tr>
-              <td>관리자 외부 스크립트 로드</td>
-              <td><span class="tag progress">검증 중</span></td>
-              <td>admin-search.html의 third-party script</td>
+              <td>XSS 회귀 테스트</td>
+              <td><span class="tag done">완료</span></td>
+              <td>node --check, regression test 통과</td>
             </tr>
           </tbody>
         </table>
       </div>
 
       <div class="panel">
-        <h2>다음 작업</h2>
+        <h2>다음 확인</h2>
         <ul>
-          <li>후보별 validation receipt 추가</li>
-          <li>attack-path analysis receipt 추가</li>
-          <li>coverage ledger 정리</li>
-          <li>final report 생성</li>
-          <li>검증 후 PR 준비</li>
+          <li>브라우저에서 공개 계산기와 관리자 화면을 한 번 더 확인</li>
+          <li>필요하면 커밋 후 푸시</li>
+          <li>추가 보안 위험이 보이면 즉시 우선순위 재정렬</li>
         </ul>
         <div class="foot">
-          이 페이지는 `frontend/` 아래에 있어 배포 환경에서 직접 열 수 있다.
+          이 페이지는 자동 새로고침으로 최신 상태를 유지한다.
         </div>
       </div>
     </section>

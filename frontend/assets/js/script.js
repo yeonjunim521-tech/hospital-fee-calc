@@ -3027,7 +3027,7 @@ function calculate() {
                     ? '<span class="badge badge-benefit">\uae09\uc5ec</span>'
                     : '<span class="badge badge-non-benefit">\ube44\uae09\uc5ec</span>';
             row.innerHTML = `
-                <td>${item.name}</td>
+                <td>${escapeHtml(item.name)}</td>
                 <td>${badge}</td>
                 <td class="text-right">${formatNumber(item.price)}원</td>`;
             tableBody.appendChild(row);
@@ -4929,3 +4929,105 @@ function eof3RebindDirectSelect() {
 
 document.addEventListener('DOMContentLoaded', eof3RebindDirectSelect);
 setTimeout(eof3RebindDirectSelect, 0);
+
+function renderSearchResults(query, targetGroup, resultsList, items) {
+    if (!resultsList) return;
+
+    resultsList.innerHTML = '';
+    if (!Array.isArray(items) || items.length === 0) {
+        const emptyDiv = document.createElement('div');
+        emptyDiv.className = 'empty-search-results';
+        emptyDiv.innerHTML = `<i data-lucide="search"></i><p>'<strong>${escapeHtml(query)}</strong>' 에 대한 검색 결과가 없습니다.</p>`;
+        resultsList.appendChild(emptyDiv);
+        resultsList.classList.remove('hidden');
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+        return;
+    }
+
+    const groupLabels = { test: '검사', procedure_hira: '시술', surgery: '수술', etc: '기타' };
+    items.slice(0, 30).forEach(item => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'search-result-item';
+        const itemGroup = getItemTypeGroup(item);
+        const classification = getHierarchicalClassification(item);
+        const subLabel = CONSUMER_SUB_LABELS[classification.main]?.[classification.sub] || groupLabels[itemGroup] || '';
+        const detailLabel = CONSUMER_DETAIL_LABELS[classification.sub]?.[classification.detail] || '';
+        const benefitBadge = item.isBenefit
+            ? '<span class="badge badge-benefit" style="font-size: 0.65rem;">급여</span>'
+            : '<span class="badge badge-non-benefit" style="font-size: 0.65rem;">비급여</span>';
+        const code = item.publicActionCode || item.actionCode || item.ediCode || item.code || '';
+        btn.innerHTML = `
+            <div class="search-result-info">
+                <span class="search-result-name"><span class="badge badge-benefit" style="padding:0.15rem 0.35rem;font-size:0.68rem;margin-right:0.4rem;">${escapeHtml(groupLabels[itemGroup] || itemGroup)}</span>${escapeHtml(item.name)}</span>
+                <span class="search-result-keywords">${escapeHtml(subLabel)}${detailLabel ? ` / ${escapeHtml(detailLabel)}` : ''}${code ? ` / 코드 ${escapeHtml(code)}` : ''}</span>
+            </div>
+            <div class="search-result-meta">
+                <span class="search-result-price">${escapeHtml(formatNumber(item.price))}원</span>
+                ${benefitBadge}
+                <span class="btn-result-add"><i data-lucide="plus" style="width:12px;height:12px;"></i> 추가</span>
+            </div>
+        `;
+        btn.addEventListener('click', () => {
+            sendSearchClickLog(query, item);
+            addHiraItem(item);
+            const el = getSearchElements(targetGroup);
+            if (el.input) el.input.value = '';
+            updateSearchControlState(el.input, el.clear, el.run);
+            el.results.innerHTML = '';
+            el.results.classList.add('hidden');
+            if (el.input) el.input.focus();
+        });
+        resultsList.appendChild(btn);
+    });
+
+    resultsList.classList.remove('hidden');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function renderAddedItems() {
+    const unifiedList = document.getElementById('added_items_unified_list');
+    if (!unifiedList) return;
+
+    unifiedList.innerHTML = '';
+    const totalCount = addedTests.length + addedSurgeries.length + addedProcedures.length;
+    if (totalCount === 0) {
+        unifiedList.innerHTML = '<p class="empty-list-text">등록된 항목이 없습니다. 대분류를 선택해서 검색한 뒤 추가해 주세요.</p>';
+        return;
+    }
+
+    const appendItem = (item, label, removeHandler, extraBadge = '') => {
+        const div = document.createElement('div');
+        div.className = 'added-item';
+        const benefitTag = item.isBenefit
+            ? '<span class="badge badge-benefit">급여</span>'
+            : '<span class="badge badge-non-benefit">비급여</span>';
+        div.innerHTML = `
+            <div class="item-info">
+                <span class="item-name">${escapeHtml(item.typeName || item.name || '')}${extraBadge}</span>
+                <span class="item-meta">${escapeHtml(label)} / ${escapeHtml(item.count)}건 / ${benefitTag}${item.publicStatsSource ? ` / ${escapeHtml(item.publicStatsSource)}` : ''}${item.publicFeeScheduleSource ? ` / ${escapeHtml(item.publicFeeScheduleSource)}` : ''}</span>
+            </div>
+            <button type="button" class="btn-remove" onclick="${removeHandler}(${Number(item.id)})" title="삭제">
+                <i data-lucide="x"></i>
+            </button>
+        `;
+        unifiedList.appendChild(div);
+    };
+
+    addedTests.forEach(item => {
+        appendItem(item, item.categoryName || '검사', 'removeTestItem');
+    });
+
+    addedSurgeries.forEach(item => {
+        const dbItem = getMedicalItemDatabase().find(db => db.code === item.type);
+        const groupName = dbItem && getItemTypeGroup(dbItem) === 'procedure_hira' ? '시술' : '수술';
+        const drgBadge = item.isDRG ? ' <span class="badge badge-drg">DRG</span>' : '';
+        appendItem(item, groupName, 'removeSurgeryItem', drgBadge);
+    });
+
+    addedProcedures.forEach(item => {
+        appendItem(item, item.categoryName || '처치', 'removeProcedureItem');
+    });
+
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
