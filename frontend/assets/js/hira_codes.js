@@ -113,7 +113,7 @@ const HIRA_DATABASE = [
         name: "뇌 CT (비조영)", 
         price: 100000, 
         isBenefit: true, 
-        keywords: ["뇌 ct", "머리 ct", "뇌출혈", "두통", "의식 잃음", "머리 외상", "시티", "ㄴ ct", "shl ct", "뇌 시티", "shl tldxl", "두부 ct", "두부 전산화단층촬영", "뇌 전산화단층촬영", "뇌 컴퓨터단층촬영", "뇌ct 비조영", "머리시티 비조영", "brain ct", "brain non-contrast ct", "뇌졸중 ct", "뇌 시티 비조영"] 
+        keywords: ["뇌 ct", "머리 ct", "뇌출혈", "두통", "의식 잃음", "머리 외상", "시티", "ㄴ ct", "shl ct", "뇌 시티", "shl tldxl", "두부 ct", "두부 전산화단층촬영", "뇌 전산화단층촬영", "뇌 컴퓨터단층촬영", "뇌ct 비조영", "머리시티 비조영", "brain ct", "brain non-contrast ct", "뇌졸중 ct", "뇌 시티 비조영", "노 ct", "노ct"] 
     },
     { 
         code: "IM_CT02", 
@@ -122,7 +122,7 @@ const HIRA_DATABASE = [
         name: "뇌 CT (조영증강)", 
         price: 150000, 
         isBenefit: true, 
-        keywords: ["뇌 ct 조영제", "머리 ct 조영제", "뇌동맥류", "뇌종양", "정밀 시티", "뇌 조영제", "shl whdydwp", "두부 조영 ct", "뇌 전산화단층촬영 조영제", "brain contrast ct", "조영제 뇌 ct", "뇌 시티 조영제", "brain ct contrast", "머리 조영제 ct"] 
+        keywords: ["뇌 ct 조영제", "머리 ct 조영제", "뇌동맥류", "뇌종양", "정밀 시티", "뇌 조영제", "shl whdydwp", "두부 조영 ct", "뇌 전산화단층촬영 조영제", "brain contrast ct", "조영제 뇌 ct", "뇌 시티 조영제", "brain ct contrast", "머리 조영제 ct", "노 ct", "노ct"] 
     },
     { 
         code: "IM_CT03", 
@@ -839,7 +839,7 @@ const HIRA_DATABASE = [
         name: "척추마취 (하반신마취)", 
         price: 100000, 
         isBenefit: true, 
-        keywords: ["하반신 마취", "허리 주사 마취", "척수 마취", "다리 수술 마취", "ㅊㅊㅁㅊ", "cjrcnakcl", "척추마취", "하반신마취", "척수마취", "허리 척추마취", "하체 마취", "허리 주사 수술 마취"] 
+        keywords: ["하반신 마취", "허리 주사 마취", "척수 마취", "다리 수술 마취", "ㅊㅊㅁㅊ", "cjrcnakcl", "척추마취", "하반신마취", "척수마취", "허리 척추마취", "하체 마취", "허리 주사 수술 마취", "하반시마취"] 
     },
     { 
         code: "PR_AN06", 
@@ -978,6 +978,56 @@ const HIRA_DATABASE = [
         price: 150000, 
         isBenefit: true, 
         keywords: ["중심정맥관", "picc", "중심정맥관 삽입술", "peripherally inserted central catheter", "central line", "중심정맥", "피씨씨씨", "wndtla wdehfrhks", "vlr", "중심 정맥", "중심정맥 카테터", "팔 정맥 주사", "항암 주사 라인", "항암 포트", "중심정맥라인"] 
+    },
+    {
+        code: "M0586",
+        category: "procedure",
+        group: "procedure_hira",
+        type: "hbot",
+        name: "고압산소요법-1시간까지",
+        price: 19087,
+        isBenefit: true,
+        keywords: ["고압산소", "고압산소치료", "고압산소요법", "hbot", "hyperbaric oxygen", "m0586"]
+    },
+    {
+        code: "M0587",
+        category: "procedure",
+        group: "procedure_hira",
+        type: "hbot",
+        name: "고압산소요법-1시간을 초과하여 2시간까지",
+        price: 46435,
+        isBenefit: true,
+        keywords: ["고압산소", "고압산소치료", "고압산소요법", "hbot", "hyperbaric oxygen", "m0587"]
+    },
+    {
+        code: "M0588",
+        category: "procedure",
+        group: "procedure_hira",
+        type: "hbot",
+        name: "고압산소요법-2시간 초과 1일당",
+        price: 120510,
+        isBenefit: true,
+        keywords: ["고압산소", "고압산소치료", "고압산소요법", "hbot", "hyperbaric oxygen", "m0588"]
+    },
+    {
+        code: "LA201",
+        category: "procedure",
+        group: "procedure_hira",
+        type: "pca",
+        name: "경막외 통증자가조절법(PCA)",
+        price: 53410,
+        isBenefit: true,
+        keywords: ["무통", "무통분만", "무통주사", "PCA", "통증자가조절법", "자가통증조절법", "경막외마취", "epidural pca", "la201"]
+    },
+    {
+        code: "LA204",
+        category: "procedure",
+        group: "procedure_hira",
+        type: "pca",
+        name: "정맥내 통증자가조절법(PCA)",
+        price: 33750,
+        isBenefit: true,
+        keywords: ["무통", "무통주사", "PCA", "통증자가조절법", "자가통증조절법", "정맥내마취", "iv pca", "la204"]
     }
 ];
 

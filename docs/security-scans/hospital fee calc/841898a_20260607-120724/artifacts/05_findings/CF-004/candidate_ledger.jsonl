@@ -1,0 +1,3 @@
+﻿{"phase":"discovery","candidate_id":"CF-004","status":"suppressed_candidate","artifact":"artifacts/02_discovery/raw_candidates.jsonl","evidence":"backend/server.js uses startsWith prefix check after path.normalize."}
+{"phase":"validation","candidate_id":"CF-004","status":"suppressed","artifact":"artifacts/05_findings/CF-004/validation_report.md","evidence":"Node path calculation proves sibling frontend* paths pass prefix check, but no such sibling exists in repo and backend is local/dev-only."}
+{"phase":"attack_path","candidate_id":"CF-004","status":"ignore","artifact":"artifacts/05_findings/CF-004/attack_path_analysis_report.md","evidence":"No realistic deployed attacker path or sensitive sibling target found."}

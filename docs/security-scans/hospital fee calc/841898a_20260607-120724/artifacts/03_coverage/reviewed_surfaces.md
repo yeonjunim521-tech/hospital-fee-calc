@@ -1,0 +1,14 @@
+﻿# Repository Coverage Ledger
+
+| Row | Boundary | Risk Area | Files Checked | Disposition | Candidate | Evidence |
+|---|---|---|---|---|---|---|
+| R1 | Cloudflare Pages Functions admin analytics | Missing authentication / unauthorized data mutation | `functions/api/admin/search-stats.ts`, `functions/api/admin/delete-log.ts`, `frontend/admin-search.html`, `database/schema.sql`, `wrangler.toml` | reportable | CF-001 | Admin stats and delete handlers have no auth/token check and can return/delete D1 logs. |
+| R2 | Main calculator frontend | DOM XSS from user search query and imported item/disease names | `frontend/index.html`, `frontend/assets/js/script.js`, generated JS data load points | reportable | CF-002 | `query`, `name`, `en`, and `item.name` are inserted into `innerHTML` without context escaping. |
+| R3 | Admin page rendering | Stored/admin XSS in inline handlers | `frontend/admin-search.html` | deferred | CF-003 | `escapeHtml` is used in inline `onclick`; HTML escaping is not JS-string escaping. Needs browser PoC. |
+| R4 | Local backend static server | Path traversal / sibling directory read | `backend/server.js` | suppressed | CF-004 | Prefix check is boundary-unsafe, but no sibling `frontend*` directory exists and backend is local/dev-only in repo evidence. |
+| R5 | Public log APIs | SQL injection / PII logging | `functions/api/search-log.ts`, `functions/api/search-click.ts`, `functions/api/calculation-log.ts` | no issue found | none | D1 prepared statements used; search-log blocks common PII patterns. |
+| R6 | Public top searches API | Data exposure | `functions/api/top-searches.ts` | not applicable | none | Public endpoint returns aggregate top searches only; no deletion or user-agent fields. |
+| R7 | Data-generation scripts | Secret leakage / command execution | `scripts/*.ps1`, `scripts/*.py`, `backend/package.json` | no issue found | none | GitHub scripts read tokens from env vars only; no token literal found in scanned source. |
+| R8 | Raw data deletion state | Build/data integrity | `data/raw`, `scripts/build-medical-statistics.ps1`, `scripts/build_fee_schedule_subset.py` | needs follow-up | none | Deleted CSV/XLSX files are required for regenerating generated medical/statistics JS outputs. Operational risk, not direct security issue. |
+| R9 | Generated/static data files | Large generated data review | `frontend/assets/js/fee_schedule_items.js`, `frontend/assets/js/medical_statistics.js`, `frontend/assets/data/kcd_codes.json` | deferred | none | Very large generated datasets were not exhaustively reviewed line by line; injection risk assessed through render sinks and generation scripts. |
+| R10 | Remaining source-like worklist rows | Broad repo-wide completeness | `deep_review_input.csv` 470 rows | deferred | none | High-impact runtime files reviewed; many docs/generated/cache-like rows remain deferred with exact report limitation. |

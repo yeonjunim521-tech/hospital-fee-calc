@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="refresh" content="10">
+  <title>작업 진행상황</title>
+  <style>
+    :root {
+      --ink: #14213d;
+      --muted: #64748b;
+      --line: #dbe4ef;
+      --panel: #f8fafc;
+      --done: #0f9f6e;
+      --doing: #d97706;
+      --wait: #64748b;
+    }
+    body {
+      margin: 0;
+      background: #eef3f8;
+      color: var(--ink);
+      font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+    }
+    main {
+      max-width: 960px;
+      margin: 32px auto;
+      padding: 0 20px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+    .meta {
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px;
+    }
+    .card {
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+    }
+    .label {
+      display: inline-flex;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .done { background: #dcfce7; color: var(--done); }
+    .doing { background: #fef3c7; color: var(--doing); }
+    .wait { background: #e2e8f0; color: var(--wait); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 18px;
+      background: white;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 12px;
+      text-align: left;
+    }
+    th {
+      background: var(--panel);
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>관리자 검색 통계 대시보드 작업 진행상황</h1>
+    <p class="meta">마지막 갱신: 2026-06-29 19:02 KST · 이 페이지는 10초마다 자동 새로고침됩니다.</p>
+
+    <section class="grid" aria-label="작업 요약">
+      <article class="card">
+        <span class="label done">완료</span>
+        <h2>API/DB</h2>
+        <p>기간 필터와 추가 항목 저장/조회 API, DB 테이블 추가를 반영했습니다.</p>
+      </article>
+      <article class="card">
+        <span class="label done">완료</span>
+        <h2>HTML 시안</h2>
+        <p>선택한 2번 시안 기준 관리자 대시보드 프로토타입 HTML을 생성했습니다.</p>
+      </article>
+      <article class="card">
+        <span class="label done">완료</span>
+        <h2>검증</h2>
+        <p>테스트, HTML 스크립트 문법 확인, Git diff 검사까지 마쳤습니다.</p>
+      </article>
+    </section>
+
+    <table>
+      <thead>
+        <tr>
+          <th>항목</th>
+          <th>상태</th>
+          <th>설명</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>기간 선택</td>
+          <td><span class="label done">완료</span></td>
+          <td>오늘, 24시간, 3일, 7일, 30일, 90일 조회 옵션을 API와 시안 화면에 반영했습니다.</td>
+        </tr>
+        <tr>
+          <td>무결과 추가 항목</td>
+          <td><span class="label done">완료</span></td>
+          <td>검색 결과가 없어 새로 추가한 항목을 후보와 추가 완료 상태로 조회할 수 있게 했습니다.</td>
+        </tr>
+        <tr>
+          <td>시안용 HTML</td>
+          <td><span class="label done">완료</span></td>
+          <td>운영자가 바로 흐름을 확인할 수 있는 단일 HTML 프로토타입을 만들었습니다.</td>
+        </tr>
+        <tr>
+          <td>검증 메모</td>
+          <td><span class="label wait">일부 제한</span></td>
+          <td>TypeScript 타입 체크는 로컬 `tsc`가 없어 실행하지 못했습니다.</td>
+        </tr>
+      </tbody>
+    </table>
+  </main>
+</body>
+</html>

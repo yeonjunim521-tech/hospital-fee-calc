@@ -982,6 +982,13 @@ function convertToEnglishKeys(text) {
     return result;
 }
 
+function normalizeSearchText(text) {
+    const matches = String(text || '')
+        .toLowerCase()
+        .match(/[0-9A-Za-z\u3131-\u318E\uAC00-\uD7A3]+/g);
+    return matches ? matches.join('').replace(/-/g, '') : '';
+}
+
 /** 한글 텍스트에서 초성만 추출합니다. (초성 검색 지원용) */
 function getChosung(text) {
     const choList = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
@@ -1011,7 +1018,7 @@ function isChosungOnly(text) {
  * (한글 초성 매칭, 한영 키보드 오타 교정, 띄어쓰기 생략 검색 완벽 보장)
  */
 function isMatch(query, item) {
-    const cleanQuery = query.replace(/\s+/g, '').toLowerCase();
+    const cleanQuery = normalizeSearchText(query);
     if (!cleanQuery) return false;
 
     // 매칭 대상: 공식 명칭, 카테고리 태그명, DB 지정 일상어 keywords 목록
@@ -1020,7 +1027,7 @@ function isMatch(query, item) {
     // 1단계: 초성 자음만 입력했을 시 초성 일치 대조
     if (isChosungOnly(cleanQuery)) {
         for (const target of targets) {
-            const cleanTarget = target.replace(/\s+/g, '').toLowerCase();
+            const cleanTarget = normalizeSearchText(target);
             const chosungTarget = getChosung(cleanTarget);
             if (chosungTarget.includes(cleanQuery)) return true;
         }
@@ -1029,7 +1036,7 @@ function isMatch(query, item) {
     // 2단계: 양방향 영어 자판 키 코드 일치 대조 (한영 변환 오타 방지 핵심)
     const englishQuery = convertToEnglishKeys(cleanQuery);
     for (const target of targets) {
-        const cleanTarget = target.replace(/\s+/g, '').toLowerCase();
+        const cleanTarget = normalizeSearchText(target);
         const englishTarget = convertToEnglishKeys(cleanTarget);
         if (englishTarget.includes(englishQuery) || cleanTarget.includes(cleanQuery)) return true;
     }
@@ -1961,7 +1968,10 @@ const KCD_COMMON_ALIASES = [
 ];
 
 function normalizeSearchText(value) {
-    return String(value || '').toLowerCase().replace(/\s+/g, '');
+    const matches = String(value || '')
+        .toLowerCase()
+        .match(/[0-9A-Za-z\u3131-\u318E\uAC00-\uD7A3]+/g);
+    return matches ? matches.join('').replace(/-/g, '') : '';
 }
 
 function getKcdCode(item) {
@@ -3056,6 +3066,21 @@ function calculate() {
         totalCost: patientTotalPay,
         refundCost: refundTotal
     });
+    if (typeof window.trackGAEvent === 'function') {
+        window.trackGAEvent('calculator_complete', {
+            hospital_class: hospitalClass,
+            treatment_type: treatmentType,
+            has_insurance: hasInsurance ? 'yes' : 'no',
+            has_sanjeong: Boolean(sanjeongInfo) ? 'yes' : 'no',
+            selected_tests: addedTests.length,
+            selected_surgeries: addedSurgeries.length,
+            selected_procedures: addedProcedures.length,
+            final_cost: finalPatientPay,
+            total_cost: patientTotalPay,
+            refund_cost: refundTotal,
+            page_path: window.location.pathname
+        });
+    }
 }
 
 // =========================================================
@@ -4362,6 +4387,15 @@ function eofRenderItemResults(query, targetGroup, items) {
         `;
         btn.onclick = () => {
             sendSearchClickLog(query, item);
+            if (typeof window.trackGAEvent === 'function') {
+                window.trackGAEvent('search_result_click', {
+                    search_term: query,
+                    item_code: item.code || item.type || '',
+                    item_name: item.name || '',
+                    item_group: targetGroup,
+                    page_path: window.location.pathname
+                });
+            }
             addHiraItem(item);
             const searchEl = eofSearchElements(targetGroup);
             if (searchEl.input) searchEl.input.value = '';
@@ -4485,6 +4519,16 @@ const EOF2_GROUP_LABELS = {
     etc: '\uae30\ud0c0'
 };
 
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    })[ch]);
+}
+
 function eof2Option(value, label, selected = false, disabled = false) {
     const opt = document.createElement('option');
     opt.value = value;
@@ -4602,22 +4646,25 @@ function renderHierarchicalItemsList(mainVal, subVal, detailVal = 'all') {
         .slice(0, 80);
 
     if (!items.length) {
-        itemsList.innerHTML = `<div class="empty-search-results"><p>${EOF2_TEXT.noResult}</p></div>`;
+        itemsList.innerHTML = `<div class="empty-search-results"><p>${escapeHtml(EOF2_TEXT.noResult)}</p></div>`;
         return;
     }
 
     items.forEach(item => {
         const code = item.publicActionCode || item.actionCode || item.ediCode || item.code || '';
         const benefitLabel = item.isBenefit ? EOF2_TEXT.benefit : EOF2_TEXT.nonBenefit;
+        const safeName = escapeHtml(item.name);
+        const safeCode = escapeHtml(code);
+        const safeBenefitLabel = escapeHtml(benefitLabel);
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'search-result-item hierarchical-result-item';
         btn.innerHTML = `
             <div class="search-result-info">
-                <span class="search-result-name"><span class="badge badge-benefit" style="padding:0.15rem 0.35rem;font-size:0.68rem;margin-right:0.4rem;">${benefitLabel}</span>${item.name}</span>
-                <span class="search-result-keywords">${code ? `${EOF2_TEXT.code} ${code}` : ''}</span>
+                <span class="search-result-name"><span class="badge badge-benefit" style="padding:0.15rem 0.35rem;font-size:0.68rem;margin-right:0.4rem;">${safeBenefitLabel}</span>${safeName}</span>
+                <span class="search-result-keywords">${code ? `${escapeHtml(EOF2_TEXT.code)} ${safeCode}` : ''}</span>
             </div>
-            <div class="search-result-meta"><span class="search-result-price">${formatNumber(item.price)}${EOF2_TEXT.won}</span><span class="btn-result-add">${EOF2_TEXT.add}</span></div>
+            <div class="search-result-meta"><span class="search-result-price">${escapeHtml(formatNumber(item.price))}${escapeHtml(EOF2_TEXT.won)}</span><span class="btn-result-add">${escapeHtml(EOF2_TEXT.add)}</span></div>
         `;
         btn.onclick = () => {
             sendSearchClickLog('', item);
@@ -4635,21 +4682,24 @@ function eofRenderDiseaseResults(query) {
     const matched = eofSearchKcd(query);
     results.innerHTML = '';
     if (!matched.length) {
-        results.innerHTML = `<div class="empty-search-results"><p>'<strong>${query}</strong>' ${EOF2_TEXT.noResult}</p></div>`;
+        results.innerHTML = `<div class="empty-search-results"><p>'<strong>${escapeHtml(query)}</strong>' ${escapeHtml(EOF2_TEXT.noResult)}</p></div>`;
     } else {
         matched.forEach(item => {
             const code = eofKcdCode(item);
             const name = eofKcdName(item) || eofKcdEnglish(item) || code;
             const en = eofKcdEnglish(item);
+            const safeCode = escapeHtml(code);
+            const safeName = escapeHtml(name);
+            const safeEn = escapeHtml(en);
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'search-result-item';
             btn.innerHTML = `
                 <div class="search-result-info">
-                    <span class="search-result-name"><span class="badge badge-benefit" style="font-size:0.68rem;margin-right:0.4rem;">KCD</span>${name}</span>
-                    <span class="search-result-keywords">KCD ${code}${en ? ` / ${en}` : ''}</span>
+                    <span class="search-result-name"><span class="badge badge-benefit" style="font-size:0.68rem;margin-right:0.4rem;">KCD</span>${safeName}</span>
+                    <span class="search-result-keywords">KCD ${safeCode}${en ? ` / ${safeEn}` : ''}</span>
                 </div>
-                <div class="search-result-meta"><span class="btn-result-add">${EOF2_TEXT.add}</span></div>
+                <div class="search-result-meta"><span class="btn-result-add">${escapeHtml(EOF2_TEXT.add)}</span></div>
             `;
             btn.onclick = () => {
                 addKcdDisease(code, name);
@@ -4671,7 +4721,7 @@ function eofRenderItemResults(query, targetGroup, items) {
     if (!el.results) return;
     el.results.innerHTML = '';
     if (!items.length) {
-        el.results.innerHTML = `<div class="empty-search-results"><p>'<strong>${query}</strong>' ${EOF2_TEXT.noResult}</p></div>`;
+        el.results.innerHTML = `<div class="empty-search-results"><p>'<strong>${escapeHtml(query)}</strong>' ${escapeHtml(EOF2_TEXT.noResult)}</p></div>`;
         el.results.classList.remove('hidden');
         return;
     }
@@ -4683,15 +4733,22 @@ function eofRenderItemResults(query, targetGroup, items) {
         const code = item.publicActionCode || item.actionCode || item.ediCode || item.code || '';
         const benefitLabel = item.isBenefit ? EOF2_TEXT.benefit : EOF2_TEXT.nonBenefit;
         const benefitClass = item.isBenefit ? 'badge-benefit' : 'badge-non-benefit';
+        const safeGroup = escapeHtml(EOF2_GROUP_LABELS[group] || group);
+        const safeName = escapeHtml(item.name);
+        const safeSub = escapeHtml(sub);
+        const safeDetail = escapeHtml(detail);
+        const safeCode = escapeHtml(code);
+        const safePrice = escapeHtml(formatNumber(item.price));
+        const safeBenefitLabel = escapeHtml(benefitLabel);
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'search-result-item';
         btn.innerHTML = `
             <div class="search-result-info">
-                <span class="search-result-name"><span class="badge badge-benefit" style="padding:0.15rem 0.35rem;font-size:0.68rem;margin-right:0.4rem;">${EOF2_GROUP_LABELS[group] || group}</span>${item.name}</span>
-                <span class="search-result-keywords">${sub}${detail ? ` / ${detail}` : ''}${code ? ` / ${EOF2_TEXT.code} ${code}` : ''}</span>
+                <span class="search-result-name"><span class="badge badge-benefit" style="padding:0.15rem 0.35rem;font-size:0.68rem;margin-right:0.4rem;">${safeGroup}</span>${safeName}</span>
+                <span class="search-result-keywords">${safeSub}${detail ? ` / ${safeDetail}` : ''}${code ? ` / ${escapeHtml(EOF2_TEXT.code)} ${safeCode}` : ''}</span>
             </div>
-            <div class="search-result-meta"><span class="search-result-price">${formatNumber(item.price)}${EOF2_TEXT.won}</span><span class="badge ${benefitClass}" style="font-size:0.65rem;">${benefitLabel}</span><span class="btn-result-add">${EOF2_TEXT.add}</span></div>
+            <div class="search-result-meta"><span class="search-result-price">${safePrice}${escapeHtml(EOF2_TEXT.won)}</span><span class="badge ${benefitClass}" style="font-size:0.65rem;">${safeBenefitLabel}</span><span class="btn-result-add">${escapeHtml(EOF2_TEXT.add)}</span></div>
         `;
         btn.onclick = () => {
             sendSearchClickLog(query, item);
@@ -4728,6 +4785,21 @@ function performSearch(query, targetGroup = 'scoped', options = {}) {
         matched = matched.filter(eofItemMatchesScope);
     }
     if (options.logSearch) sendSearchLog(clean, matched.length);
+    if (typeof window.trackGAEvent === 'function') {
+        window.trackGAEvent('search', {
+            search_term: clean,
+            result_count: matched.length,
+            search_scope: targetGroup,
+            page_path: window.location.pathname
+        });
+        if (matched.length === 0) {
+            window.trackGAEvent('search_no_result', {
+                search_term: clean,
+                search_scope: targetGroup,
+                page_path: window.location.pathname
+            });
+        }
+    }
     eofRenderItemResults(clean, targetGroup, matched);
 }
 
@@ -4775,22 +4847,25 @@ function renderHierarchicalItemsList(mainVal, subVal, detailVal = 'all') {
         .slice(0, 80);
 
     if (!items.length) {
-        itemsList.innerHTML = `<div class="empty-search-results"><p>${EOF2_TEXT.noResult}</p></div>`;
+        itemsList.innerHTML = `<div class="empty-search-results"><p>${escapeHtml(EOF2_TEXT.noResult)}</p></div>`;
         return;
     }
 
     items.forEach(item => {
         const code = item.publicActionCode || item.actionCode || item.ediCode || item.code || '';
         const benefitLabel = item.isBenefit ? EOF2_TEXT.benefit : EOF2_TEXT.nonBenefit;
+        const safeName = escapeHtml(item.name);
+        const safeCode = escapeHtml(code);
+        const safeBenefitLabel = escapeHtml(benefitLabel);
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'search-result-item hierarchical-result-item';
         btn.innerHTML = `
             <div class="search-result-info">
-                <span class="search-result-name"><span class="badge badge-benefit" style="padding:0.15rem 0.35rem;font-size:0.68rem;margin-right:0.4rem;">${benefitLabel}</span>${item.name}</span>
-                <span class="search-result-keywords">${code ? `${EOF2_TEXT.code} ${code}` : ''}</span>
+                <span class="search-result-name"><span class="badge badge-benefit" style="padding:0.15rem 0.35rem;font-size:0.68rem;margin-right:0.4rem;">${safeBenefitLabel}</span>${safeName}</span>
+                <span class="search-result-keywords">${code ? `${escapeHtml(EOF2_TEXT.code)} ${safeCode}` : ''}</span>
             </div>
-            <div class="search-result-meta"><span class="search-result-price">${formatNumber(item.price)}${EOF2_TEXT.won}</span><span class="btn-result-add">${EOF2_TEXT.add}</span></div>
+            <div class="search-result-meta"><span class="search-result-price">${escapeHtml(formatNumber(item.price))}${escapeHtml(EOF2_TEXT.won)}</span><span class="btn-result-add">${escapeHtml(EOF2_TEXT.add)}</span></div>
         `;
         btn.onclick = () => {
             sendSearchClickLog('', item);

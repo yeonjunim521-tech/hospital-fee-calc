@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <meta http-equiv="refresh" content="15">
+  <title>보안 점검 진행상황</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7fb;
+      --panel: rgba(255, 255, 255, 0.9);
+      --panel-border: rgba(15, 23, 42, 0.08);
+      --text: #0f172a;
+      --muted: #475569;
+      --accent: #1d4ed8;
+      --accent-soft: rgba(29, 78, 216, 0.12);
+      --line: rgba(15, 23, 42, 0.1);
+      --good: #166534;
+      --warn: #b45309;
+      --bad: #b91c1c;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(29, 78, 216, 0.18), transparent 30%),
+        radial-gradient(circle at top right, rgba(14, 165, 233, 0.12), transparent 24%),
+        linear-gradient(180deg, #eef4ff 0%, #f8fafc 35%, #f5f7fb 100%);
+    }
+
+    .wrap {
+      width: min(1100px, calc(100vw - 32px));
+      margin: 32px auto;
+      padding: 24px;
+      border: 1px solid var(--panel-border);
+      border-radius: 24px;
+      background: var(--panel);
+      box-shadow: 0 24px 80px rgba(15, 23, 42, 0.08);
+      backdrop-filter: blur(10px);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    h1 {
+      margin: 14px 0 8px;
+      font-size: clamp(30px, 4vw, 44px);
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+    }
+
+    .summary {
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.6;
+      max-width: 72ch;
+    }
+
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 22px 0;
+    }
+
+    .card {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.74);
+    }
+
+    .card .label {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    .card .value {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .panel {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    .panel h2 {
+      margin: 0 0 12px;
+      font-size: 20px;
+      letter-spacing: -0.03em;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th, td {
+      padding: 12px 10px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--muted);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .tag.done { background: rgba(22, 101, 52, 0.12); color: var(--good); }
+    .tag.progress { background: rgba(180, 83, 9, 0.12); color: var(--warn); }
+    .tag.block { background: rgba(185, 28, 28, 0.12); color: var(--bad); }
+
+    ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    .foot {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 900px) {
+      .meta, .grid { grid-template-columns: 1fr; }
+      .wrap { margin: 12px; width: auto; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="eyebrow">실시간 점검판</div>
+    <h1>hospital-fee-calc 보안 점검 진행상황</h1>
+    <p class="summary">
+      현재 작업은 보안 점검 우선 순서로 진행 중이다. 발견된 후보는 검증과 공격 경로 분석을 분리해서 정리하고,
+      최종적으로 PR 전에 보고서와 GitHub 반영 여부를 결정한다.
+    </p>
+
+    <section class="meta" aria-label="점검 요약">
+      <div class="card"><span class="label">현재 단계</span><span class="value">검증 진행 중</span></div>
+      <div class="card"><span class="label">후보 수</span><span class="value">13개</span></div>
+      <div class="card"><span class="label">진행 방식</span><span class="value">서브에이전트 병렬</span></div>
+      <div class="card"><span class="label">마지막 갱신</span><span class="value" id="updated-at">수동 갱신</span></div>
+    </section>
+
+    <section class="grid">
+      <div class="panel">
+        <h2>검증 대상</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>후보</th>
+              <th>상태</th>
+              <th>메모</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>관리자 조회 API 노출</td>
+              <td><span class="tag progress">검증 중</span></td>
+              <td>search-stats, search-candidates, prototype page</td>
+            </tr>
+            <tr>
+              <td>로그 삭제 API 노출</td>
+              <td><span class="tag progress">검증 중</span></td>
+              <td>delete-log.ts의 5개 분기</td>
+            </tr>
+            <tr>
+              <td>공용 검색 DOM XSS</td>
+              <td><span class="tag progress">검증 중</span></td>
+              <td>script.js의 query / imported data 렌더링</td>
+            </tr>
+            <tr>
+              <td>관리자 외부 스크립트 로드</td>
+              <td><span class="tag progress">검증 중</span></td>
+              <td>admin-search.html의 third-party script</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="panel">
+        <h2>다음 작업</h2>
+        <ul>
+          <li>후보별 validation receipt 추가</li>
+          <li>attack-path analysis receipt 추가</li>
+          <li>coverage ledger 정리</li>
+          <li>final report 생성</li>
+          <li>검증 후 PR 준비</li>
+        </ul>
+        <div class="foot">
+          이 페이지는 `frontend/` 아래에 있어 배포 환경에서 직접 열 수 있다.
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    document.getElementById('updated-at').textContent = new Date().toLocaleString('ko-KR');
+  </script>
+</body>
+</html>
