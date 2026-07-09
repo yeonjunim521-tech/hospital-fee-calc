@@ -23,6 +23,11 @@ const MIME_TYPES = {
   '.jpeg': 'image/jpeg'
 };
 
+function isPathInsideDir(baseDir, targetPath) {
+  const relativePath = path.relative(baseDir, targetPath);
+  return relativePath === '' || (!relativePath.startsWith('..') && !path.isAbsolute(relativePath));
+}
+
 function sendJson(res, statusCode, body) {
   res.writeHead(statusCode, {
     'Content-Type': 'application/json; charset=utf-8',
@@ -77,9 +82,9 @@ async function handleApi(req, res, pathname) {
 
 async function handleStatic(req, res, pathname) {
   const safePathname = pathname === '/' ? 'index.html' : pathname.replace(/^\/+/, '');
-  const filePath = path.normalize(path.join(FRONTEND_DIR, safePathname));
+  const filePath = path.resolve(FRONTEND_DIR, safePathname);
 
-  if (!filePath.startsWith(FRONTEND_DIR)) {
+  if (!isPathInsideDir(FRONTEND_DIR, filePath)) {
     res.writeHead(403);
     res.end('접근할 수 없는 경로입니다.');
     return;
@@ -135,6 +140,10 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`MEDICost backend: http://localhost:${PORT}`);
-});
+if (require.main === module) {
+  server.listen(PORT, () => {
+    console.log(`MEDICost backend: http://localhost:${PORT}`);
+  });
+}
+
+module.exports = { isPathInsideDir };
