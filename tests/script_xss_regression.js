@@ -5,6 +5,8 @@ const path = require('node:path');
 function createMockElement() {
     return {
         children: [],
+        dataset: {},
+        listeners: {},
         classList: {
             add() {},
             remove() {},
@@ -16,7 +18,27 @@ function createMockElement() {
                 this.innerHTML += child.innerHTML;
             }
         },
-        addEventListener() {},
+        addEventListener(type, handler) {
+            if (!this.listeners[type]) {
+                this.listeners[type] = [];
+            }
+            this.listeners[type].push(handler);
+        },
+        dispatchEvent(event) {
+            const type = event && event.type;
+            const listeners = (type && this.listeners[type]) || [];
+            const normalizedEvent = event || {};
+            if (!normalizedEvent.preventDefault) {
+                normalizedEvent.preventDefault = () => {};
+            }
+            for (const listener of listeners) {
+                listener.call(this, normalizedEvent);
+            }
+            return true;
+        },
+        click() {
+            this.dispatchEvent({ type: 'click' });
+        },
         querySelector() { return null; },
         querySelectorAll() { return []; },
         focus() {},
@@ -108,5 +130,37 @@ assert.match(addedItems.innerHTML, /&lt;script&gt;alert\(3\)&lt;\/script&gt;/);
 assert.doesNotMatch(addedItems.innerHTML, /<svg onload=alert\(2\)>/);
 assert.doesNotMatch(addedItems.innerHTML, /<script>alert\(3\)<\/script>/);
 assert.doesNotMatch(addedItems.innerHTML, /<img src=x onerror=alert\(4\)>/);
+
+const diseaseInput = getElement('disease_code_input');
+const diseaseResults = getElement('disease-search-results');
+const originalSearchKcdDiseases = searchKcdDiseases;
+
+searchKcdDiseases = () => [];
+bindDiseaseSearchBox();
+assert.equal(diseaseInput.dataset.finalBound, '1');
+
+diseaseInput.value = malicious;
+diseaseInput.dispatchEvent({ type: 'input' });
+
+searchKcdDiseases = originalSearchKcdDiseases;
+
+assert.match(diseaseResults.innerHTML, /&lt;img src=x onerror=alert\(1\)&gt;/);
+assert.doesNotMatch(diseaseResults.innerHTML, /<img src=x onerror=alert\(1\)>/);
+
+diseaseResults.innerHTML = '';
+finalBindDiseaseSearchBox();
+diseaseInput.value = malicious;
+diseaseInput.oninput();
+
+assert.match(diseaseResults.innerHTML, /&lt;img src=x onerror=alert\(1\)&gt;/);
+assert.doesNotMatch(diseaseResults.innerHTML, /<img src=x onerror=alert\(1\)>/);
+
+diseaseResults.innerHTML = '';
+eofBindDiseaseSearchBox();
+diseaseInput.value = malicious;
+diseaseInput.oninput();
+
+assert.match(diseaseResults.innerHTML, /&lt;img src=x onerror=alert\(1\)&gt;/);
+assert.doesNotMatch(diseaseResults.innerHTML, /<img src=x onerror=alert\(1\)>/);
 
 console.log('xss regression checks passed');
