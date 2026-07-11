@@ -1108,9 +1108,7 @@
       const zeroSearches = getZeroResultSearches().reduce(function(sum, item) {
         return sum + Number(item.zero_result_count || 0);
       }, 0);
-      const clickCount = getClickedItems().reduce(function(sum, item) {
-        return sum + Number(item.click_count || 0);
-      }, 0);
+      const clickCount = Number(state.stats && state.stats.clickCount || 0);
       const resultSearches = Math.max(0, totalSearches - zeroSearches);
       const zeroRate = totalSearches ? Math.round((zeroSearches / totalSearches) * 100) : 0;
 
@@ -1264,8 +1262,8 @@
       document.getElementById("detail-path").textContent = recent && recent.path ? recent.path : "/fee/search";
       document.getElementById("detail-last-at").textContent = recent ? formatDate(recent.created_at) : "-";
 
-      if (clicked) {
-        document.getElementById("detail-clicked-item").textContent = "클릭한 항목 " + (clicked.item_name || clicked.item_id || "-") + " · 클릭수 " + formatCount(clicked.click_count);
+      if (Number(state.stats && state.stats.clickCount || 0) > 0) {
+        document.getElementById("detail-clicked-item").textContent = "비식별 총 클릭수 " + formatCount(Number(state.stats.clickCount));
       } else if (latestRow) {
         document.getElementById("detail-clicked-item").textContent = "최근 저장 상태: " + statusMeta.label;
       } else {

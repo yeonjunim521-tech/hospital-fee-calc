@@ -49,6 +49,15 @@ ON search_click_logs(normalized_query);
 CREATE INDEX IF NOT EXISTS idx_search_click_logs_created_at
 ON search_click_logs(created_at);
 
+CREATE TABLE IF NOT EXISTS telemetry_rate_limits (
+  rate_key TEXT PRIMARY KEY,
+  window_started_at INTEGER NOT NULL,
+  event_count INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_telemetry_rate_limits_window_started_at
+ON telemetry_rate_limits(window_started_at);
+
 CREATE TABLE IF NOT EXISTS calculation_logs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   hospital_class TEXT NOT NULL,

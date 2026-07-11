@@ -65,7 +65,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     const message = error instanceof Error ? error.message : String(error);
     console.error("delete-log error", message);
     return Response.json(
-      { ok: false, error: "로그 삭제 중 오류가 발생했습니다.", detail: message },
+      { ok: false, error: "로그 삭제 중 오류가 발생했습니다." },
       { status: 500 }
     );
   }

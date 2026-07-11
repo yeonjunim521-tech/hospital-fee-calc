@@ -88,7 +88,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     console.error("search-candidates get error", message);
 
     return Response.json(
-      { ok: false, error: "검색 후보 조회 중 오류가 발생했습니다.", detail: message },
+      { ok: false, error: "검색 후보 조회 중 오류가 발생했습니다." },
       { status: 500 }
     );
   }
@@ -150,7 +150,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     console.error("search-candidates post error", message);
 
     return Response.json(
-      { ok: false, error: "검색 후보 저장 중 오류가 발생했습니다.", detail: message },
+      { ok: false, error: "검색 후보 저장 중 오류가 발생했습니다." },
       { status: 500 }
     );
   }

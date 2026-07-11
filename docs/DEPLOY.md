@@ -30,3 +30,15 @@
 ```powershell
 npx wrangler d1 execute search-analytics-db --remote --file=./database/schema.sql
 ```
+
+`telemetry_rate_limits`를 포함한 최신 schema가 적용됐는지 확인한 뒤 Pages를 배포한다. schema 적용은 Pages 배포와 별개다.
+
+## 관리자 보안 설정
+
+Cloudflare Pages secret에 `ADMIN_BASIC_AUTH`를 `사용자이름:비밀번호` 형식으로 등록한다. 실제 값은 저장소·문서·로그에 남기지 않는다.
+
+```powershell
+npx wrangler pages secret put ADMIN_BASIC_AUTH
+```
+
+관리자 POST API는 같은 출처의 Origin 헤더만 허용한다. 브라우저 밖의 관리 도구는 이 보호 경로를 직접 호출하지 않는다.

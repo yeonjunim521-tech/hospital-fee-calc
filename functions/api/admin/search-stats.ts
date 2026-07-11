@@ -107,18 +107,21 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     `), range)
       .all();
 
-    const clickedItems = await bindRange(context.env.DB.prepare(`
+    const clickSummary = await bindRange(context.env.DB.prepare(`
       SELECT
-        clicked_item_name,
         COUNT(*) AS click_count
       FROM search_click_logs
       WHERE created_at >= ${range.sql}
-        AND clicked_item_name IS NOT NULL
-      GROUP BY clicked_item_name
-      ORDER BY click_count DESC
-      LIMIT 50
+        AND clicked_item_id IS NULL
+        AND clicked_item_name IS NULL
     `), range)
       .all();
+    const clickSummaryRow = rows(clickSummary)[0];
+    const clickCount = clickSummaryRow
+      && typeof clickSummaryRow === "object"
+      && "click_count" in clickSummaryRow
+      ? Number(clickSummaryRow.click_count)
+      : 0;
 
     const recentSearches = await bindRange(context.env.DB.prepare(`
       SELECT
@@ -156,7 +159,8 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       periodLabel: range.label,
       topSearches: rows(topSearches),
       zeroResultSearches: rows(zeroResultSearches),
-      clickedItems: rows(clickedItems),
+      clickedItems: [],
+      clickCount: Number.isFinite(clickCount) ? clickCount : 0,
       recentSearches: rows(recentSearches),
       calculationConditions: rows(calculationConditions),
     });
@@ -165,7 +169,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     console.error("search-stats error", message);
 
     return Response.json(
-      { ok: false, error: "검색 통계 조회 중 오류가 발생했습니다.", detail: message },
+      { ok: false, error: "검색 통계 조회 중 오류가 발생했습니다." },
       { status: 500 }
     );
   }

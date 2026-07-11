@@ -14,6 +14,8 @@ function isBlockedQuery(query: string): boolean {
   const blockedPatterns = [
     /\d{6}-\d{7}/,
     /\d{2,3}-\d{3,4}-\d{4}/,
+    /\b01[016789]\d{7,8}\b/,
+    /\b\d{13}\b/,
     /[\w.-]+@[\w.-]+\.\w+/,
   ];
 

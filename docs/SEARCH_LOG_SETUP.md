@@ -43,9 +43,14 @@ npx wrangler pages dev . --d1 DB=search-analytics-db
 
 ## 3. 관리자 통계 페이지
 
-관리자 통계 페이지는 토큰 없이 조회한다. 대신 검색엔진에 노출되지 않도록 `noindex`와 `robots.txt` 차단을 적용한다.
+관리자 통계 페이지와 `/api/admin/*`는 `ADMIN_BASIC_AUTH` secret(비밀값)으로 보호한다.
+Cloudflare Pages 환경 변수에 `사용자이름:비밀번호` 형식의 값을 secret으로 등록한다. 값 자체는 저장소나 문서에 기록하지 않는다.
 
-공개 링크로 노출하지 말고 운영자만 직접 주소를 보관한다.
+```powershell
+npx wrangler pages secret put ADMIN_BASIC_AUTH
+```
+
+같은 출처의 관리자 POST 요청만 허용한다. 외부 자동화 도구는 실제 사이트 Origin 헤더를 명시해야 한다.
 
 ## 4. Pages Functions 배포 확인
 
@@ -72,5 +77,8 @@ https://hospital-fee-calc.pages.dev/admin-search
 ## 주의
 
 - 주민등록번호, 전화번호, 이메일 형태 검색어는 API에서 저장하지 않는다.
+- 클릭 로그는 항목별 순위 대신 비식별 총 클릭수만 저장한다.
+- 기존 항목별 클릭 로그는 새 총계에서 제외한다. 항목별 분석이 필요하면 서버 권위 항목 목록을 별도로 설계한다.
+- `telemetry_rate_limits`를 포함한 최신 `database/schema.sql`을 원격 D1에 적용한 뒤 Pages를 배포한다.
 - 검색 로그 저장 실패는 사용자 검색 기능을 막지 않는다.
 - 입력 중 실시간 검색어는 저장하지 않고, 검색 버튼 또는 엔터 실행 검색어만 저장한다.

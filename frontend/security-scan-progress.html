@@ -63,6 +63,8 @@
       font-size: clamp(30px, 4vw, 44px);
       line-height: 1.05;
       letter-spacing: -0.04em;
+      word-break: keep-all;
+      overflow-wrap: break-word;
     }
 
     .summary {
@@ -71,6 +73,8 @@
       font-size: 16px;
       line-height: 1.6;
       max-width: 72ch;
+      word-break: keep-all;
+      overflow-wrap: break-word;
     }
 
     .meta {
@@ -108,6 +112,7 @@
     }
 
     .panel {
+      min-width: 0;
       padding: 18px;
       border: 1px solid var(--line);
       border-radius: 20px;
@@ -131,6 +136,8 @@
       border-bottom: 1px solid var(--line);
       text-align: left;
       vertical-align: top;
+      word-break: keep-all;
+      overflow-wrap: break-word;
     }
 
     th {
@@ -159,37 +166,63 @@
       line-height: 1.7;
     }
 
+    li {
+      word-break: keep-all;
+      overflow-wrap: break-word;
+    }
+
+    .nowrap { white-space: nowrap; }
+
     .foot {
       margin-top: 16px;
       color: var(--muted);
       font-size: 13px;
+      word-break: keep-all;
+      overflow-wrap: break-word;
     }
 
     @media (max-width: 900px) {
       .meta, .grid { grid-template-columns: 1fr; }
       .wrap { margin: 12px; width: auto; }
     }
+
+    @media (max-width: 520px) {
+      .wrap { padding: 20px; }
+      table, tbody, tr, td { display: block; width: 100%; }
+      thead { display: none; }
+      tr {
+        padding: 12px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      td {
+        padding: 4px 0;
+        border-bottom: 0;
+        word-break: keep-all;
+        overflow-wrap: break-word;
+      }
+      td:first-child { font-weight: 800; }
+    }
   </style>
 </head>
 <body>
   <main class="wrap">
     <div class="eyebrow">실시간 진행상황</div>
-    <h1>hospital-fee-calc 보안 작업 진행상황</h1>
+    <h1>hospital-fee-calc 보안 수정 진행상황</h1>
     <p class="summary">
-      현재는 남은 DOM XSS 경로를 닫고, 실제 입력 이벤트 회귀 테스트까지 통과한 상태다. 이 페이지는 15초마다 새로고침되며,
-      작업 상태를 원격에서 바로 확인할 수 있게 만든다.
+      스캔을 중단하고 확인된 보안 문제를 실제 코드로 수정 중이다. 관리자 POST 동일 출처 검증,
+      공개 검색어 원문 제거, 클릭 로그 제한·개인정보 차단·비식별 총계화, 질병 검색 XSS 방어를 반영했다.
     </p>
 
     <section class="meta" aria-label="작업 요약">
-      <div class="card"><span class="label">현재 단계</span><span class="value">보안 수정 완료</span></div>
-      <div class="card"><span class="label">확인한 항목</span><span class="value">4개 경로</span></div>
-      <div class="card"><span class="label">검증 방식</span><span class="value">문법 + 회귀 테스트</span></div>
+      <div class="card"><span class="label">작업 상태</span><span class="value">실제 수정 · 검증 중</span></div>
+      <div class="card"><span class="label">수정 항목</span><span class="value">4개 반영</span></div>
+      <div class="card"><span class="label">회귀 테스트</span><span class="value">통과</span></div>
       <div class="card"><span class="label">마지막 갱신</span><span class="value" id="updated-at">갱신 중</span></div>
     </section>
 
     <section class="grid">
       <div class="panel">
-        <h2>완료 항목</h2>
+        <h2>점검 단계</h2>
         <table>
           <thead>
             <tr>
@@ -200,35 +233,35 @@
           </thead>
           <tbody>
             <tr>
-              <td>검색 결과 렌더링 안전화</td>
+              <td>관리자 POST 동일 출처 검증</td>
               <td><span class="tag done">완료</span></td>
-              <td>query, 이름, 코드, 가격을 escape 처리</td>
+              <td>인증 후 Origin을 현재 사이트와 비교해 교차 출처 요청을 거부</td>
             </tr>
             <tr>
-              <td>추가 항목 렌더링 안전화</td>
+              <td>공개 인기 검색어 비식별화</td>
               <td><span class="tag done">완료</span></td>
-              <td>검사 / 수술 / 처치 목록의 동적 텍스트 이스케이프</td>
+              <td>검색어 원문과 D1 오류 세부정보를 응답에서 제거</td>
             </tr>
             <tr>
-              <td>결과 표 항목명 안전화</td>
+              <td>공식 산출물 계약 확인</td>
               <td><span class="tag done">완료</span></td>
-              <td>breakdown 표에서 item.name 직접 삽입 제거</td>
+              <td>권위 scanDir에 validation·attack path <span class="nowrap">영수증 0개</span></td>
             </tr>
             <tr>
-              <td>XSS 회귀 테스트</td>
+              <td>클릭 로그 및 질병 검색 XSS</td>
               <td><span class="tag done">완료</span></td>
-              <td>node --check, regression test 통과</td>
+              <td>개인정보 패턴 차단, 시간당 제한, 항목별 순위 중단, HTML escape 적용</td>
             </tr>
           </tbody>
         </table>
       </div>
 
       <div class="panel">
-        <h2>다음 확인</h2>
+        <h2>작업 원칙</h2>
         <ul>
-          <li>브라우저에서 공개 계산기와 관리자 화면을 한 번 더 확인</li>
-          <li>필요하면 커밋 후 푸시</li>
-          <li>추가 보안 위험이 보이면 즉시 우선순위 재정렬</li>
+          <li>원격 D1 schema 적용과 배포는 외부 변경 승인 후에만 실행</li>
+          <li>서버 권위 항목 목록을 별도로 seed하기 전까지 클릭 항목별 순위는 제공하지 않음</li>
+          <li>회귀 테스트와 실제 브라우저 질병 검색 경로를 함께 확인</li>
         </ul>
         <div class="foot">
           이 페이지는 자동 새로고침으로 최신 상태를 유지한다.
@@ -238,7 +271,10 @@
   </main>
 
   <script>
-    document.getElementById('updated-at').textContent = new Date().toLocaleString('ko-KR');
+    const sourceUpdatedAt = new Date(document.lastModified);
+    document.getElementById('updated-at').textContent = Number.isNaN(sourceUpdatedAt.getTime())
+      ? '파일 갱신 시각 확인 불가'
+      : sourceUpdatedAt.toLocaleString('ko-KR');
   </script>
 </body>
 </html>

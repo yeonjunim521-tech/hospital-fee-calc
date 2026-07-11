@@ -3,7 +3,9 @@ interface Env {
 }
 
 const PROTECTED_PATHS = new Set([
+  "/admin-search",
   "/admin-search.html",
+  "/admin-dashboard-prototype",
   "/admin-dashboard-prototype.html",
 ]);
 
@@ -19,6 +21,19 @@ function unauthorizedResponse() {
       "Cache-Control": "no-store",
     },
   });
+}
+
+function forbiddenResponse() {
+  return new Response("Forbidden", {
+    status: 403,
+    headers: {
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
+function isAdminMutation(request: Request, pathname: string): boolean {
+  return pathname.startsWith("/api/admin/") && !["GET", "HEAD", "OPTIONS"].includes(request.method);
 }
 
 function decodeBasicAuth(header: string | null): string | null {
@@ -54,6 +69,14 @@ export async function onRequest(context: PagesFunction<Env>) {
   const credentials = decodeBasicAuth(context.request.headers.get("Authorization"));
   if (credentials !== expected) {
     return unauthorizedResponse();
+  }
+
+  if (isAdminMutation(context.request, pathname)) {
+    const requestOrigin = context.request.headers.get("Origin");
+    const expectedOrigin = new URL(context.request.url).origin;
+    if (requestOrigin !== expectedOrigin) {
+      return forbiddenResponse();
+    }
   }
 
   return context.next();
