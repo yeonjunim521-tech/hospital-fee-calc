@@ -60,7 +60,7 @@ test('공개 HTML은 동의 전에 분석과 광고 스크립트를 직접 로�
     const htmlFiles = fs.readdirSync(frontend).filter(name => name.endsWith('.html') && !name.startsWith('admin-'));
     for (const name of htmlFiles) {
         const html = readPage(name);
-        assert.doesNotMatch(html, /<script[^>]+(?:analytics\.js|pagead2\.googlesyndication\.com)/i, name);
+        assert.doesNotMatch(html, /<script[^>]+(?:analytics\.js|pagead2\.googlesyndication\.com|t1\.kakaocdn\.net)/i, name);
     }
 });
 
@@ -98,6 +98,7 @@ test('개인정보 안내는 최소수집과 30일 보유 기준을 명시한다
     assert.match(html, /원시 검색어/);
     assert.match(html, /30일/);
     assert.match(html, /데이터 오류/);
+    assert.match(html, /Kakao AdFit/);
 });
 
 test('필수 안내 페이지는 현재 위치를 탐색 메뉴에 표시한다', () => {
@@ -130,7 +131,12 @@ test('공개 SEO 페이지는 고유 한글 메타데이터와 검색용 본문�
         assert.doesNotMatch(html, /(?:�|癰|沅|쑴|쎿)/, name);
         assert.match(html, /href="\/#calculator"/, `${name}: calculator CTA`);
         assert.ok((html.match(/class="ad-slot ad-slot--content"/g) || []).length >= 2, `${name}: content ad slots`);
-        assert.doesNotMatch(html, /(?:googlesyndication|pagead2\.googlesyndication\.com)/i, `${name}: direct ad script`);
+        assert.strictEqual((html.match(/class="kakao_ad_area"/g) || []).length, 2, `${name}: Kakao ad slots`);
+        assert.match(html, /data-ad-unit="DAN-dmM66J0Ueo0AkcLo"/);
+        assert.match(html, /data-ad-unit="DAN-FwOH9Vn3dSU1pp97"/);
+        assert.match(html, /id="consent-banner"/);
+        assert.match(html, /data-open-consent/);
+        assert.doesNotMatch(html, /(?:googlesyndication|pagead2\.googlesyndication\.com|t1\.kakaocdn\.net)/i, `${name}: direct ad script`);
     }
 });
 

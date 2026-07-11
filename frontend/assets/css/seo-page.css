@@ -35,6 +35,20 @@ body {
     text-decoration: none;
 }
 
+.seo-footer button {
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: #2563eb;
+    font: inherit;
+    cursor: pointer;
+}
+
+.seo-footer button:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 3px;
+}
+
 .seo-header nav,
 .seo-footer {
     margin-top: 0;
@@ -95,6 +109,94 @@ li {
     background: #f8fafc;
 }
 
+.ad-slot .kakao_ad_area {
+    display: block;
+    max-width: 100%;
+}
+
+.consent-banner {
+    position: fixed;
+    z-index: 80;
+    inset: auto 16px 16px;
+    margin-left: auto;
+    width: min(38rem, calc(100% - 2rem));
+    border: 1px solid #cfded9;
+    border-radius: 14px;
+    padding: 20px;
+    background: #ffffff;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16);
+}
+
+.consent-banner[hidden] {
+    display: none;
+}
+
+.consent-banner h2 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.consent-banner p {
+    margin: 8px 0 0;
+    color: #475569;
+    font-size: 14px;
+}
+
+.consent-settings {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #e2ece9;
+}
+
+.consent-setting {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 0;
+}
+
+.consent-setting strong,
+.consent-setting span {
+    display: block;
+}
+
+.consent-setting span {
+    color: #526b66;
+    font-size: 12px;
+}
+
+.consent-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.consent-actions button {
+    min-height: 44px;
+    padding: 10px 14px;
+    border: 1px solid #cfded9;
+    border-radius: 10px;
+    background: #ffffff;
+    color: #17312d;
+    font: inherit;
+    cursor: pointer;
+}
+
+.consent-actions .consent-button-primary {
+    border-color: #087a68;
+    background: #087a68;
+    color: #ffffff;
+}
+
+.consent-status {
+    min-height: 24px;
+    margin: 8px 0 0;
+    color: #18794e;
+    font-size: 12px;
+    font-weight: 700;
+}
+
 details {
     margin-top: 12px;
     padding: 14px 16px;
@@ -126,4 +228,21 @@ nav a {
     color: #2563eb;
     text-decoration: none;
     font-weight: 600;
+}
+
+@media (max-width: 30rem) {
+    .consent-banner {
+        inset-inline: 8px;
+        bottom: 8px;
+        width: auto;
+    }
+
+    .consent-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .consent-setting {
+        align-items: flex-start;
+    }
 }
