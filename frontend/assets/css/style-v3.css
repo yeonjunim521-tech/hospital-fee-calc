@@ -487,6 +487,13 @@ svg { display: block; }
 .result-action-link { min-height: 2.75rem; border: 1px solid var(--border-default); border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); color: var(--text-primary); background: var(--surface-primary); cursor: pointer; font-weight: 700; }
 .result-action-link:hover { border-color: var(--accent-primary); background: var(--surface-accent); }
 .result-insurance-status { margin: var(--space-3) 0 0; color: var(--text-secondary); font-size: 0.75rem; line-height: 1.5; }
+.result-insights { margin-top: var(--space-4); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: var(--space-4); background: var(--surface-secondary); }
+.result-insights h3 { margin: 0; font-size: 0.875rem; }
+.result-insights-summary { margin: var(--space-2) 0 0; color: var(--text-secondary); font-size: 0.75rem; line-height: 1.6; }
+.result-insights-drivers { margin: var(--space-3) 0 0; padding: 0; display: grid; gap: var(--space-2); list-style: none; }
+.result-insights-drivers li { display: flex; justify-content: space-between; gap: var(--space-3); align-items: baseline; color: var(--text-secondary); font-size: 0.75rem; }
+.result-insights-drivers li span { min-width: 0; }
+.result-insights-drivers li strong { flex: 0 0 auto; color: var(--text-primary); font-family: "Outfit", "Noto Sans KR", sans-serif; font-variant-numeric: tabular-nums; }
 .result-item { border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: var(--space-4); background: var(--surface-primary); }
 .final-cost-box-primary { color: var(--text-on-strong); border-color: var(--surface-strong); background: var(--surface-strong); box-shadow: var(--shadow-default); }
 .result-label { display: block; color: var(--text-secondary); font-size: 0.75rem; font-weight: 700; }

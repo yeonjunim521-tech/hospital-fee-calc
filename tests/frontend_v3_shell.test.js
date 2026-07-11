@@ -1,4 +1,6 @@
 const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
 
 const consent = require('../frontend/assets/js/consent.js');
 const shell = require('../frontend/assets/js/app-shell.js');
@@ -29,6 +31,20 @@ test('Given accepted analytics only, when checked, then ads remain blocked', () 
     const value = { analytics: true, ads: false, updatedAt: '2026-07-11T00:00:00.000Z' };
     assert.strictEqual(consent.canLoadAnalytics(value), true);
     assert.strictEqual(consent.canLoadAds(value), false);
+});
+
+test('Given optional tracking is withdrawn, when consent is applied, then loaded optional scripts are removed', () => {
+    const consentSource = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'assets', 'js', 'consent.js'), 'utf8');
+    assert.match(consentSource, /syncScript/);
+    assert.match(consentSource, /medicost-analytics/);
+    assert.match(consentSource, /medicost-analytics-loader/);
+    assert.match(consentSource, /medicost-ads/);
+    assert.match(consentSource, /existing\.remove\(\)/);
+});
+
+test('Given a search event, when analytics is sent, then raw search terms are not included', () => {
+    const scriptSource = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'assets', 'js', 'script.js'), 'utf8');
+    assert.doesNotMatch(scriptSource, /search_term\s*:/);
 });
 
 test('Given missing required selections, when validated, then exact labels are returned', () => {

@@ -263,7 +263,12 @@ async function screenshot(cdp, name) {
         assert.notStrictEqual(result.totalCost, '0');
         assert.ok(result.rows > 0);
         assert.strictEqual(result.sticky, 'sticky');
+        const insights = JSON.parse(await evaluate(cdp, 'JSON.stringify({ drivers: document.querySelectorAll("#result-insights-drivers li").length, summary: document.getElementById("result-insights-summary").textContent })'));
+        assert.ok(insights.drivers > 0);
+        assert.match(insights.summary, /비급여 공개자료|실손보험/);
+        await evaluate(cdp, 'document.getElementById("result-insights").scrollIntoView({ block: "center" })');
         await sleep(300);
+        await screenshot(cdp, '1280-result-insights.png');
         await screenshot(cdp, '1280-calculator-result.png');
 
         const emergencyCost = await evaluate(cdp, `(() => {
@@ -318,6 +323,14 @@ async function screenshot(cdp, name) {
         assert.notStrictEqual(insuranceResult.refund, '0');
         assert.notStrictEqual(insuranceResult.refund, insuranceResult.initialRefund);
         assert.strictEqual(insuranceResult.visible, true);
+        await cdp.send('Emulation.setDeviceMetricsOverride', { width: 375, height: 800, deviceScaleFactor: 1, mobile: true });
+        await evaluate(cdp, 'document.getElementById("result-insights").scrollIntoView({ block: "start" })');
+        await sleep(300);
+        const mobileInsights = await evaluate(cdp, '({ scrollWidth: document.documentElement.scrollWidth, width: innerWidth, drivers: document.querySelectorAll("#result-insights-drivers li").length })');
+        assert.ok(mobileInsights.scrollWidth <= mobileInsights.width, `375px 결과 해석 가로 넘침: ${mobileInsights.scrollWidth - mobileInsights.width}px`);
+        assert.ok(mobileInsights.drivers > 0);
+        await screenshot(cdp, '375-result-insights.png');
+        await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false });
         await evaluate(cdp, 'document.querySelector("[data-reset-calculator]").click()');
         assert.strictEqual(await evaluate(cdp, 'document.querySelector("[data-step-panel=\\\"1\\\"]").hidden'), false);
         assert.strictEqual(await evaluate(cdp, 'document.querySelectorAll("#added_items_unified_list .added-item").length'), 0);
@@ -387,14 +400,25 @@ async function screenshot(cdp, name) {
             document.querySelector('[data-consent-save]').click();
         })()`);
         await waitFor(cdp, `document.getElementById('medicost-analytics') && document.getElementById('medicost-ads')`);
+        await waitFor(cdp, `document.getElementById('medicost-analytics-loader')`);
         const optionalScriptsAfterConsent = await evaluate(cdp, `({
             analytics: document.getElementById('medicost-analytics')?.getAttribute('src'),
+            analyticsLoader: Boolean(document.getElementById('medicost-analytics-loader')),
             ads: document.getElementById('medicost-ads')?.getAttribute('src')
         })`);
         assert.match(optionalScriptsAfterConsent.analytics, /assets\/js\/analytics\.js/);
+        assert.strictEqual(optionalScriptsAfterConsent.analyticsLoader, true);
         assert.match(optionalScriptsAfterConsent.ads, /googlesyndication/);
+        await evaluate(cdp, `window.MEDICostConsent.saveConsent(false, false)`);
+        const optionalScriptsAfterWithdrawal = await evaluate(cdp, `({
+            analytics: Boolean(document.getElementById('medicost-analytics')),
+            analyticsLoader: Boolean(document.getElementById('medicost-analytics-loader')),
+            analyticsDisabled: window['ga-disable-G-YCKQ2W2BWT'],
+            ads: Boolean(document.getElementById('medicost-ads'))
+        })`);
+        assert.deepStrictEqual(optionalScriptsAfterWithdrawal, { analytics: false, analyticsLoader: false, analyticsDisabled: true, ads: false });
 
-        const report = { initial, loaded, validation, selected, preserved, result, scenarioResults, viewportChecks, reducedMotion, optionalRequests, supportResults, optionalScriptsAfterConsent };
+        const report = { initial, loaded, validation, selected, preserved, result, scenarioResults, viewportChecks, reducedMotion, optionalRequests, supportResults, optionalScriptsAfterConsent, optionalScriptsAfterWithdrawal };
         fs.writeFileSync(path.join(evidence, 'results.json'), JSON.stringify(report, null, 2));
         console.log('PASS: MEDICost v3.0 Chrome QA');
         console.log(JSON.stringify(report, null, 2));
