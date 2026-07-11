@@ -498,6 +498,9 @@ function resetResultView() {
     const insuranceBox = document.getElementById('result_insurance_box');
     const drgNotice = document.getElementById('drg-notice');
     const sanjeongNotice = document.getElementById('sanjeong-notice');
+    const insights = document.getElementById('result-insights');
+    const insightsSummary = document.getElementById('result-insights-summary');
+    const insightDrivers = document.getElementById('result-insights-drivers');
 
     if (finalCostEl) finalCostEl.innerText = '0';
     if (totalCostEl) totalCostEl.innerText = '0';
@@ -510,6 +513,40 @@ function resetResultView() {
     if (insuranceBox) insuranceBox.classList.add('hidden');
     if (drgNotice) drgNotice.classList.add('hidden');
     if (sanjeongNotice) sanjeongNotice.classList.add('hidden');
+    if (insights) insights.hidden = true;
+    if (insightsSummary) insightsSummary.textContent = '';
+    if (insightDrivers) insightDrivers.replaceChildren();
+}
+
+function renderResultInsights(breakdown, patientTotalPay, options) {
+    const section = document.getElementById('result-insights');
+    const summary = document.getElementById('result-insights-summary');
+    const drivers = document.getElementById('result-insights-drivers');
+    if (!section || !summary || !drivers) return;
+
+    const region = document.getElementById('nonbenefit_region');
+    const regionLabel = region?.selectedOptions?.[0]?.textContent?.trim() || '선택 지역';
+    const sources = [regionLabel + ' 비급여 공개자료 기준을 우선 반영했습니다.'];
+    if (options.diseaseStats && !options.hasSpecificSelectedItems) sources.push('상병코드 평균 진료비를 함께 반영했습니다.');
+    if (options.hasInsurance) sources.push('실손보험 예상 환급금을 최종 부담금에 반영했습니다.');
+    else sources.push('실손보험은 반영하지 않았습니다.');
+    summary.textContent = '실비 환급 전 ' + formatNumber(patientTotalPay) + '원 기준입니다. ' + sources.join(' ');
+
+    const topDrivers = breakdown
+        .filter(item => item.type !== 'gasan')
+        .slice()
+        .sort((a, b) => b.price - a.price)
+        .slice(0, 3);
+    drivers.replaceChildren(...topDrivers.map(item => {
+        const row = document.createElement('li');
+        const label = document.createElement('span');
+        const price = document.createElement('strong');
+        label.textContent = item.name;
+        price.textContent = formatNumber(item.price) + '원';
+        row.append(label, price);
+        return row;
+    }));
+    section.hidden = false;
 }
 
 function resetCalculatorState() {
@@ -1299,7 +1336,7 @@ async function sendSearchLog(query, resultCount) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                query,
+                searchScope: 'aggregate',
                 resultCount,
                 path: window.location.pathname
             }),
@@ -1318,9 +1355,7 @@ async function sendSearchClickLog(searchQuery, item) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                searchQuery,
-                clickedItemId: item.code || item.type || '',
-                clickedItemName: item.name || '',
+                itemGroup: 'aggregate',
                 path: window.location.pathname
             }),
             keepalive: true
@@ -3120,6 +3155,7 @@ function calculate() {
     document.getElementById('display_final_cost').innerText = formatNumber(finalPatientPay);
     document.getElementById('display_cost_range').innerText = `${formatNumber(minRange)}원 ~ ${formatNumber(maxRange)}원`;
     document.getElementById('result_insurance_box')?.classList.toggle('hidden', !(hasInsurance && refundTotal > 0));
+    renderResultInsights(breakdown, patientTotalPay, { hasInsurance, diseaseStats, hasSpecificSelectedItems });
 
     // 산정특례/상병코드 안내 토글
     const sanjeongNotice = document.getElementById('sanjeong-notice');
@@ -3183,32 +3219,16 @@ function calculate() {
         hospitalClass,
         treatmentType,
         nonBenefitRegion: getSelectedNonBenefitRegion(),
-        roomType,
-        stayDays,
+        stayDaysBucket: stayDays > 7 ? '8_or_more' : String(Math.max(0, stayDays)),
         hasInsurance,
-        insuranceGeneration: insuranceGen,
-        hasSanjeong: Boolean(sanjeongInfo),
-        sanjeongDisease: document.getElementById('sanjeong_disease')?.value || '',
-        diseaseCode: normalizeDiseaseCodeInput(document.getElementById('disease_code_input')?.value || ''),
-        selectedTests: compactSelectedItems(addedTests),
-        selectedSurgeries: compactSelectedItems(addedSurgeries),
-        selectedProcedures: compactSelectedItems(addedProcedures),
-        finalCost: finalPatientPay,
-        totalCost: patientTotalPay,
-        refundCost: refundTotal
+        finalCostBucket: finalPatientPay < 50000 ? 'under_50k' : finalPatientPay < 200000 ? '50k_to_199k' : '200k_or_more'
     });
     if (typeof window.trackGAEvent === 'function') {
         window.trackGAEvent('calculator_complete', {
             hospital_class: hospitalClass,
             treatment_type: treatmentType,
             has_insurance: hasInsurance ? 'yes' : 'no',
-            has_sanjeong: Boolean(sanjeongInfo) ? 'yes' : 'no',
-            selected_tests: addedTests.length,
-            selected_surgeries: addedSurgeries.length,
-            selected_procedures: addedProcedures.length,
-            final_cost: finalPatientPay,
-            total_cost: patientTotalPay,
-            refund_cost: refundTotal,
+            final_cost_bucket: finalPatientPay < 50000 ? 'under_50k' : finalPatientPay < 200000 ? '50k_to_199k' : '200k_or_more',
             page_path: window.location.pathname
         });
     }
@@ -4523,9 +4543,6 @@ function eofRenderItemResults(query, targetGroup, items) {
             sendSearchClickLog(query, item);
             if (typeof window.trackGAEvent === 'function') {
                 window.trackGAEvent('search_result_click', {
-                    search_term: query,
-                    item_code: item.code || item.type || '',
-                    item_name: item.name || '',
                     item_group: targetGroup,
                     page_path: window.location.pathname
                 });
@@ -4921,14 +4938,12 @@ function performSearch(query, targetGroup = 'scoped', options = {}) {
     if (options.logSearch) sendSearchLog(clean, matched.length);
     if (typeof window.trackGAEvent === 'function') {
         window.trackGAEvent('search', {
-            search_term: clean,
             result_count: matched.length,
             search_scope: targetGroup,
             page_path: window.location.pathname
         });
         if (matched.length === 0) {
             window.trackGAEvent('search_no_result', {
-                search_term: clean,
                 search_scope: targetGroup,
                 page_path: window.location.pathname
             });

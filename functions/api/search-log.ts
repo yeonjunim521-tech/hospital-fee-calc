@@ -1,88 +1,26 @@
-interface Env {
-  DB: D1Database;
-}
+import { countHourlyTelemetryRequest, limitedText, purgeExpiredTelemetry, RATE_LIMIT_MAX_REQUESTS_PER_HOUR } from './telemetry.ts';
 
-function normalizeQuery(input: string): string {
-  return input
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .slice(0, 100);
-}
-
-function isBlockedQuery(query: string): boolean {
-  const blockedPatterns = [
-    /\d{6}-\d{7}/,
-    /\d{2,3}-\d{3,4}-\d{4}/,
-    /\b01[016789]\d{7,8}\b/,
-    /\b\d{13}\b/,
-    /[\w.-]+@[\w.-]+\.\w+/,
-  ];
-
-  return blockedPatterns.some((pattern) => pattern.test(query));
-}
+interface Env { DB: D1Database; }
+const SEARCH_SCOPES = new Set(['aggregate']);
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
   try {
-    const body = await context.request.json() as {
-      query?: string;
-      resultCount?: number;
-      path?: string;
-    };
-
-    const rawQuery = typeof body.query === "string" ? body.query : "";
-    const normalizedQuery = normalizeQuery(rawQuery);
-
-    if (!normalizedQuery) {
-      return Response.json(
-        { ok: false, error: "검색어가 비어 있습니다." },
-        { status: 400 }
-      );
+    const body = await context.request.json() as { searchScope?: unknown; resultCount?: unknown };
+    const searchScope = limitedText(body.searchScope, 20);
+    const resultCount = Number(body.resultCount);
+    const clientIp = context.request.headers.get('CF-Connecting-IP');
+    if (!searchScope || !SEARCH_SCOPES.has(searchScope) || !Number.isFinite(resultCount) || resultCount < 0 || !clientIp) {
+      return Response.json({ ok: false, error: '분석 요청이 유효하지 않습니다.' }, { status: 400 });
     }
-
-    if (normalizedQuery.length < 2) {
-      return Response.json(
-        { ok: false, error: "검색어가 너무 짧습니다." },
-        { status: 400 }
-      );
+    await purgeExpiredTelemetry(context.env.DB);
+    if (await countHourlyTelemetryRequest(context.env.DB, clientIp, 'search-log') > RATE_LIMIT_MAX_REQUESTS_PER_HOUR) {
+      return Response.json({ ok: false, error: '요청이 너무 많습니다.' }, { status: 429, headers: { 'Retry-After': '3600' } });
     }
-
-    if (isBlockedQuery(rawQuery)) {
-      return Response.json(
-        { ok: false, error: "개인정보로 추정되는 검색어는 저장하지 않습니다." },
-        { status: 400 }
-      );
-    }
-
-    const resultCount = Number.isFinite(body.resultCount)
-      ? Math.max(0, Math.min(Number(body.resultCount), 100000))
-      : 0;
-
-    const path = typeof body.path === "string"
-      ? body.path.slice(0, 200)
-      : null;
-
-    const userAgent = context.request.headers.get("user-agent")?.slice(0, 300) ?? null;
-
-    await context.env.DB.prepare(`
-      INSERT INTO search_logs (
-        query,
-        normalized_query,
-        result_count,
-        path,
-        user_agent
-      ) VALUES (?, ?, ?, ?, ?)
-    `)
-      .bind(rawQuery.slice(0, 100), normalizedQuery, resultCount, path, userAgent)
-      .run();
-
+    await context.env.DB.prepare('INSERT INTO search_logs (query, normalized_query, result_count, path) VALUES (?, ?, ?, ?)')
+      .bind('aggregate', 'aggregate', Math.min(Math.round(resultCount), 100000), '/calculator').run();
     return Response.json({ ok: true });
   } catch (error) {
-    console.error("search-log error", error);
-
-    return Response.json(
-      { ok: false, error: "검색 로그 저장 중 오류가 발생했습니다." },
-      { status: 500 }
-    );
+    console.error('search-log error', error);
+    return Response.json({ ok: false, error: '검색 로그 저장 중 오류가 발생했습니다.' }, { status: 500 });
   }
 };

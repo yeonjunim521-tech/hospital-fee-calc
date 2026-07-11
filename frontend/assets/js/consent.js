@@ -1,5 +1,7 @@
 (function (root) {
     const STORAGE_KEY = 'medicost-consent-v1';
+    const GA_MEASUREMENT_ID = 'G-YCKQ2W2BWT';
+    const ADS_SCRIPT_URL = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1927730301151401';
     const DEFAULT_CONSENT = Object.freeze({ analytics: false, ads: false, updatedAt: null });
 
     function isValidConsent(value) {
@@ -54,17 +56,34 @@
         root.document.head.appendChild(script);
     }
 
+    function syncScript(id, enabled, src, attributes = {}) {
+        if (!root.document) return;
+        const existing = root.document.getElementById(id);
+        if (!enabled && existing) {
+            existing.remove();
+            return;
+        }
+        if (enabled && !existing) loadScript(id, src, attributes);
+    }
+
+    function removeAnalyticsLoader() {
+        const loader = root.document?.getElementById('medicost-analytics-loader');
+        if (loader) loader.remove();
+    }
+
+    function syncAnalyticsRuntime(enabled) {
+        root[`ga-disable-${GA_MEASUREMENT_ID}`] = !enabled;
+        if (typeof root.gtag === 'function') {
+            root.gtag('consent', 'update', { analytics_storage: enabled ? 'granted' : 'denied' });
+        }
+    }
+
     function applyConsent(consent) {
-        if (canLoadAnalytics(consent)) {
-            loadScript('medicost-analytics', 'assets/js/analytics.js');
-        }
-        if (canLoadAds(consent)) {
-            loadScript(
-                'medicost-ads',
-                'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1927730301151401',
-                { crossorigin: 'anonymous' }
-            );
-        }
+        const analyticsEnabled = canLoadAnalytics(consent);
+        syncAnalyticsRuntime(analyticsEnabled);
+        syncScript('medicost-analytics', analyticsEnabled, 'assets/js/analytics.js');
+        syncScript('medicost-ads', canLoadAds(consent), ADS_SCRIPT_URL, { crossorigin: 'anonymous' });
+        if (!analyticsEnabled) removeAnalyticsLoader();
     }
 
     function saveConsent(analytics, ads) {

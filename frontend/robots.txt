@@ -2,5 +2,6 @@ User-agent: *
 Allow: /
 Disallow: /admin-search
 Disallow: /admin-search.html
+Disallow: /admin-dashboard-prototype
 
 Sitemap: https://hospital-fee-calc.pages.dev/sitemap.xml
