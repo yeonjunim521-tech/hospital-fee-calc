@@ -38,7 +38,10 @@ test('Given optional tracking is withdrawn, when consent is applied, then loaded
     assert.match(consentSource, /syncScript/);
     assert.match(consentSource, /medicost-analytics/);
     assert.match(consentSource, /medicost-analytics-loader/);
-    assert.match(consentSource, /medicost-ads/);
+    assert.match(consentSource, /medicost-kakao-ads/);
+    assert.match(consentSource, /t1\.kakaocdn\.net\/kas\/static\/ba\.min\.js/);
+    assert.match(consentSource, /kakao_ad_area/);
+    assert.doesNotMatch(consentSource, /medicost-ads/);
     assert.match(consentSource, /existing\.remove\(\)/);
 });
 

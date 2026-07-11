@@ -399,24 +399,28 @@ async function screenshot(cdp, name) {
             document.getElementById('consent-ads').checked = true;
             document.querySelector('[data-consent-save]').click();
         })()`);
-        await waitFor(cdp, `document.getElementById('medicost-analytics') && document.getElementById('medicost-ads')`);
+        await navigate(cdp, `${baseUrl}/hospital-cost-calculator.html`);
+        await waitFor(cdp, `document.getElementById('medicost-analytics') && document.getElementById('medicost-kakao-ads')`);
         await waitFor(cdp, `document.getElementById('medicost-analytics-loader')`);
         const optionalScriptsAfterConsent = await evaluate(cdp, `({
             analytics: document.getElementById('medicost-analytics')?.getAttribute('src'),
             analyticsLoader: Boolean(document.getElementById('medicost-analytics-loader')),
-            ads: document.getElementById('medicost-ads')?.getAttribute('src')
+            kakaoAds: document.getElementById('medicost-kakao-ads')?.getAttribute('src'),
+            kakaoSlots: [...document.querySelectorAll('.kakao_ad_area')].map((slot) => slot.style.display)
         })`);
         assert.match(optionalScriptsAfterConsent.analytics, /assets\/js\/analytics\.js/);
         assert.strictEqual(optionalScriptsAfterConsent.analyticsLoader, true);
-        assert.match(optionalScriptsAfterConsent.ads, /googlesyndication/);
+        assert.match(optionalScriptsAfterConsent.kakaoAds, /t1\.kakaocdn\.net\/kas\/static\/ba\.min\.js/);
+        assert.deepStrictEqual(optionalScriptsAfterConsent.kakaoSlots, ['block', 'block']);
         await evaluate(cdp, `window.MEDICostConsent.saveConsent(false, false)`);
         const optionalScriptsAfterWithdrawal = await evaluate(cdp, `({
             analytics: Boolean(document.getElementById('medicost-analytics')),
             analyticsLoader: Boolean(document.getElementById('medicost-analytics-loader')),
             analyticsDisabled: window['ga-disable-G-YCKQ2W2BWT'],
-            ads: Boolean(document.getElementById('medicost-ads'))
+            kakaoAds: Boolean(document.getElementById('medicost-kakao-ads')),
+            kakaoSlots: [...document.querySelectorAll('.kakao_ad_area')].map((slot) => slot.style.display)
         })`);
-        assert.deepStrictEqual(optionalScriptsAfterWithdrawal, { analytics: false, analyticsLoader: false, analyticsDisabled: true, ads: false });
+        assert.deepStrictEqual(optionalScriptsAfterWithdrawal, { analytics: false, analyticsLoader: false, analyticsDisabled: true, kakaoAds: false, kakaoSlots: ['none', 'none'] });
 
         const report = { initial, loaded, validation, selected, preserved, result, scenarioResults, viewportChecks, reducedMotion, optionalRequests, supportResults, optionalScriptsAfterConsent, optionalScriptsAfterWithdrawal };
         fs.writeFileSync(path.join(evidence, 'results.json'), JSON.stringify(report, null, 2));

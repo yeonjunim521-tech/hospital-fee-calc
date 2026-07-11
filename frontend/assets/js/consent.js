@@ -1,7 +1,7 @@
 (function (root) {
     const STORAGE_KEY = 'medicost-consent-v1';
     const GA_MEASUREMENT_ID = 'G-YCKQ2W2BWT';
-    const ADS_SCRIPT_URL = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1927730301151401';
+    const KAKAO_AD_SCRIPT_URL = 'https://t1.kakaocdn.net/kas/static/ba.min.js';
     const DEFAULT_CONSENT = Object.freeze({ analytics: false, ads: false, updatedAt: null });
 
     function isValidConsent(value) {
@@ -78,11 +78,20 @@
         }
     }
 
+    function syncKakaoAdSlots(enabled) {
+        root.document?.querySelectorAll('.kakao_ad_area').forEach((slot) => {
+            slot.style.display = enabled ? 'block' : 'none';
+        });
+    }
+
     function applyConsent(consent) {
         const analyticsEnabled = canLoadAnalytics(consent);
+        const adsEnabled = canLoadAds(consent);
         syncAnalyticsRuntime(analyticsEnabled);
         syncScript('medicost-analytics', analyticsEnabled, 'assets/js/analytics.js');
-        syncScript('medicost-ads', canLoadAds(consent), ADS_SCRIPT_URL, { crossorigin: 'anonymous' });
+        syncKakaoAdSlots(adsEnabled);
+        const hasKakaoAdSlots = Boolean(root.document?.querySelector('.kakao_ad_area'));
+        syncScript('medicost-kakao-ads', adsEnabled && hasKakaoAdSlots, KAKAO_AD_SCRIPT_URL);
         if (!analyticsEnabled) removeAnalyticsLoader();
     }
 
@@ -150,7 +159,7 @@
         }
     }
 
-    const api = { STORAGE_KEY, parseConsent, canLoadAnalytics, canLoadAds, readConsent, saveConsent, applyConsent };
+    const api = { STORAGE_KEY, KAKAO_AD_SCRIPT_URL, parseConsent, canLoadAnalytics, canLoadAds, readConsent, saveConsent, applyConsent };
     root.MEDICostConsent = api;
 
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
