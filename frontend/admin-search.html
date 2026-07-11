@@ -71,6 +71,7 @@
 
         button:focus-visible,
         input:focus-visible,
+        select:focus-visible,
         textarea:focus-visible {
             outline: 2px solid rgba(47, 111, 237, 0.22);
             outline-offset: 2px;
@@ -547,6 +548,7 @@
         }
 
         .field input,
+        .field select,
         .field textarea {
             width: 100%;
             border: 1px solid var(--line-strong);
@@ -561,9 +563,27 @@
             resize: vertical;
         }
 
+        .field-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0 10px;
+        }
+
+        .approval-note {
+            margin: 0 0 14px;
+            padding: 10px 12px;
+            border: 1px solid var(--line-strong);
+            border-radius: 12px;
+            background: var(--blue-soft);
+            color: var(--blue-deep);
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.5;
+        }
+
         .detail-actions {
             display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
+            grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 8px;
             margin-top: auto;
             padding-top: 16px;
@@ -642,6 +662,10 @@
         }
 
         @media (max-width: 760px) {
+            .field-grid {
+                grid-template-columns: 1fr;
+            }
+
             .dashboard-shell {
                 padding: 18px 12px 28px;
             }
@@ -892,19 +916,62 @@
 
                 <p class="muted-note" id="detail-clicked-item">클릭한 항목 없음</p>
 
-                <div class="field">
-                    <label for="item-category-input">항목 분류</label>
-                    <input id="item-category-input" type="text" placeholder="예: 검사 / 치료 / 약제">
+                <p class="approval-note">승인하면 공개 검색 DB에 즉시 반영됩니다. 공식 근거와 가격을 확인한 뒤 승인하세요.</p>
+
+                <div class="field-grid">
+                    <div class="field">
+                        <label for="item-id-input">항목 코드</label>
+                        <input id="item-id-input" type="text" placeholder="예: FEE_D0003">
+                    </div>
+                    <div class="field">
+                        <label for="item-name-input">항목명</label>
+                        <input id="item-name-input" type="text" placeholder="공식 항목명">
+                    </div>
+                    <div class="field">
+                        <label for="item-category-input">세부 분류</label>
+                        <input id="item-category-input" type="text" placeholder="예: specimen">
+                    </div>
+                    <div class="field">
+                        <label for="item-group-input">화면 그룹</label>
+                        <select id="item-group-input">
+                            <option value="test">검사</option>
+                            <option value="procedure_hira">시술</option>
+                            <option value="surgery">수술</option>
+                            <option value="etc">기타 처치</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="item-type-input">유형</label>
+                        <input id="item-type-input" type="text" placeholder="예: D0 / injection">
+                    </div>
+                    <div class="field">
+                        <label for="is-benefit-input">급여 여부</label>
+                        <select id="is-benefit-input">
+                            <option value="true">급여</option>
+                            <option value="false">비급여</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="clinic-price-input">의원 가격(원)</label>
+                        <input id="clinic-price-input" type="number" min="0" step="1" inputmode="numeric" placeholder="0">
+                    </div>
+                    <div class="field">
+                        <label for="hospital-price-input">병원 가격(원)</label>
+                        <input id="hospital-price-input" type="number" min="0" step="1" inputmode="numeric" placeholder="0">
+                    </div>
+                    <div class="field">
+                        <label for="source-date-input">공식 자료 기준일</label>
+                        <input id="source-date-input" type="date">
+                    </div>
+                    <div class="field">
+                        <label for="source-url-input">공식 출처 URL</label>
+                        <input id="source-url-input" type="url" inputmode="url" placeholder="https://www.hira.or.kr/...">
+                    </div>
                 </div>
 
                 <div class="field">
-                    <label for="item-name-input">항목명</label>
-                    <input id="item-name-input" type="text" placeholder="실제 추가할 항목명">
-                </div>
-
-                <div class="field">
-                    <label for="item-id-input">항목 ID</label>
-                    <input id="item-id-input" type="text" placeholder="내부 식별자 또는 slug">
+                    <label for="keywords-input">검색 키워드</label>
+                    <textarea id="keywords-input" placeholder="쉼표로 구분: 일반명, 영문명, 약어"></textarea>
                 </div>
 
                 <div class="field">
@@ -1303,6 +1370,22 @@
             if (latestRow && latestRow.memo) {
                 document.getElementById("memo-input").value = document.getElementById("memo-input").value || latestRow.memo;
             }
+            const fieldMap = {
+                "item-group-input": latestRow && (latestRow.item_group || latestRow.group),
+                "item-type-input": latestRow && (latestRow.item_type || latestRow.type),
+                "clinic-price-input": latestRow && (latestRow.clinic_price ?? latestRow.clinicPrice),
+                "hospital-price-input": latestRow && (latestRow.hospital_price ?? latestRow.hospitalPrice),
+                "is-benefit-input": latestRow && (latestRow.is_benefit ?? latestRow.isBenefit),
+                "source-url-input": latestRow && (latestRow.source_url || latestRow.sourceUrl),
+                "source-date-input": latestRow && (latestRow.source_date || latestRow.sourceDate),
+                "keywords-input": latestRow && (Array.isArray(latestRow.keywords) ? latestRow.keywords.join(", ") : latestRow.keywords)
+            };
+            Object.entries(fieldMap).forEach(function(entry) {
+                const node = document.getElementById(entry[0]);
+                if (entry[1] !== null && entry[1] !== undefined && entry[1] !== "") {
+                    node.value = String(entry[1]);
+                }
+            });
 
             renderKeywordChips("related-keywords", related, "유사 키워드가 없습니다.");
             renderKeywordChips("approved-items", approvedNames, "추가 완료 항목이 없습니다.");
@@ -1350,6 +1433,18 @@
             const itemName = document.getElementById("item-name-input").value.trim();
             const itemId = document.getElementById("item-id-input").value.trim();
             const itemCategory = document.getElementById("item-category-input").value.trim();
+            const itemGroup = document.getElementById("item-group-input").value;
+            const itemType = document.getElementById("item-type-input").value.trim();
+            const clinicPriceText = document.getElementById("clinic-price-input").value;
+            const hospitalPriceText = document.getElementById("hospital-price-input").value;
+            const clinicPrice = Number(clinicPriceText);
+            const hospitalPrice = Number(hospitalPriceText);
+            const isBenefit = document.getElementById("is-benefit-input").value === "true";
+            const sourceUrl = document.getElementById("source-url-input").value.trim();
+            const sourceDate = document.getElementById("source-date-input").value;
+            const keywords = document.getElementById("keywords-input").value.split(",").map(function(value) {
+                return value.trim();
+            }).filter(Boolean);
             const memo = document.getElementById("memo-input").value.trim();
 
             if (!query) {
@@ -1362,6 +1457,11 @@
                 return;
             }
 
+            if (status === "approved" && (!itemId || !itemCategory || !itemType || !sourceUrl || !sourceDate || clinicPriceText === "" || hospitalPriceText === "" || !Number.isSafeInteger(clinicPrice) || clinicPrice < 0 || !Number.isSafeInteger(hospitalPrice) || hospitalPrice < 0)) {
+                setStatus("승인하려면 코드, 분류, 유형, 가격, 공식 출처와 기준일을 모두 입력하세요.", true);
+                return;
+            }
+
             try {
                 await fetchJson("/api/admin/search-candidates", {
                     method: "POST",
@@ -1371,23 +1471,32 @@
                         itemId: itemId,
                         itemName: itemName,
                         itemCategory: itemCategory,
+                        group: itemGroup,
+                        type: itemType,
+                        clinicPrice: clinicPrice,
+                        hospitalPrice: hospitalPrice,
+                        isBenefit: isBenefit,
+                        sourceUrl: sourceUrl,
+                        sourceDate: sourceDate,
+                        keywords: keywords,
                         memo: memo,
                         status: status
                     })
                 });
                 await loadCandidates();
                 renderAll();
-                setStatus("후보 저장을 완료했습니다.", false);
+                setStatus(status === "approved" ? "승인 완료: 공개 검색 DB에 반영했습니다." : "후보 저장을 완료했습니다.", false);
             } catch (error) {
                 setStatus(error instanceof Error ? error.message : "후보 저장에 실패했습니다.", true);
             }
         }
 
         function clearInputs() {
-            document.getElementById("item-name-input").value = "";
-            document.getElementById("item-id-input").value = "";
-            document.getElementById("item-category-input").value = "";
-            document.getElementById("memo-input").value = "";
+            ["item-name-input", "item-id-input", "item-category-input", "item-type-input", "clinic-price-input", "hospital-price-input", "source-url-input", "source-date-input", "keywords-input", "memo-input"].forEach(function(id) {
+                document.getElementById(id).value = "";
+            });
+            document.getElementById("item-group-input").value = "test";
+            document.getElementById("is-benefit-input").value = "true";
         }
 
         document.addEventListener("click", function(event) {

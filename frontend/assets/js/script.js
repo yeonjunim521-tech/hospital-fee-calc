@@ -239,11 +239,46 @@ function applyPublicStatsToItem(item) {
     };
 }
 
+let medicalItemsOverlay = [];
+
+function normalizeMedicalItem(item) {
+    return {
+        code: String(item.code || item.item_code || ''),
+        publicActionCode: item.publicActionCode || item.public_action_code || item.code || item.item_code,
+        category: item.category || item.item_category || 'procedure',
+        group: item.group || item.item_group || 'etc',
+        type: item.type || item.item_type || 'custom',
+        name: String(item.name || item.item_name || ''),
+        price: Number(item.price ?? item.hospitalPrice ?? item.hospital_price ?? 0),
+        clinicPrice: Number(item.clinicPrice ?? item.clinic_price ?? 0),
+        hospitalPrice: Number(item.hospitalPrice ?? item.hospital_price ?? item.price ?? 0),
+        isBenefit: Boolean(item.isBenefit ?? item.is_benefit),
+        alreadyPricedByProvider: true,
+        publicFeeScheduleSource: item.publicFeeScheduleSource || item.sourceUrl || item.source_url || '관리자 승인 공개 DB',
+        keywords: Array.isArray(item.keywords) ? item.keywords.map(String) : []
+    };
+}
+
+async function loadMedicalItemsOverlay() {
+    try {
+        const response = await fetch('/api/medical-items', { cache: 'no-store' });
+        if (!response.ok) return;
+        const data = await response.json();
+        const items = Array.isArray(data.items) ? data.items : [];
+        medicalItemsOverlay = items.map(normalizeMedicalItem).filter(item => item.code && item.name);
+    } catch (error) {
+        medicalItemsOverlay = [];
+    }
+}
+
 function getMedicalItemDatabase() {
     const publicFeeItems = (typeof window !== 'undefined' && window.PUBLIC_FEE_SCHEDULE_ITEMS && Array.isArray(window.PUBLIC_FEE_SCHEDULE_ITEMS.items))
         ? window.PUBLIC_FEE_SCHEDULE_ITEMS.items
         : [];
-    return HIRA_DATABASE.concat(publicFeeItems);
+    const itemsByCode = new Map();
+    HIRA_DATABASE.concat(publicFeeItems).forEach(item => itemsByCode.set(item.code, item));
+    medicalItemsOverlay.forEach(item => itemsByCode.set(item.code, item));
+    return Array.from(itemsByCode.values());
 }
 
 function resolveProviderPrice(item) {
@@ -293,6 +328,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 심평원 고시 자료 기준일 렌더링
     const dateEl = document.getElementById('data-reference-date');
     if (dateEl) dateEl.innerText = DB.DATA_REFERENCE_DATE;
+
+    await loadMedicalItemsOverlay();
 
     // 백엔드 API가 있으면 우선 사용하고, 없으면 정적 공개자료로 계산을 유지
     await initializeDataSources();

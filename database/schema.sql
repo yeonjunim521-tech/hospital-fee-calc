@@ -33,6 +33,53 @@ ON search_candidates(normalized_query);
 CREATE INDEX IF NOT EXISTS idx_search_candidates_status
 ON search_candidates(status);
 
+CREATE TABLE IF NOT EXISTS medical_items (
+  code TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  category TEXT NOT NULL,
+  item_group TEXT NOT NULL,
+  item_type TEXT NOT NULL,
+  clinic_price INTEGER NOT NULL CHECK (clinic_price >= 0),
+  hospital_price INTEGER NOT NULL CHECK (hospital_price >= 0),
+  is_benefit INTEGER NOT NULL CHECK (is_benefit IN (0, 1)),
+  source_url TEXT NOT NULL,
+  source_date TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'approved' CHECK (status = 'approved'),
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_medical_items_status_name
+ON medical_items(status, name);
+
+CREATE TABLE IF NOT EXISTS medical_item_aliases (
+  item_code TEXT NOT NULL,
+  normalized_alias TEXT NOT NULL,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (item_code, normalized_alias),
+  FOREIGN KEY (item_code) REFERENCES medical_items(code) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_medical_item_aliases_normalized_alias
+ON medical_item_aliases(normalized_alias);
+
+CREATE TABLE IF NOT EXISTS weekly_candidate_reviews (
+  week_start TEXT NOT NULL,
+  normalized_query TEXT NOT NULL,
+  query TEXT NOT NULL,
+  search_count INTEGER NOT NULL DEFAULT 0 CHECK (search_count >= 0),
+  status TEXT NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending', 'matched', 'dismissed')),
+  candidate_id INTEGER,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (week_start, normalized_query),
+  FOREIGN KEY (candidate_id) REFERENCES search_candidates(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_weekly_candidate_reviews_status
+ON weekly_candidate_reviews(status, week_start);
+
 CREATE TABLE IF NOT EXISTS search_click_logs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   search_query TEXT NOT NULL,
