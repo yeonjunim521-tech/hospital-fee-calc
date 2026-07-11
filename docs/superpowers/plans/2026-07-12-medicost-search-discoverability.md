@@ -57,13 +57,13 @@ Add a `seoPages` array with each file, canonical URL, and expected Korean title 
 
 ```js
 const seoPages = [
-  ['hospital-cost-calculator.html', 'hospital-cost-calculator.html', '병원비'],
-  ['er-cost-calculator.html', 'er-cost-calculator.html', '응급실'],
-  ['mri-cost-calculator.html', 'mri-cost-calculator.html', 'MRI'],
-  ['ct-cost-calculator.html', 'ct-cost-calculator.html', 'CT'],
-  ['endoscopy-cost-calculator.html', 'endoscopy-cost-calculator.html', '내시경'],
-  ['hospitalization-cost-calculator.html', 'hospitalization-cost-calculator.html', '입원비'],
-  ['noncovered-medical-cost.html', 'noncovered-medical-cost.html', '비급여']
+  ['hospital-cost-calculator.html', 'hospital-cost-calculator', '병원비'],
+  ['er-cost-calculator.html', 'er-cost-calculator', '응급실'],
+  ['mri-cost-calculator.html', 'mri-cost-calculator', 'MRI'],
+  ['ct-cost-calculator.html', 'ct-cost-calculator', 'CT'],
+  ['endoscopy-cost-calculator.html', 'endoscopy-cost-calculator', '내시경'],
+  ['hospitalization-cost-calculator.html', 'hospitalization-cost-calculator', '입원비'],
+  ['noncovered-medical-cost.html', 'noncovered-medical-cost', '비급여']
 ];
 ```
 
