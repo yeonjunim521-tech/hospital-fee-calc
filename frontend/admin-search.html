@@ -918,6 +918,17 @@
 
                 <p class="approval-note">승인하면 공개 검색 DB에 즉시 반영됩니다. 공식 근거와 가격을 확인한 뒤 승인하세요.</p>
 
+                <div class="field">
+                    <label for="lower-limb-mri-preset">하지 MRI 빠른 매칭</label>
+                    <select id="lower-limb-mri-preset" onchange="applyLowerLimbMriPreset()">
+                        <option value="">부위를 선택해 공식 코드·가격 채우기</option>
+                        <option value="hip">고관절 MRI</option>
+                        <option value="knee">무릎 MRI</option>
+                        <option value="ankle">발목 MRI</option>
+                        <option value="extra-limb">관절외 하지 MRI</option>
+                    </select>
+                </div>
+
                 <div class="field-grid">
                     <div class="field">
                         <label for="item-id-input">항목 코드</label>
@@ -1001,6 +1012,14 @@
             { value: "90", label: "90일" }
         ];
 
+        const LOWER_LIMB_MRI_PRESETS = {
+            hip: { code: "FEE_HE118", name: "기본자기공명영상진단-근골격계-고관절-일반", keywords: ["하지 mri", "하지 자기공명", "고관절 mri"] },
+            knee: { code: "FEE_HE120", name: "기본자기공명영상진단-근골격계-슬관절-일반", keywords: ["하지 mri", "하지 자기공명", "무릎 mri"] },
+            ankle: { code: "FEE_HE121", name: "기본자기공명영상진단-근골격계-발목관절-일반", keywords: ["하지 mri", "하지 자기공명", "발목 mri"] },
+            "extra-limb": { code: "FEE_HE123", name: "기본자기공명영상진단-근골격계-관절외하지-일반", keywords: ["하지 mri", "하지 자기공명", "관절외 하지 mri"] }
+        };
+        const HIRA_MRI_SOURCE_URL = "https://www.hira.or.kr/dummy.do?cmsurl=%2Fcms%2Fmedi_info%2F02%2F01%2F1343489_27565.html&pgmid=HIRAA050200000000&subject=MRI";
+
         const state = {
             activePeriod: "30",
             stats: null,
@@ -1048,7 +1067,15 @@
         }
 
         function getZeroResultSearches() {
-            return state.stats && Array.isArray(state.stats.zeroResultSearches) ? state.stats.zeroResultSearches : [];
+            const rows = state.stats && Array.isArray(state.stats.zeroResultSearches) ? state.stats.zeroResultSearches : [];
+            const approvedQueries = new Set(state.candidates.filter(function(item) {
+                return item.status === "approved";
+            }).map(function(item) {
+                return normalizeQuery(item.normalized_query || item.query);
+            }));
+            return rows.filter(function(row) {
+                return !approvedQueries.has(normalizeQuery(row.normalized_query || row.query));
+            });
         }
 
         function getClickedItems() {
@@ -1497,6 +1524,25 @@
             });
             document.getElementById("item-group-input").value = "test";
             document.getElementById("is-benefit-input").value = "true";
+            document.getElementById("lower-limb-mri-preset").value = "";
+        }
+
+        function applyLowerLimbMriPreset() {
+            const preset = LOWER_LIMB_MRI_PRESETS[document.getElementById("lower-limb-mri-preset").value];
+            if (!preset) return;
+            const selectedQuery = state.selectedQuery;
+            document.getElementById("item-id-input").value = preset.code;
+            document.getElementById("item-name-input").value = preset.name;
+            document.getElementById("item-category-input").value = "imaging";
+            document.getElementById("item-group-input").value = "test";
+            document.getElementById("item-type-input").value = "HE";
+            document.getElementById("clinic-price-input").value = "276330";
+            document.getElementById("hospital-price-input").value = "242220";
+            document.getElementById("is-benefit-input").value = "true";
+            document.getElementById("source-url-input").value = HIRA_MRI_SOURCE_URL;
+            document.getElementById("source-date-input").value = "2026-05-01";
+            document.getElementById("keywords-input").value = [...new Set([selectedQuery, ...preset.keywords].filter(Boolean))].join(", ");
+            setStatus("공식 MRI 코드와 가격을 채웠습니다. 부위를 확인한 뒤 추가 완료를 누르세요.", false);
         }
 
         document.addEventListener("click", function(event) {

@@ -240,6 +240,7 @@ function applyPublicStatsToItem(item) {
 }
 
 let medicalItemsOverlay = [];
+let approvedSearchAliases = new Map();
 
 function normalizeMedicalItem(item) {
     return {
@@ -271,6 +272,24 @@ async function loadMedicalItemsOverlay() {
     }
 }
 
+async function loadApprovedSearchAliases() {
+    try {
+        const response = await fetch('/api/search-aliases', { cache: 'no-store' });
+        if (!response.ok) return;
+        const data = await response.json();
+        const aliases = Array.isArray(data.aliases) ? data.aliases : [];
+        approvedSearchAliases = aliases.reduce(function(map, item) {
+            if (item && typeof item.alias === 'string' && typeof item.code === 'string') {
+                const existing = map.get(item.code) || [];
+                map.set(item.code, existing.concat(item.alias));
+            }
+            return map;
+        }, new Map());
+    } catch (error) {
+        approvedSearchAliases = new Map();
+    }
+}
+
 function getMedicalItemDatabase() {
     const publicFeeItems = (typeof window !== 'undefined' && window.PUBLIC_FEE_SCHEDULE_ITEMS && Array.isArray(window.PUBLIC_FEE_SCHEDULE_ITEMS.items))
         ? window.PUBLIC_FEE_SCHEDULE_ITEMS.items
@@ -278,7 +297,11 @@ function getMedicalItemDatabase() {
     const itemsByCode = new Map();
     HIRA_DATABASE.concat(publicFeeItems).forEach(item => itemsByCode.set(item.code, item));
     medicalItemsOverlay.forEach(item => itemsByCode.set(item.code, item));
-    return Array.from(itemsByCode.values());
+    return Array.from(itemsByCode.values()).map(function(item) {
+        const aliases = approvedSearchAliases.get(item.code) || [];
+        if (!aliases.length) return item;
+        return { ...item, keywords: Array.from(new Set([...(item.keywords || []), ...aliases])) };
+    });
 }
 
 function resolveProviderPrice(item) {
@@ -329,7 +352,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const dateEl = document.getElementById('data-reference-date');
     if (dateEl) dateEl.innerText = DB.DATA_REFERENCE_DATE;
 
-    await loadMedicalItemsOverlay();
+    await Promise.all([loadMedicalItemsOverlay(), loadApprovedSearchAliases()]);
 
     // 백엔드 API가 있으면 우선 사용하고, 없으면 정적 공개자료로 계산을 유지
     await initializeDataSources();

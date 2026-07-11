@@ -25,13 +25,17 @@ for (const id of requiredAdminFields) {
 }
 
 assert(admin.includes('승인하면 공개 검색 DB에 즉시 반영됩니다.'), '승인 효과 안내 문구가 필요합니다.');
+assert(admin.includes('id="lower-limb-mri-preset"'), '하지 MRI 부위 선택이 필요합니다.');
+assert(admin.includes('FEE_HE118') && admin.includes('FEE_HE120') && admin.includes('FEE_HE121') && admin.includes('FEE_HE123'), '하지 MRI 공식 코드 preset이 필요합니다.');
+assert(admin.includes('applyLowerLimbMriPreset'), '하지 MRI preset 적용 함수가 필요합니다.');
 assert(admin.includes('clinicPrice: clinicPrice'), '의원 가격이 승인 요청에 포함되어야 합니다.');
 assert(admin.includes('hospitalPrice: hospitalPrice'), '병원 가격이 승인 요청에 포함되어야 합니다.');
 assert(admin.includes('sourceUrl: sourceUrl'), '공식 출처 URL이 승인 요청에 포함되어야 합니다.');
 assert(admin.includes('keywords: keywords'), '검색 키워드가 승인 요청에 포함되어야 합니다.');
 
 assert(script.includes("fetch('/api/medical-items'"), '공개 의료 항목 API를 불러와야 합니다.');
-assert(script.includes('await loadMedicalItemsOverlay();'), '초기화 전에 공개 항목을 로드해야 합니다.');
+assert(script.includes("fetch('/api/search-aliases'"), '완료된 검색 별칭 API를 불러와야 합니다.');
+assert(script.includes('Promise.all([loadMedicalItemsOverlay(), loadApprovedSearchAliases()])'), '초기화 전에 공개 항목과 완료 별칭을 함께 로드해야 합니다.');
 assert(script.includes('medicalItemsOverlay'), '공개 항목 오버레이 상태가 필요합니다.');
 assert(script.includes('itemsByCode.set(item.code, item)'), '같은 코드의 공개 항목이 정적 항목을 덮어써야 합니다.');
 
@@ -42,7 +46,7 @@ const overlayBlock = script.slice(
 const createDatabaseHarness = new Function(
     'HIRA_DATABASE',
     'window',
-    `${overlayBlock}\nreturn { getMedicalItemDatabase, setOverlay(items) { medicalItemsOverlay = items; } };`
+    `${overlayBlock}\nreturn { getMedicalItemDatabase, setOverlay(items) { medicalItemsOverlay = items; }, setAliases(aliases) { approvedSearchAliases = aliases; } };`
 );
 const harness = createDatabaseHarness(
     [{ code: 'A', name: '정적 A' }, { code: 'B', name: '정적 B' }],
@@ -52,5 +56,12 @@ harness.setOverlay([{ code: 'A', name: '승인 A' }]);
 const merged = harness.getMedicalItemDatabase();
 assert.strictEqual(merged.length, 3, '정적·공개·승인 항목이 코드 기준으로 병합되어야 합니다.');
 assert.strictEqual(merged.find(item => item.code === 'A').name, '승인 A', '승인 항목이 같은 코드의 정적 항목보다 우선해야 합니다.');
+
+const aliasHarness = createDatabaseHarness(
+    [{ code: 'PR_TR09', name: '중심정맥관 삽입술', keywords: [] }],
+    { PUBLIC_FEE_SCHEDULE_ITEMS: { items: [] } }
+);
+aliasHarness.setAliases(new Map([['PR_TR09', ['중심정맥']]]));
+assert.deepStrictEqual(aliasHarness.getMedicalItemDatabase()[0].keywords, ['중심정맥'], '완료된 별칭이 기존 공식 코드 검색어에 병합되어야 합니다.');
 
 console.log('PASS: 관리자 실제 항목 입력 및 공개 DB 오버레이 계약');

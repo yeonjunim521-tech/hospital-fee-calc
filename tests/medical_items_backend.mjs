@@ -161,4 +161,28 @@ await run('public endpoint returns only approved frontend fields', async () => {
   assert.doesNotMatch(JSON.stringify(body), /updated_at|status/);
 });
 
+await run('public alias endpoint exposes only curator-approved code mappings', async () => {
+  // Given
+  const { onRequestGet: getSearchAliases } = await import('../functions/api/search-aliases.ts');
+  const database = {
+    prepare(sql) {
+      assert.match(sql, /status = 'approved'/);
+      assert.match(sql, /item_id IS NOT NULL/);
+      return {
+        async all() {
+          return { results: [{ normalized_query: '중심정맥', item_id: 'PR_TR09', created_at: 'private' }] };
+        },
+      };
+    },
+  };
+
+  // When
+  const response = await getSearchAliases({ env: { DB: database } });
+  const body = await response.json();
+
+  // Then
+  assert.deepEqual(body, { ok: true, aliases: [{ alias: '중심정맥', code: 'PR_TR09' }] });
+  assert.doesNotMatch(JSON.stringify(body), /created_at|status/);
+});
+
 console.log('medical items backend checks passed');
