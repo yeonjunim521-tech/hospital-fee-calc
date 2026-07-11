@@ -5,13 +5,13 @@ const path = require('path');
 const frontend = path.join(__dirname, '..', 'frontend');
 const pages = ['index.html', 'about.html', 'data-sources.html', 'privacy.html', 'contact.html'];
 const seoPages = [
-    ['hospital-cost-calculator.html', 'hospital-cost-calculator.html', '병원비'],
-    ['er-cost-calculator.html', 'er-cost-calculator.html', '응급실'],
-    ['mri-cost-calculator.html', 'mri-cost-calculator.html', 'MRI'],
-    ['ct-cost-calculator.html', 'ct-cost-calculator.html', 'CT'],
-    ['endoscopy-cost-calculator.html', 'endoscopy-cost-calculator.html', '내시경'],
-    ['hospitalization-cost-calculator.html', 'hospitalization-cost-calculator.html', '입원비'],
-    ['noncovered-medical-cost.html', 'noncovered-medical-cost.html', '비급여']
+    ['hospital-cost-calculator.html', 'hospital-cost-calculator', '병원비'],
+    ['er-cost-calculator.html', 'er-cost-calculator', '응급실'],
+    ['mri-cost-calculator.html', 'mri-cost-calculator', 'MRI'],
+    ['ct-cost-calculator.html', 'ct-cost-calculator', 'CT'],
+    ['endoscopy-cost-calculator.html', 'endoscopy-cost-calculator', '내시경'],
+    ['hospitalization-cost-calculator.html', 'hospitalization-cost-calculator', '입원비'],
+    ['noncovered-medical-cost.html', 'noncovered-medical-cost', '비급여']
 ];
 
 function readPage(name) {
@@ -103,6 +103,18 @@ test('개인정보 안내는 최소수집과 30일 보유 기준을 명시한다
 test('필수 안내 페이지는 현재 위치를 탐색 메뉴에 표시한다', () => {
     for (const name of ['about.html', 'data-sources.html', 'privacy.html', 'contact.html']) {
         assert.match(readPage(name), /aria-current="page"/, name);
+    }
+});
+
+test('공개 페이지 canonical은 운영 clean URL과 일치한다', () => {
+    const supportPages = [
+        ['about.html', 'about'],
+        ['data-sources.html', 'data-sources'],
+        ['privacy.html', 'privacy'],
+        ['contact.html', 'contact']
+    ];
+    for (const [name, slug] of supportPages) {
+        assert.match(readPage(name), new RegExp(`<link rel="canonical" href="https://hospital-fee-calc\\.pages\\.dev/${slug}"`), name);
     }
 });
 
