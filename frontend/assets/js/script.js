@@ -1,6 +1,6 @@
 /*
   =====================================================
-  MEDICost Pro v2.5 — 심평원 전체 수가 코드 기반 계산기
+  MEDICost v3.0 — 심평원 전체 수가 코드 기반 계산기
   =====================================================
   건강보험심사평가원의 수가 데이터를 기반으로 계산을 처리하는 스크립트입니다.
   검색 및 추가 인터페이스를 [검사], [시술], [수술] 3대 대분류 탭으로 구분하고,
@@ -180,6 +180,14 @@ const publicMedicalStatsState = {
     sourceType: (typeof window !== 'undefined' && window.MEDICAL_STATISTICS) ? 'local-csv' : 'none'
 };
 
+function getPublicMedicalStatistics() {
+    if (!publicMedicalStatsState.stats && typeof window !== 'undefined' && window.MEDICAL_STATISTICS) {
+        publicMedicalStatsState.stats = window.MEDICAL_STATISTICS;
+        publicMedicalStatsState.sourceType = 'local-csv';
+    }
+    return publicMedicalStatsState.stats;
+}
+
 const VISIT_TYPE_MAP = {
     outpatient: '외래',
     er: '외래',
@@ -200,7 +208,7 @@ function normalizeDiseaseCodeInput(value) {
 
 function getDiseaseStatistics(code, treatmentType) {
     const normalizedCode = normalizeDiseaseCodeInput(code);
-    const stats = publicMedicalStatsState.stats;
+    const stats = getPublicMedicalStatistics();
     if (!normalizedCode || !stats || !stats.diseases) return null;
 
     const visitType = getVisitTypeLabel(treatmentType);
@@ -215,7 +223,7 @@ function getDiseaseStatistics(code, treatmentType) {
 }
 
 function getActionStatistics(item, treatmentType) {
-    const stats = publicMedicalStatsState.stats;
+    const stats = getPublicMedicalStatistics();
     const actionCode = item && (item.publicActionCode || item.actionCode || item.ediCode);
     if (!stats || !stats.actions || !actionCode) return null;
 
@@ -337,42 +345,52 @@ function getAutoGasanPatientPay(basePrice, hData, patientRate, count = 1) {
     return base * gasanRate * patientRate * count;
 }
 
+function onDocumentReady(callback) {
+    if (!document.readyState || document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', callback, { once: true });
+        return;
+    }
+    callback();
+}
+
+let calculatorInitialization = null;
+
+function initializeCalculatorApp() {
+    if (calculatorInitialization) return calculatorInitialization;
+
+    calculatorInitialization = (async () => {
+        await Promise.resolve();
+        const form = document.getElementById('calculator-form');
+        if (form && form.dataset.calculatorBound !== 'true') {
+            form.addEventListener('change', handleCalculatorInputChange, true);
+            form.dataset.calculatorBound = 'true';
+        }
+
+        const dateEl = document.getElementById('data-reference-date');
+        if (dateEl) dateEl.innerText = DB.DATA_REFERENCE_DATE;
+
+        const optionalMedicalItems = Promise.all([loadMedicalItemsOverlay(), loadApprovedSearchAliases()]);
+        const optionalData = Promise.all([optionalMedicalItems, initializeDataSources()]);
+        populateNonBenefitRegions();
+        switchTab('test');
+        renderDirectSelectOptions('etc', 'etc');
+        initSearchEvents();
+        resetResultView();
+        updateResultButtonState();
+        optionalData.catch(() => undefined);
+    })();
+
+    return calculatorInitialization;
+}
+
+if (typeof window !== 'undefined') {
+    window.MEDICostCalculator = Object.freeze({ init: initializeCalculatorApp });
+}
 
 // =========================================================
 // 3. 문서 로드 완료 시 초기화
 // =========================================================
-document.addEventListener('DOMContentLoaded', async () => {
-    // 폼 변경 이벤트 연동
-    const form = document.getElementById('calculator-form');
-    if (form) {
-        form.addEventListener('change', handleCalculatorInputChange, true);
-    }
-
-    // 심평원 고시 자료 기준일 렌더링
-    const dateEl = document.getElementById('data-reference-date');
-    if (dateEl) dateEl.innerText = DB.DATA_REFERENCE_DATE;
-
-    await Promise.all([loadMedicalItemsOverlay(), loadApprovedSearchAliases()]);
-
-    // 백엔드 API가 있으면 우선 사용하고, 없으면 정적 공개자료로 계산을 유지
-    await initializeDataSources();
-
-    // 비급여 지역별 공개자료가 있으면 지역 선택 목록을 자동 구성
-    populateNonBenefitRegions();
-
-    // 대분류 탭 초기화 및 바인딩
-    switchTab('test');
-    
-    // 기타 처치 드롭다운 목록 채우기
-    renderDirectSelectOptions('etc', 'etc');
-
-    // 검색 이벤트 초기화 (대분류 검색창 및 기타 검색창 개별 등록)
-    initSearchEvents();
-
-    // 초기 결과 영역은 필수 조건 선택 전까지 잠근다.
-    resetResultView();
-    updateResultButtonState();
-});
+onDocumentReady(() => initializeCalculatorApp());
 
 
 // =========================================================
@@ -514,7 +532,12 @@ function requestCalculation() {
             messageEl.classList.add('warning');
             messageEl.innerText = message;
         }
-        alert(message);
+        const firstMissing = !document.querySelector('input[name="hospital_class"]:checked')
+            ? document.querySelector('input[name="hospital_class"]')
+            : !document.querySelector('input[name="treatment_type"]:checked')
+                ? document.querySelector('input[name="treatment_type"]')
+                : document.getElementById('nonbenefit_region');
+        firstMissing?.focus();
         return;
     }
 
@@ -1227,8 +1250,13 @@ function executeSearchFromInput(searchInput, targetGroup) {
     searchInput.setSelectionRange(textLength, textLength);
 }
 
+function hasAnalyticsConsent() {
+    if (typeof window === 'undefined' || !window.MEDICostConsent) return false;
+    return window.MEDICostConsent.canLoadAnalytics(window.MEDICostConsent.readConsent());
+}
+
 async function sendSearchLog(query, resultCount) {
-    if (!query || query.trim().length < 2 || typeof fetch !== 'function') return;
+    if (!hasAnalyticsConsent() || !query || query.trim().length < 2 || typeof fetch !== 'function') return;
 
     try {
         await fetch('/api/search-log', {
@@ -1247,7 +1275,7 @@ async function sendSearchLog(query, resultCount) {
 }
 
 async function sendSearchClickLog(searchQuery, item) {
-    if (!searchQuery || !item || typeof fetch !== 'function') return;
+    if (!hasAnalyticsConsent() || !searchQuery || !item || typeof fetch !== 'function') return;
 
     try {
         await fetch('/api/search-click', {
@@ -1278,7 +1306,7 @@ function compactSelectedItems(items) {
 }
 
 async function sendCalculationLog(payload) {
-    if (!payload || typeof fetch !== 'function') return;
+    if (!hasAnalyticsConsent() || !payload || typeof fetch !== 'function') return;
 
     try {
         await fetch('/api/calculation-log', {
@@ -2001,7 +2029,7 @@ function finalBindAllSearchControls() {
     finalBindDiseaseSearchBox();
 }
 
-document.addEventListener('DOMContentLoaded', finalBindAllSearchControls);
+onDocumentReady(finalBindAllSearchControls);
 setTimeout(finalBindAllSearchControls, 0);
 
 // =========================================================
@@ -2247,7 +2275,7 @@ function initSearchEvents() {
     bindDiseaseSearchBox();
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+onDocumentReady(() => {
     bindSearchBox('global');
     bindSearchBox('scoped');
     bindDiseaseSearchBox();
@@ -2324,7 +2352,7 @@ function initSearchEvents() {
     bindSearchBox('scoped');
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+onDocumentReady(() => {
     resetScopedSearchUi();
 });
 
@@ -3055,6 +3083,7 @@ function calculate() {
     document.getElementById('display_refund_cost').innerText = formatNumber(refundTotal);
     document.getElementById('display_final_cost').innerText = formatNumber(finalPatientPay);
     document.getElementById('display_cost_range').innerText = `${formatNumber(minRange)}원 ~ ${formatNumber(maxRange)}원`;
+    document.getElementById('result_insurance_box')?.classList.toggle('hidden', !(hasInsurance && refundTotal > 0));
 
     // 산정특례/상병코드 안내 토글
     const sanjeongNotice = document.getElementById('sanjeong-notice');
@@ -4564,7 +4593,7 @@ function eofBindAllSearchControls() {
     eofBindDiseaseSearchBox();
 }
 
-document.addEventListener('DOMContentLoaded', eofBindAllSearchControls);
+onDocumentReady(eofBindAllSearchControls);
 setTimeout(eofBindAllSearchControls, 0);
 
 // 14. Final UI override: add feedback, hide empty detail select, fix broken labels.
@@ -4881,7 +4910,7 @@ function eof2RebindFinalUi() {
     if (!detailSelect?.value) eof2SetDetailVisible(false);
 }
 
-document.addEventListener('DOMContentLoaded', eof2RebindFinalUi);
+onDocumentReady(eof2RebindFinalUi);
 setTimeout(eof2RebindFinalUi, 0);
 
 // 15. Final direct-select override: trust visible active tab and always show rendered list.
@@ -4996,7 +5025,7 @@ function eof3RebindDirectSelect() {
     if (detailSelect) detailSelect.onchange = handleDetailItemChange;
 }
 
-document.addEventListener('DOMContentLoaded', eof3RebindDirectSelect);
+onDocumentReady(eof3RebindDirectSelect);
 setTimeout(eof3RebindDirectSelect, 0);
 
 function renderSearchResults(query, targetGroup, resultsList, items) {

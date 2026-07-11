@@ -1,5 +1,5 @@
 /**
- * MEDICost Pro v2.0 검증용 테스트 러너 (test_runner.js)
+ * MEDICost v3.0 검증용 테스트 러너 (test_runner.js)
  * 
  * 브라우저 환경 객체(window, document 등)를 간이 모킹하여
  * script.js와 hira_codes.js의 핵심 비즈니스 로직을 Node.js 환경에서 직접 실행 및 검증합니다.
@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
-console.log("=== MEDICost Pro v2.0 로직 정밀 검증 시작 ===");
+console.log("=== MEDICost v3.0 로직 정밀 검증 시작 ===");
 
 // 1. 브라우저 환경 모킹
 global.window = {};

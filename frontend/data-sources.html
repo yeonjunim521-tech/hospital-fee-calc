@@ -1,36 +1,30 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>?怨쀬뵠???곗뮇荑?| 癰귣쵐?앶뜮??④쑴沅쎿묾?/title>
-    <meta name="description" content="癰귣쵐?앶뜮??④쑴沅쎿묾怨쀫퓠 ?????롫뮉 椰꾨떯而?퉪?꾨퓮??沅????? ???椰꾨떯而?퉪?꾨퓮?⑤벉???⑤벀而?癒?┷?? ?④쑴沅???볧롧몴???덇땀??몃빍??">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>데이터 출처 | MEDICost 병원비 계산기</title>
+    <meta name="description" content="MEDICost 병원비 계산기에 사용되는 급여 수가, 비급여 가격과 의료 통계 자료의 출처와 기준일을 안내합니다.">
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://hospital-fee-calc.pages.dev/data-sources.html">
-    <link rel="stylesheet" href="assets/css/seo-page.css">
-    <script type="application/ld+json">
-    {"@context":"https://schema.org","@type":"AboutPage","name":"癰귣쵐?앶뜮??④쑴沅쎿묾??怨쀬뵠???곗뮇荑?,"url":"https://hospital-fee-calc.pages.dev/data-sources.html"}
-    </script>
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1927730301151401"
-        crossorigin="anonymous"></script>
-    <script src="assets/js/analytics.js" defer></script>
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="assets/css/style-v3.css">
+    <script src="assets/js/icon-loader.js" defer></script>
+    <script src="assets/js/consent.js" defer></script>
 </head>
 <body>
-    <main class="page">
-        <section class="panel">
-            <h1>?怨쀬뵠???곗뮇荑?/h1>
-            <p>???④쑴沅쎿묾怨뺣뮉 ?⑤벀而?????? ??쑨????癒?┷??獄쏅?源??곗쨮 癰귣쵐?앶뜮袁? ?곕뗄???롫뮉 筌〓㈇????袁㏓럡??낅빍??</p>
-            <h2>?????癒?┷</h2>
-            <ul>
-                <li>椰꾨떯而?퉪?꾨퓮??沅????????疫꿸퀣??類ｋ궖鈺곌퀬???뺥돩??/li>
-                <li>椰꾨떯而?퉪?꾨퓮??沅???????쑨???彛딁뙴??돩?類ｋ궖鈺곌퀬???뺥돩??/li>
-                <li>椰꾨떯而?퉪?꾨퓮??沅??????怨룻앲퉪?椰꾨떯而?퉪?꾨퓮 筌욊쑬利?????/li>
-                <li>???椰꾨떯而?퉪?꾨퓮?⑤벉???諭??雅뚯눘湲썼퉪臾믫맜??뺥???깆맄?꾨뗀諭띈퉪?筌욊쑬利??袁れ넺</li>
-            </ul>
-            <h2>?④쑴沅???볧?/h2>
-            <p>?⑤벀而?癒?┷????쇱젫 癰귣쵐??筌???? ??륁쁽 ?怨밴묶, 癰귣똾肉????, 癰귣쵐?앲퉪???쑨????⑥쥙? 揶쎛野꺿뫗???袁⑹읈????筌ｋ똾釉?쭪? ??녿뮸??덈뼄.</p>
-            <a class="cta" href="/">?④쑴沅쎿묾?獄쏅뗀以덂첎?疫?/a>
-        </section>
+    <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
+    <header class="site-header"><a class="brand" href="/"><span class="brand-mark"><i data-lucide="heart-pulse"></i></span><span>MEDICost <span class="brand-version">v3.0</span></span></a><nav class="site-nav" aria-label="주요 메뉴"><a href="/">계산기</a><a class="active-page" aria-current="page" href="data-sources.html">데이터 출처</a><a href="about.html">서비스 소개</a></nav></header>
+    <main id="main-content" class="support-main">
+        <header class="support-hero"><p class="eyebrow">데이터 출처</p><h1>계산에 사용한 자료를 숨기지 않습니다</h1><p>화면의 기준일은 정적 데이터 파일에 기록된 날짜를 직접 읽어 표시합니다. 아래 자료는 예상 범위를 만드는 참고값이며 실제 청구 기준과 차이가 날 수 있습니다.</p></header>
+        <div class="support-content">
+            <section class="support-section"><h2>급여 수가</h2><div><p>건강보험심사평가원의 의·치과 급여 수가 반영 내역을 정리한 정적 데이터셋을 사용합니다.</p><ul><li>파일의 <code>sourceDate</code> 값을 계산기 화면에 직접 표시</li><li>코드·항목명·병원 종별 가격을 검색과 계산에 사용</li><li>병원 등급별 가산과 본인부담률을 별도로 반영</li></ul></div></section>
+            <section class="support-section"><h2>비급여 가격</h2><div><p>국민건강보험 비급여 항목별 가격정보 공개 화면에서 확인한 대표 항목과 프로젝트에 포함된 지역별 공개자료를 사용합니다.</p><ul><li>파일의 <code>fetchedAt</code> 값을 계산기 화면에 직접 표시</li><li>지역 중앙값을 우선 사용하고, 없으면 평균값 또는 기존 추정값 사용</li><li>병원별 실제 가격과 선택 항목에 따라 큰 차이가 날 수 있음</li></ul></div></section>
+            <section class="support-section"><h2>상병·진료 통계</h2><div><p>2024년 공공데이터 CSV에서 만든 상병코드별 평균 진료비 통계를 참고합니다. 사용자가 검사·시술·수술을 직접 추가하지 않은 경우에만 평균값을 계산에 반영합니다.</p></div></section>
+            <section class="support-section"><h2>업데이트와 한계</h2><div><p>자료의 시행일과 수집일은 서로 다를 수 있습니다. 새 고시나 공개자료가 배포되어도 정적 파일이 갱신되기 전에는 이전 기준이 표시될 수 있습니다.</p><p class="support-note">최종 비용 확인이 필요하면 방문할 병원과 가입한 보험사에 직접 문의하세요.</p><div class="support-actions"><a class="button-primary" href="/#calculator">예상 금액 계산</a></div></div></section>
+        </div>
     </main>
+    <footer class="site-footer"><div class="footer-grid"><div><div class="footer-brand">MEDICost v3.0</div><p class="footer-copy">공개 의료자료 기반 참고용 병원비 계산기</p></div><nav class="footer-links" aria-label="하단 메뉴"><a href="privacy.html">개인정보 처리 안내</a><a href="contact.html">문의 안내</a><button type="button" data-open-consent>쿠키 설정</button></nav></div></footer>
+    <section id="consent-banner" class="consent-banner" aria-labelledby="consent-title" hidden><h2 id="consent-title">분석·광고 설정</h2><p>필수 기능은 동의 없이 작동합니다. 분석과 광고는 허용한 경우에만 불러옵니다.</p><div id="consent-settings" class="consent-settings" hidden><label class="consent-setting"><span><strong>서비스 분석</strong><span>이용 통계와 Google Analytics를 사용합니다.</span></span><input id="consent-analytics" type="checkbox"></label><label class="consent-setting"><span><strong>맞춤 광고</strong><span>Google AdSense 광고 스크립트를 사용합니다.</span></span><input id="consent-ads" type="checkbox"></label></div><p id="consent-status" class="consent-status" aria-live="polite"></p><div class="consent-actions"><button type="button" class="consent-button consent-button-primary" data-consent-all>모두 허용</button><button type="button" class="consent-button consent-button-secondary" data-consent-essential>필수만 사용</button><button type="button" class="consent-button consent-button-secondary" data-consent-settings>설정</button><button type="button" class="consent-button consent-button-primary" data-consent-save hidden>선택 저장</button></div></section>
 </body>
 </html>
