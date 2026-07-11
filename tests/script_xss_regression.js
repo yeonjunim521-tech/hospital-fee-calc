@@ -65,6 +65,7 @@ global.window = {
 
 global.document = {
     addEventListener: () => {},
+    dispatchEvent: () => true,
     getElementById: (id) => getElement(id),
     createElement: () => createMockElement(),
     querySelector: (selector) => {

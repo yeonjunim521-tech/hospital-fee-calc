@@ -52,3 +52,8 @@ test('Given a calculator hash, when route is checked, then eager loading is requ
     assert.strictEqual(shell.shouldLoadForHash('#calculator'), true);
     assert.strictEqual(shell.shouldLoadForHash('#faq'), false);
 });
+
+test('Given reduced motion preference, when result scrolling is requested, then instant scrolling is selected', () => {
+    assert.strictEqual(shell.getResultScrollBehavior({ matches: true }), 'auto');
+    assert.strictEqual(shell.getResultScrollBehavior({ matches: false }), 'smooth');
+});

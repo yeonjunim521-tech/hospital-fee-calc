@@ -185,6 +185,7 @@ async function screenshot(cdp, name) {
         assert.deepStrictEqual({ scripts: loaded.scripts, initialized: loaded.initialized, inert: loaded.inert }, { scripts: 5, initialized: true, inert: false });
         assert.doesNotMatch(loaded.date, /확인 불가|로드 후/);
 
+        await sleep(1000);
         cdp.consoleEvents.length = 0;
         await evaluate(cdp, `document.querySelector('[data-step-target="2"]').focus()`);
         await press(cdp, 'Enter');
@@ -205,10 +206,20 @@ async function screenshot(cdp, name) {
             const region = document.getElementById('nonbenefit_region');
             region.value = [...region.options].find(option => option.value)?.value || '';
             region.dispatchEvent(new Event('change', { bubbles: true }));
-            document.querySelector('[data-step-next="2"]').click();
             return { hospital: hospital.checked, treatment: treatment.checked, region: region.value };
         })()`);
         assert.ok(selected.hospital && selected.treatment && selected.region);
+        await evaluate(cdp, 'document.querySelector("[data-step-quick-result]").click()');
+        await waitFor(cdp, 'document.getElementById("display_final_cost").textContent !== "0"');
+        assert.strictEqual(await evaluate(cdp, 'document.querySelector("[data-step-panel=\\\"2\\\"]").hidden'), true);
+        assert.strictEqual(await evaluate(cdp, 'document.querySelector("[data-step-panel=\\\"3\\\"]").hidden'), false);
+        assert.match(await evaluate(cdp, 'document.getElementById("result-insurance-status").textContent'), /미적용/);
+        assert.match(await evaluate(cdp, 'document.getElementById("selection-summary").textContent'), /동네 의원/);
+        await sleep(400);
+        await screenshot(cdp, '1280-quick-result.png');
+        await evaluate(cdp, 'document.querySelector("[data-edit-conditions]").click()');
+        await waitFor(cdp, 'document.querySelector("[data-step-panel=\\\"1\\\"]").hidden === false');
+        await evaluate(cdp, 'document.querySelector("[data-step-next=\\\"2\\\"]").click()');
         await waitFor(cdp, `!document.querySelector('[data-step-panel="2"]').hidden`);
 
         await evaluate(cdp, `document.getElementById('global-search-input').focus()`);
@@ -227,6 +238,7 @@ async function screenshot(cdp, name) {
         await waitFor(cdp, `document.querySelectorAll('#global-search-results .search-result-item').length > 0`);
         await evaluate(cdp, `document.querySelector('#global-search-results .search-result-item').click()`);
         await waitFor(cdp, `document.querySelectorAll('#added_items_unified_list .added-item').length > 0`);
+        assert.match(await evaluate(cdp, 'document.getElementById("selection-summary").textContent'), /추가 1건/);
 
         await evaluate(cdp, `document.querySelector('[data-step-next="3"]').click()`);
         await waitFor(cdp, `!document.querySelector('[data-step-panel="3"]').hidden`);
@@ -270,6 +282,7 @@ async function screenshot(cdp, name) {
         assert.notStrictEqual(inpatientCost, '0');
 
         await evaluate(cdp, `document.querySelector('[data-step-target="2"]').click()`);
+        await evaluate(cdp, `document.getElementById('advanced-items-toggle').click()`);
         await evaluate(cdp, `document.getElementById('has_disease_code').click()`);
         await evaluate(cdp, `document.getElementById('disease_code_input').focus()`);
         await cdp.send('Input.insertText', { text: '감기' });
@@ -292,17 +305,24 @@ async function screenshot(cdp, name) {
         await evaluate(cdp, `document.querySelector('[data-step-next="3"]').click()`);
         const insuranceResult = await evaluate(cdp, `(() => {
             document.getElementById('has_insurance').click();
+            const initialRefund = document.getElementById('display_refund_cost').textContent;
             const generation = document.getElementById('insurance_generation');
             generation.value = 'gen4';
             generation.dispatchEvent(new Event('change', { bubbles: true }));
-            requestCalculation();
             return {
+                initialRefund,
                 refund: document.getElementById('display_refund_cost').textContent,
                 visible: !document.getElementById('result_insurance_box').classList.contains('hidden')
             };
         })()`);
         assert.notStrictEqual(insuranceResult.refund, '0');
+        assert.notStrictEqual(insuranceResult.refund, insuranceResult.initialRefund);
         assert.strictEqual(insuranceResult.visible, true);
+        await evaluate(cdp, 'document.querySelector("[data-reset-calculator]").click()');
+        assert.strictEqual(await evaluate(cdp, 'document.querySelector("[data-step-panel=\\\"1\\\"]").hidden'), false);
+        assert.strictEqual(await evaluate(cdp, 'document.querySelectorAll("#added_items_unified_list .added-item").length'), 0);
+        assert.strictEqual(await evaluate(cdp, 'document.activeElement.name'), 'hospital_class');
+        assert.match(await evaluate(cdp, 'document.getElementById("calculator-reset-status").textContent'), /초기화/);
         const scenarioResults = { emergencyCost, inpatientCost, diseaseDiagnostics, diseaseSelection, insuranceResult };
 
         const viewportChecks = [];

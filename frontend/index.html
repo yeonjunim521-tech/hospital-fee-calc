@@ -109,8 +109,8 @@
             <section id="calculator" class="calculator-section" aria-labelledby="calculator-title">
                 <div class="section-heading">
                     <p class="eyebrow">병원비 예상 계산</p>
-                    <h2 id="calculator-title">세 단계로 필요한 조건만 확인합니다</h2>
-                    <p>필수 조건을 먼저 고르고, 필요한 경우에만 상병코드와 치료 항목, 실손보험을 추가하세요.</p>
+                    <h2 id="calculator-title">필수 조건만 고르면 바로 결과를 확인합니다</h2>
+                    <p>병원 등급, 진료 형태, 비급여 기준 지역만 선택하세요. 상병코드와 치료 항목, 실손보험은 필요할 때만 추가할 수 있습니다.</p>
                 </div>
                 <div id="calculator-loader" class="calculator-loader" role="status" aria-live="polite">
                     <div class="loader-content">
@@ -130,6 +130,11 @@
                     <li><button type="button" data-step-target="3"><span class="step-number">3</span>보험·결과</button></li>
                 </ol>
                 <p id="step-status" class="step-intro" aria-live="polite">1단계: 병원 등급, 진료 형태, 비급여 기준 지역을 선택하세요.</p>
+                <aside id="selection-summary" class="selection-summary" aria-labelledby="selection-summary-title">
+                    <strong id="selection-summary-title">현재 선택</strong>
+                    <div id="selection-summary-items" class="selection-summary-items"></div>
+                </aside>
+                <p id="calculator-reset-status" class="sr-only" aria-live="polite"></p>
                 
                 <form id="calculator-form" onsubmit="event.preventDefault();">
 
@@ -278,8 +283,8 @@
                     </div>
                     <p id="step-1-error" class="step-error" role="alert"></p>
                     <div class="step-actions">
-                        <span></span>
-                        <button type="button" class="step-button step-button-primary" data-step-next="2">선택 조건으로</button>
+                        <button type="button" class="step-button step-button-secondary" data-step-next="2">검사·치료 항목 추가</button>
+                        <button type="button" class="step-button step-button-primary" data-step-quick-result>바로 결과 보기</button>
                     </div>
                     </section>
 
@@ -288,7 +293,7 @@
                     <h3 id="step-2-title" class="sr-only">2단계 선택 조건</h3>
                     <p class="step-intro">상병코드와 치료·검사 항목은 알고 있는 경우에만 추가하세요.</p>
                     <div id="sanjeong-step-slot"></div>
-                    <div class="form-group">
+                    <div class="form-group" data-advanced-disease>
                         <label class="form-label">3-1. 상병코드 평균 진료비 반영(선택)</label>
                         <div class="disease-toggle-box">
                             <div class="insurance-toggle">
@@ -330,6 +335,18 @@
                             </div>
                             <div id="global-search-results" class="search-results-list hidden"></div>
                         </div>
+
+                        <div class="added-items-container">
+                            <span class="added-list-title"><i data-lucide="check-square"></i> 추가된 치료/검사 항목</span>
+                            <div id="added_items_unified_list" class="added-items-list">
+                                <p class="empty-list-text">등록된 치료 및 검사 항목이 없습니다. 통합검색으로 필요한 항목만 추가하세요.</p>
+                            </div>
+                        </div>
+
+                        <button type="button" id="advanced-items-toggle" class="advanced-items-toggle" aria-expanded="false" aria-controls="advanced-items-panel">
+                            고급 항목 열기
+                        </button>
+                        <div id="advanced-items-panel" class="advanced-items-panel" hidden>
                         
                         <!-- 대분류 탭 메뉴 -->
                         <div class="category-tabs" role="tablist">
@@ -419,24 +436,18 @@
                             </div>
                         </div>
 
-                        <!-- 선택 및 추가된 전체 항목 목록 칩 -->
-                        <div class="added-items-container">
-                            <span class="added-list-title"><i data-lucide="check-square"></i> 추가된 치료/검사 항목 (실시간 누적)</span>
-                            <div id="added_items_unified_list" class="added-items-list">
-                                <p class="empty-list-text">등록된 치료 및 검사 항목이 없습니다. 대분류를 선택하여 드롭다운으로 추가하거나 검색해 주세요.</p>
-                            </div>
                         </div>
                     </div>
                     <div class="step-actions">
                         <button type="button" class="step-button step-button-secondary" data-step-back="1">필수 조건으로</button>
-                        <button type="button" class="step-button step-button-primary" data-step-next="3">보험·결과로</button>
+                        <button type="button" class="step-button step-button-primary" data-step-next="3">선택 완료·결과 보기</button>
                     </div>
                     </section>
 
                     <!-- 5. 실비보험 적용 여부 -->
                     <section class="calculator-step" data-step-panel="3" aria-labelledby="step-3-title" hidden>
                     <h3 id="step-3-title" class="sr-only">3단계 보험과 결과 확인</h3>
-                    <p class="step-intro">실손보험 적용 여부를 확인한 뒤 결과보기 버튼을 눌러주세요.</p>
+                    <p class="step-intro">실손보험을 적용하면 현재 결과가 바로 다시 계산됩니다.</p>
                     <div class="form-group last-group">
                         <label class="form-label">5. 실손의료보험(실비) 적용 여부</label>
                         <div class="insurance-toggle">
@@ -466,6 +477,12 @@
             <!-- ===== 우측: 예상 영수증 및 병원비 비교 결과 ===== -->
             <section class="card result-card">
                 <h2 class="card-title"><i data-lucide="receipt"></i> 예상 병원비 산출 결과</h2>
+                <div class="result-actions" aria-label="계산 결과 도구">
+                    <button type="button" class="result-action-link" data-open-insurance>보험 설정</button>
+                    <button type="button" class="result-action-link" data-edit-conditions>조건 수정</button>
+                    <button type="button" class="result-action-link" data-reset-calculator>처음부터</button>
+                </div>
+                <p id="result-insurance-status" class="result-insurance-status">실손보험 미적용 상태입니다. 보험 설정에서 예상 환급금을 확인할 수 있습니다.</p>
                 <div class="result-display">
                     <!-- 최상단 강조: 최종 예상 실부담금 및 가격 편차 범위 -->
                     <div class="result-item final-cost-box-primary">

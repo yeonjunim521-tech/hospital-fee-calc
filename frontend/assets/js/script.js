@@ -478,8 +478,8 @@ function updateResultButtonState() {
     if (ready) {
         message.classList.remove('warning');
         message.innerText = resultRequested
-            ? '선택 조건 기준으로 결과를 계산했습니다. 조건을 바꾸면 다시 결과보기를 눌러주세요.'
-            : '필수 조건이 모두 선택되었습니다. 결과보기를 눌러 예상 병원비를 계산하세요.';
+            ? '선택 조건 기준으로 결과를 계산했습니다. 조건을 바꾸면 결과가 바로 반영됩니다.'
+            : '필수 조건이 모두 선택되었습니다. 바로 결과 보기로 예상 병원비를 계산하세요.';
     } else {
         message.classList.add('warning');
         message.innerText = `${getMissingCalculationLabels().join(', ')} 선택 후 결과를 조회할 수 있습니다.`;
@@ -505,11 +505,46 @@ function resetResultView() {
     if (gasanLabelEl) gasanLabelEl.innerText = '병원 등급별 가산율이 급여 항목에 자동 반영됩니다.';
     if (refundCostEl) refundCostEl.innerText = '0';
     if (rangeEl) rangeEl.innerText = '0원 ~ 0원';
-    if (tableBody) tableBody.innerHTML = '<tr><td colspan="3" class="empty-row">결과보기를 누르면 세부 산출 내역이 표시됩니다.</td></tr>';
-    if (comparisonBody) comparisonBody.innerHTML = '<tr><td colspan="3" class="empty-row">필수 조건 선택 후 결과보기를 눌러주세요.</td></tr>';
+    if (tableBody) tableBody.innerHTML = '<tr><td colspan="3" class="empty-row">필수 조건을 선택하면 세부 산출 내역이 표시됩니다.</td></tr>';
+    if (comparisonBody) comparisonBody.innerHTML = '<tr><td colspan="3" class="empty-row">필수 조건을 선택하면 병원 규모별 예상 금액을 확인할 수 있습니다.</td></tr>';
     if (insuranceBox) insuranceBox.classList.add('hidden');
     if (drgNotice) drgNotice.classList.add('hidden');
     if (sanjeongNotice) sanjeongNotice.classList.add('hidden');
+}
+
+function resetCalculatorState() {
+    const form = document.getElementById('calculator-form');
+    form?.reset();
+    addedTests = [];
+    addedSurgeries = [];
+    addedProcedures = [];
+    testIdCounter = 0;
+    surgeryIdCounter = 0;
+    procedureIdCounter = 0;
+    resultRequested = false;
+    etcAccordionOpen = false;
+
+    const region = document.getElementById('nonbenefit_region');
+    if (region) region.value = getStoredNonBenefitRegion() || '';
+    const stayDays = document.getElementById('stay_days');
+    if (stayDays) stayDays.value = '1';
+    ['hospitalization_details', 'emergency_details', 'sanjeong_details', 'disease_code_details', 'insurance_details', 'etc-accordion-body']
+        .forEach(id => document.getElementById(id)?.classList.add('hidden'));
+    document.querySelectorAll('.search-input').forEach(input => { input.value = ''; });
+    document.querySelectorAll('.search-results-list').forEach(results => {
+        results.replaceChildren();
+        results.classList.add('hidden');
+    });
+    document.getElementById('advanced-items-panel').hidden = true;
+    const advancedToggle = document.getElementById('advanced-items-toggle');
+    if (advancedToggle) {
+        advancedToggle.setAttribute('aria-expanded', 'false');
+        advancedToggle.textContent = '고급 항목 열기';
+    }
+    renderAddedItems();
+    updateEtcAddedBadge();
+    resetResultView();
+    document.dispatchEvent(new Event('medicost:items-changed'));
 }
 
 function markResultStale() {
@@ -518,7 +553,8 @@ function markResultStale() {
     updateResultButtonState();
 }
 
-function handleCalculatorInputChange() {
+function handleCalculatorInputChange(event) {
+    if (resultRequested && ['has_insurance', 'insurance_generation'].includes(event?.target?.id)) return;
     markResultStale();
 }
 
@@ -5091,6 +5127,7 @@ function renderAddedItems() {
     const totalCount = addedTests.length + addedSurgeries.length + addedProcedures.length;
     if (totalCount === 0) {
         unifiedList.innerHTML = '<p class="empty-list-text">등록된 항목이 없습니다. 대분류를 선택해서 검색한 뒤 추가해 주세요.</p>';
+        document.dispatchEvent(new Event('medicost:items-changed'));
         return;
     }
 
@@ -5128,4 +5165,5 @@ function renderAddedItems() {
     });
 
     if (typeof lucide !== 'undefined') lucide.createIcons();
+    document.dispatchEvent(new Event('medicost:items-changed'));
 }

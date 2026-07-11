@@ -21,6 +21,10 @@
         return hash === '#calculator';
     }
 
+    function getResultScrollBehavior(reducedMotion) {
+        return reducedMotion?.matches ? 'auto' : 'smooth';
+    }
+
     function initShell() {
         const section = root.document.getElementById('calculator');
         const runtime = section?.querySelector('.calculator-runtime');
@@ -127,6 +131,47 @@
             };
         }
 
+        function updateSelectionSummary() {
+            const labels = {
+                hospitalClass: {
+                    clinic: '동네 의원',
+                    hospital: '일반 병원',
+                    general_hospital: '종합병원',
+                    tertiary_hospital: '대학병원'
+                },
+                treatmentType: { outpatient: '일반 외래', er: '응급실', inpatient: '입원 치료' }
+            };
+            const selections = currentSelections();
+            const region = root.document.getElementById('nonbenefit_region');
+            const regionLabel = region?.selectedOptions?.[0]?.textContent?.trim();
+            const items = root.document.getElementById('selection-summary-items');
+            const addedCount = root.document.querySelectorAll('#added_items_unified_list .added-item').length;
+            const values = [
+                labels.hospitalClass[selections.hospitalClass] || '병원 미선택',
+                labels.treatmentType[selections.treatmentType] || '진료 형태 미선택',
+                selections.nonBenefitRegion ? regionLabel : '비급여 지역 미선택',
+                root.document.getElementById('has_sanjeong')?.checked ? '산정특례 적용' : '산정특례 미적용',
+                root.document.getElementById('has_disease_code')?.checked ? '상병코드 적용' : '상병코드 미적용',
+                `추가 ${addedCount}건`
+            ];
+            if (items) {
+                items.replaceChildren(...values.map(value => {
+                    const chip = root.document.createElement('span');
+                    chip.className = 'selection-chip';
+                    chip.textContent = value;
+                    return chip;
+                }));
+            }
+        }
+
+        function updateInsuranceStatus() {
+            const status = root.document.getElementById('result-insurance-status');
+            if (!status) return;
+            status.textContent = root.document.getElementById('has_insurance')?.checked
+                ? '실손보험 적용 상태입니다. 보험 세대를 바꾸면 예상 환급금이 바로 반영됩니다.'
+                : '실손보험 미적용 상태입니다. 보험 설정에서 예상 환급금을 확인할 수 있습니다.';
+        }
+
         function showStep(nextStep, focusHeading = true) {
             activeStep = nextStep;
             root.document.querySelectorAll('[data-step-panel]').forEach(panel => {
@@ -141,9 +186,11 @@
             const descriptions = {
                 1: '1단계: 병원 등급, 진료 형태, 비급여 기준 지역을 선택하세요.',
                 2: '2단계: 알고 있는 상병코드와 치료·검사 항목을 선택적으로 추가하세요.',
-                3: '3단계: 실손보험 적용 여부를 확인하고 결과보기를 눌러주세요.'
+                3: '3단계: 실손보험 적용 여부와 현재 선택 조건을 확인하세요.'
             };
             root.document.getElementById('step-status').textContent = descriptions[activeStep];
+            updateSelectionSummary();
+            updateInsuranceStatus();
             if (focusHeading) {
                 const heading = root.document.getElementById(`step-${activeStep}-title`);
                 heading.tabIndex = -1;
@@ -180,6 +227,27 @@
         const specialBox = root.document.querySelector('.sanjeong-toggle-box');
         const specialSlot = root.document.getElementById('sanjeong-step-slot');
         if (specialBox && specialSlot) specialSlot.appendChild(specialBox);
+        const advancedPanel = root.document.getElementById('advanced-items-panel');
+        const advancedDisease = root.document.querySelector('[data-advanced-disease]');
+        if (advancedPanel && advancedDisease) advancedPanel.prepend(advancedDisease);
+
+        function showResult() {
+            if (!goToStep(3)) return;
+            root.requestCalculation?.();
+            updateInsuranceStatus();
+            root.document.querySelector('.result-card')?.scrollIntoView({
+                behavior: getResultScrollBehavior(root.matchMedia?.('(prefers-reduced-motion: reduce)')),
+                block: 'start'
+            });
+        }
+
+        const advancedToggle = root.document.getElementById('advanced-items-toggle');
+        advancedToggle?.addEventListener('click', () => {
+            const open = advancedToggle.getAttribute('aria-expanded') !== 'true';
+            advancedToggle.setAttribute('aria-expanded', String(open));
+            advancedToggle.textContent = open ? '고급 항목 닫기' : '고급 항목 열기';
+            if (advancedPanel) advancedPanel.hidden = !open;
+        });
 
         root.document.querySelectorAll('[data-load-calculator]').forEach(link => {
             link.addEventListener('click', () => loadCalculator().catch(() => undefined));
@@ -187,11 +255,33 @@
         root.document.querySelectorAll('[data-step-target]').forEach(button => button.addEventListener('click', () => goToStep(Number(button.dataset.stepTarget))));
         root.document.querySelectorAll('[data-step-next]').forEach(button => button.addEventListener('click', () => {
             const step = Number(button.dataset.stepNext);
-            if (!goToStep(step) || step !== 3) return;
-            root.requestCalculation?.();
-            root.document.querySelector('.result-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if (step === 3) showResult();
+            else goToStep(step);
         }));
+        root.document.querySelector('[data-step-quick-result]')?.addEventListener('click', showResult);
         root.document.querySelectorAll('[data-step-back]').forEach(button => button.addEventListener('click', () => showStep(Number(button.dataset.stepBack))));
+        root.document.querySelector('[data-open-insurance]')?.addEventListener('click', () => {
+            if (!goToStep(3)) return;
+            root.document.getElementById('has_insurance')?.focus();
+        });
+        root.document.querySelector('[data-edit-conditions]')?.addEventListener('click', () => {
+            showStep(1);
+            root.document.querySelector('input[name="hospital_class"]:checked, input[name="hospital_class"]')?.focus();
+        });
+        root.document.querySelectorAll('[data-reset-calculator]').forEach(button => button.addEventListener('click', () => {
+            root.resetCalculatorState?.();
+            showStep(1, false);
+            updateSelectionSummary();
+            updateInsuranceStatus();
+            const status = root.document.getElementById('calculator-reset-status');
+            if (status) status.textContent = '계산 조건과 추가 항목을 초기화했습니다.';
+            root.document.querySelector('input[name="hospital_class"]')?.focus();
+        }));
+        root.document.getElementById('calculator-form')?.addEventListener('change', () => {
+            updateSelectionSummary();
+            updateInsuranceStatus();
+        });
+        root.document.addEventListener('medicost:items-changed', updateSelectionSummary);
 
         const observer = new IntersectionObserver(entries => {
             if (entries.some(entry => entry.isIntersecting)) {
@@ -202,11 +292,13 @@
         observer.observe(section);
 
         replaceIcons();
+        updateSelectionSummary();
+        updateInsuranceStatus();
         showStep(1, false);
         if (shouldLoadForHash(root.location.hash)) loadCalculator().catch(() => undefined);
     }
 
-    const api = { CALCULATOR_SCRIPTS, DEFERRED_CALCULATOR_SCRIPTS, getMissingRequiredSelections, shouldLoadForHash };
+    const api = { CALCULATOR_SCRIPTS, DEFERRED_CALCULATOR_SCRIPTS, getMissingRequiredSelections, getResultScrollBehavior, shouldLoadForHash };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (root.document) {
         if (root.document.readyState === 'loading') root.document.addEventListener('DOMContentLoaded', initShell, { once: true });

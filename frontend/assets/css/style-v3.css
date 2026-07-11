@@ -207,6 +207,8 @@ svg { display: block; }
     line-height: 1.08;
     letter-spacing: -0.055em;
     text-wrap: balance;
+    word-break: keep-all;
+    overflow-wrap: normal;
 }
 
 .hero-copy {
@@ -216,6 +218,8 @@ svg { display: block; }
     font-size: 1.125rem;
     line-height: 1.75;
     text-wrap: pretty;
+    word-break: keep-all;
+    overflow-wrap: normal;
 }
 
 .hero-actions {
@@ -378,6 +382,10 @@ svg { display: block; }
 .step-intro { margin: 0 0 var(--space-5); color: var(--text-secondary); font-size: 0.875rem; }
 .step-actions { margin-top: var(--space-6); padding-top: var(--space-5); display: flex; justify-content: space-between; gap: var(--space-3); border-top: 1px solid var(--border-subtle); }
 .step-error { min-height: 1.5rem; margin: var(--space-3) 0 0; color: var(--status-error); font-size: 0.875rem; font-weight: 700; }
+.selection-summary { margin: 0 0 var(--space-5); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: var(--space-3); background: var(--surface-secondary); }
+.selection-summary > strong { display: block; margin-bottom: var(--space-2); font-size: 0.75rem; }
+.selection-summary-items { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.selection-chip { min-height: 2rem; border: 1px solid var(--border-default); border-radius: 99px; padding: var(--space-1) var(--space-3); display: inline-flex; align-items: center; color: var(--text-secondary); background: var(--surface-primary); font-size: 0.75rem; font-weight: 700; }
 
 .form-group { padding: var(--space-6) 0; border-bottom: 1px solid var(--border-subtle); }
 .form-group:first-of-type { padding-top: 0; }
@@ -403,6 +411,9 @@ svg { display: block; }
     padding: var(--space-4);
     background: var(--surface-secondary);
 }
+.advanced-items-toggle { width: 100%; min-height: 2.75rem; margin-top: var(--space-4); border: 1px solid var(--border-default); border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); color: var(--text-primary); background: var(--surface-primary); cursor: pointer; font-weight: 700; text-align: left; }
+.advanced-items-toggle:hover, .advanced-items-toggle[aria-expanded="true"] { border-color: var(--accent-primary); background: var(--surface-accent); }
+.advanced-items-panel { margin-top: var(--space-4); }
 
 .sub-group + .sub-group { margin-top: var(--space-4); }
 .sub-label, .input-sub-label { margin-bottom: var(--space-2); display: flex; align-items: center; gap: var(--space-2); color: var(--text-primary); font-size: 0.875rem; font-weight: 700; }
@@ -472,6 +483,10 @@ svg { display: block; }
 .etc-accordion-content, .accordion-content { padding: 0 var(--space-3) var(--space-3); }
 
 .result-display { display: grid; gap: var(--space-3); }
+.result-actions { margin-top: var(--space-4); display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.result-action-link { min-height: 2.75rem; border: 1px solid var(--border-default); border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); color: var(--text-primary); background: var(--surface-primary); cursor: pointer; font-weight: 700; }
+.result-action-link:hover { border-color: var(--accent-primary); background: var(--surface-accent); }
+.result-insurance-status { margin: var(--space-3) 0 0; color: var(--text-secondary); font-size: 0.75rem; line-height: 1.5; }
 .result-item { border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: var(--space-4); background: var(--surface-primary); }
 .final-cost-box-primary { color: var(--text-on-strong); border-color: var(--surface-strong); background: var(--surface-strong); box-shadow: var(--shadow-default); }
 .result-label { display: block; color: var(--text-secondary); font-size: 0.75rem; font-weight: 700; }
@@ -591,6 +606,8 @@ svg { display: block; }
     .step-progress button { padding-inline: var(--space-1); }
     .step-actions { flex-direction: column-reverse; }
     .step-button { width: 100%; }
+    .result-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .result-action-link { padding-inline: var(--space-1); font-size: 0.75rem; }
     .cost-range-primary { flex-direction: column; }
     .main-value { font-size: 2.25rem; }
 }

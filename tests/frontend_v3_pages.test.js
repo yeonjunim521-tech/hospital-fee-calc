@@ -62,6 +62,11 @@ test('메인 페이지는 v3.0, 단계형 계산기, 동의 설정과 환자 부
     assert.match(html, /data-step-panel="2"/);
     assert.match(html, /data-step-panel="3"/);
     assert.match(html, /data-step-next="3"/);
+    assert.match(html, /data-step-quick-result/);
+    assert.match(html, /id="advanced-items-toggle"/);
+    assert.match(html, /id="advanced-items-panel"/);
+    assert.match(html, /id="selection-summary"/);
+    assert.match(html, /data-reset-calculator/);
     assert.doesNotMatch(html, /id="btn-show-result"|id="result-ready-message"|data-focus-result/);
     assert.match(html, /실비 환급 전 예상 환자 부담금/);
     assert.match(html, /data-open-consent/);
