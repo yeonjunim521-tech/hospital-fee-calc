@@ -169,7 +169,7 @@
             if (!status) return;
             status.textContent = root.document.getElementById('has_insurance')?.checked
                 ? '실손보험 적용 상태입니다. 보험 세대를 바꾸면 예상 환급금이 바로 반영됩니다.'
-                : '실손보험 미적용 상태입니다. 보험 설정에서 예상 환급금을 확인할 수 있습니다.';
+                : '실손보험 미적용 상태입니다. 3단계에서 보험 적용 여부를 선택할 수 있습니다.';
         }
 
         function showStep(nextStep, focusHeading = true) {
@@ -258,16 +258,8 @@
             if (step === 3) showResult();
             else goToStep(step);
         }));
-        root.document.querySelector('[data-step-quick-result]')?.addEventListener('click', showResult);
+        root.document.querySelector('[data-step-quick-result]')?.addEventListener('click', () => goToStep(2));
         root.document.querySelectorAll('[data-step-back]').forEach(button => button.addEventListener('click', () => showStep(Number(button.dataset.stepBack))));
-        root.document.querySelector('[data-open-insurance]')?.addEventListener('click', () => {
-            if (!goToStep(3)) return;
-            root.document.getElementById('has_insurance')?.focus();
-        });
-        root.document.querySelector('[data-edit-conditions]')?.addEventListener('click', () => {
-            showStep(1);
-            root.document.querySelector('input[name="hospital_class"]:checked, input[name="hospital_class"]')?.focus();
-        });
         root.document.querySelectorAll('[data-reset-calculator]').forEach(button => button.addEventListener('click', () => {
             root.resetCalculatorState?.();
             showStep(1, false);

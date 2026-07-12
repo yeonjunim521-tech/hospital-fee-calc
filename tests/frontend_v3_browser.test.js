@@ -210,17 +210,16 @@ async function screenshot(cdp, name) {
         })()`);
         assert.ok(selected.hospital && selected.treatment && selected.region);
         await evaluate(cdp, 'document.querySelector("[data-step-quick-result]").click()');
+        await waitFor(cdp, '!document.querySelector("[data-step-panel=\\\"2\\\"]").hidden');
+        assert.strictEqual(await evaluate(cdp, 'document.querySelector("[data-step-panel=\\\"3\\\"]").hidden'), true);
+        await evaluate(cdp, 'document.querySelector("[data-step-next=\\\"3\\\"]").click()');
         await waitFor(cdp, 'document.getElementById("display_final_cost").textContent !== "0"');
         assert.strictEqual(await evaluate(cdp, 'document.querySelector("[data-step-panel=\\\"2\\\"]").hidden'), true);
         assert.strictEqual(await evaluate(cdp, 'document.querySelector("[data-step-panel=\\\"3\\\"]").hidden'), false);
         assert.match(await evaluate(cdp, 'document.getElementById("result-insurance-status").textContent'), /미적용/);
         assert.match(await evaluate(cdp, 'document.getElementById("selection-summary").textContent'), /동네 의원/);
         await sleep(400);
-        await screenshot(cdp, '1280-quick-result.png');
-        await evaluate(cdp, 'document.querySelector("[data-edit-conditions]").click()');
-        await waitFor(cdp, 'document.querySelector("[data-step-panel=\\\"1\\\"]").hidden === false');
-        await evaluate(cdp, 'document.querySelector("[data-step-next=\\\"2\\\"]").click()');
-        await waitFor(cdp, `!document.querySelector('[data-step-panel="2"]').hidden`);
+        await screenshot(cdp, '1280-result.png');
 
         await evaluate(cdp, `document.getElementById('global-search-input').focus()`);
         await cdp.send('Input.insertText', { text: '검색결과없음테스트' });

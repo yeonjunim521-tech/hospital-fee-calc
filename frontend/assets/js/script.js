@@ -138,7 +138,7 @@ const DB = {
         }
     },
     OUTPATIENT_LIMIT: 250000,
-    DATA_REFERENCE_DATE: "급여 수가: 2025년 1월 고시 기준 / 일부 비급여: 2026년 5월 23일 공식 공개 중앙값 확인"
+    DATA_REFERENCE_DATE: "데이터 기준일 확인 중"
 };
 
 
@@ -367,7 +367,13 @@ function initializeCalculatorApp() {
         }
 
         const dateEl = document.getElementById('data-reference-date');
-        if (dateEl) dateEl.innerText = DB.DATA_REFERENCE_DATE;
+        if (dateEl) {
+            const feeDate = window.PUBLIC_FEE_SCHEDULE_ITEMS?.sourceDate;
+            const nonBenefitDate = window.NONBENEFIT_REGION_PRICES?.fetchedAt;
+            dateEl.innerText = feeDate && nonBenefitDate
+                ? `급여 ${feeDate} · 비급여 ${nonBenefitDate}`
+                : DB.DATA_REFERENCE_DATE;
+        }
 
         const optionalMedicalItems = Promise.all([loadMedicalItemsOverlay(), loadApprovedSearchAliases()]);
         const optionalData = Promise.all([optionalMedicalItems, initializeDataSources()]);
@@ -479,7 +485,7 @@ function updateResultButtonState() {
         message.classList.remove('warning');
         message.innerText = resultRequested
             ? '선택 조건 기준으로 결과를 계산했습니다. 조건을 바꾸면 결과가 바로 반영됩니다.'
-            : '필수 조건이 모두 선택되었습니다. 바로 결과 보기로 예상 병원비를 계산하세요.';
+            : '필수 조건이 모두 선택되었습니다. 조건 선택에서 추가 항목을 확인하세요.';
     } else {
         message.classList.add('warning');
         message.innerText = `${getMissingCalculationLabels().join(', ')} 선택 후 결과를 조회할 수 있습니다.`;
