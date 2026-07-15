@@ -630,6 +630,72 @@
         </footer>
     </div>
 
+    <dialog id="anesthesia-dialog" class="choice-dialog" aria-labelledby="anesthesia-dialog-title" aria-describedby="anesthesia-dialog-help">
+        <form id="anesthesia-form" class="choice-dialog-card" method="dialog">
+            <div class="choice-dialog-heading">
+                <p class="eyebrow">수술 추가 전 확인</p>
+                <h2 id="anesthesia-dialog-title">마취 방법을 선택해 주세요</h2>
+                <p id="anesthesia-surgery-name" class="choice-dialog-subtitle"></p>
+            </div>
+            <p id="anesthesia-dialog-help" class="anesthesia-notice">
+                전신마취는 공식 기본료와 초과 시간을 자동 계산합니다. 작은 부위 국소마취는 수술·처치료에 포함돼 별도 마취료가 없습니다.
+            </p>
+
+            <fieldset id="anesthesia-session-fieldset" class="choice-fieldset" hidden>
+                <legend>이번 수술은 앞서 고른 수술과 같은 마취인가요?</legend>
+                <label class="choice-radio"><input type="radio" name="anesthesia_session_mode" value="same" checked><span><strong>같은 마취</strong><small>기본료는 한 번만, 전체 마취시간만 반영</small></span></label>
+                <label class="choice-radio"><input type="radio" name="anesthesia_session_mode" value="separate"><span><strong>별도 마취</strong><small>수술별로 기본료를 각각 반영</small></span></label>
+            </fieldset>
+
+            <div class="choice-form-grid">
+                <label class="choice-field" for="anesthesia-type">
+                    <span>어떤 마취였나요?</span>
+                    <select id="anesthesia-type" class="form-select" required>
+                        <option value="" selected disabled>쉬운 설명으로 선택</option>
+                        <option value="general">완전히 잠드는 전신마취</option>
+                        <option value="spinal">하반신·척추마취</option>
+                        <option value="nerve-block">팔·다리 신경차단마취</option>
+                        <option value="local">작은 부위 국소마취</option>
+                        <option value="none">마취하지 않음</option>
+                        <option value="unknown">잘 모르겠음 · 공식 수가 중앙값</option>
+                    </select>
+                </label>
+
+                <label class="choice-field" for="anesthesia-age-group">
+                    <span>환자 연령</span>
+                    <select id="anesthesia-age-group" class="form-select">
+                        <option value="newborn">생후 28일 이내</option>
+                        <option value="infant">생후 29일~만 1세 미만</option>
+                        <option value="child">만 1~15세</option>
+                        <option value="adult" selected>만 16~69세</option>
+                        <option value="elderly">만 70세 이상</option>
+                    </select>
+                </label>
+
+                <label class="choice-field" for="anesthesia-duration">
+                    <span id="anesthesia-duration-label">마취가 진행된 총시간</span>
+                    <span class="duration-input"><input id="anesthesia-duration" class="form-input" type="number" min="15" max="1440" step="15" value="60" required><span>분</span></span>
+                    <small>잘 모르겠으면 60분을 그대로 사용하세요.</small>
+                </label>
+
+                <label class="choice-field" for="anesthesia-sedation">
+                    <span>별도 진정관리도 했나요?</span>
+                    <select id="anesthesia-sedation" class="form-select">
+                        <option value="unknown" selected>잘 모르겠어요 · 추가하지 않음</option>
+                        <option value="no">아니요</option>
+                        <option value="yes">예 · 마취과 의료진이 계속 감시</option>
+                    </select>
+                </label>
+            </div>
+
+            <p id="anesthesia-status" class="choice-status" aria-live="polite"></p>
+            <div class="choice-dialog-actions">
+                <button type="button" id="anesthesia-cancel" class="button-secondary">수술 선택 취소</button>
+                <button type="submit" class="button-primary">마취 반영 후 수술 추가</button>
+            </div>
+        </form>
+    </dialog>
+
     <section id="consent-banner" class="consent-banner" aria-labelledby="consent-title" hidden>
         <h2 id="consent-title">분석·광고 설정</h2>
         <p>필수 기능은 동의 없이 작동합니다. 분석과 광고는 허용한 경우에만 불러옵니다.</p>

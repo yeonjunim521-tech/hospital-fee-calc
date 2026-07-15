@@ -40,6 +40,7 @@ global.document = {
                 remove: () => {},
                 toggle: () => {}
             },
+            replaceChildren: () => {},
             appendChild: () => {},
             children: []
         };
@@ -65,10 +66,12 @@ global.document = {
     createElement: () => ({
         innerHTML: '',
         className: '',
+        append: () => {},
         appendChild: () => {},
         classList: { add: () => {}, remove: () => {}, toggle: () => {} }
     })
 };
+window.MedicalEstimator = require(path.join(__dirname, '..', 'frontend', 'assets', 'js', 'medical-estimator.js'));
 global.alert = (msg) => {
     console.log(`[ALERT 모크] ${msg}`);
 };
@@ -203,6 +206,7 @@ document.getElementById = (id) => {
             return '';
         },
         classList: { add: () => {}, remove: () => {}, toggle: () => {} },
+        replaceChildren: () => {},
         appendChild: () => {},
         innerHTML: ''
     };
@@ -227,18 +231,23 @@ console.log("\n--- 시나리오 5: 제왕절개 수술 급여 본인부담금 0%
 
 addedTests = [];
 addedSurgeries = [
-    { id: 1, category: "obstetrics", type: "SU_OB01", typeName: "제왕절개 분만 수술 (2025년 본인부담 0%)", basePrice: 1500000, isBenefit: true, isDRG: true }
+    {
+        id: 1,
+        category: "obstetrics",
+        type: "SU_OB01",
+        typeName: "제왕절개 분만 수술 (2025년 본인부담 0%)",
+        basePrice: 1500000,
+        isBenefit: true,
+        isDRG: true,
+        anesthesia: { sessionId: 'test-anesthesia', type: 'general', durationMinutes: 60, ageGroup: 'adult', sedation: false }
+    }
 ];
 addedProcedures = [];
 
-// 상급종합병원 외래, 제왕절개 1500000원 급여 수술 진행
-// 기본진찰료 23,000원 -> 환자부담 60% = 13,800원
-// 제왕절개 수술비 1,500,000원 -> 종별가산 30% = 1,950,000원 -> 산모부담금 0% = 0원
-// 총 환자부담금 = 13,800원
 calculate();
 
 console.log(`  [결과값] 제왕절개 수술비 포함 최종부담: ${domResults['display_final_cost']}원`);
-assert(domResults['display_final_cost'] === "216,600", "제왕절개 수술비 0%와 자동 마취·주사·처치 포함 계산 검증 완료");
+assert(domResults['display_final_cost'] === "199,482", "제왕절개 수술비 0%와 선택한 공식 마취·주사·처치 포함 계산 검증 완료");
 
 
 console.log(`\n=== 테스트 종료: 성공 ${passCount}건, 실패 ${failCount}건 ===`);

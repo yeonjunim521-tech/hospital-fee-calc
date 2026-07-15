@@ -59,10 +59,11 @@ test('Given calculator assets, when requested, then first-step data loads before
     assert.deepStrictEqual(shell.CALCULATOR_SCRIPTS, [
         'assets/js/hira_codes.js',
         'assets/js/nonbenefit_data.js',
+        'assets/js/fee_schedule_items.js',
+        'assets/js/medical-estimator.js',
         'assets/js/script.js'
     ]);
     assert.deepStrictEqual(shell.DEFERRED_CALCULATOR_SCRIPTS, [
-        'assets/js/fee_schedule_items.js',
         'assets/js/medical_statistics.js'
     ]);
 });

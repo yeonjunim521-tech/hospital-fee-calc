@@ -2,10 +2,11 @@
     const CALCULATOR_SCRIPTS = Object.freeze([
         'assets/js/hira_codes.js',
         'assets/js/nonbenefit_data.js',
+        'assets/js/fee_schedule_items.js',
+        'assets/js/medical-estimator.js',
         'assets/js/script.js'
     ]);
     const DEFERRED_CALCULATOR_SCRIPTS = Object.freeze([
-        'assets/js/fee_schedule_items.js',
         'assets/js/medical_statistics.js'
     ]);
 
@@ -87,7 +88,7 @@
         }
 
         function updateDataDates() {
-            const feeDate = root.PUBLIC_FEE_SCHEDULE_ITEMS?.sourceDate || '급여 수가 준비 중';
+            const feeDate = root.MedicalEstimator?.sourceDate || root.PUBLIC_FEE_SCHEDULE_ITEMS?.sourceDate || '급여 수가 준비 중';
             const nonBenefitDate = root.NONBENEFIT_REGION_PRICES?.fetchedAt || '비급여 기준일 확인 불가';
             const label = `급여 ${feeDate} · 비급여 ${nonBenefitDate}`;
             const footerDate = root.document.getElementById('data-reference-date');

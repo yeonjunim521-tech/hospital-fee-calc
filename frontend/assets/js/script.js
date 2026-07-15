@@ -77,18 +77,6 @@ const DB = {
     },
 
     /* ---------------------------------------------------
-       C. 수술 시 마취 자동 추정 기준표
-       - 수술 금액 규모에 따라 마취 종류와 비용을 자동 추정합니다.
-     --------------------------------------------------- */
-    ANESTHESIA_AUTO: [
-        { maxPrice: 300000,   name: "국소마취 (자동추정)",           price: 30000,  isBenefit: true },
-        { maxPrice: 1000000,  name: "의식하진정 마취 (자동추정)",    price: 50000,  isBenefit: true },
-        { maxPrice: 2000000,  name: "부분마취(척추/경막외) (자동추정)", price: 120000, isBenefit: true },
-        { maxPrice: 5000000,  name: "전신마취 1~2시간 (자동추정)",  price: 300000, isBenefit: true },
-        { maxPrice: Infinity, name: "전신마취 2시간+ (자동추정)",   price: 450000, isBenefit: true }
-    ],
-
-    /* ---------------------------------------------------
        D. 실비보험 세대별 보장 비율 및 한도
      --------------------------------------------------- */
     INSURANCE_RATES: {
@@ -148,9 +136,11 @@ const DB = {
 let addedTests = [];
 let addedSurgeries = [];
 let addedProcedures = [];
+let pendingSurgeryItem = null;
 let testIdCounter = 0;
 let surgeryIdCounter = 0;
 let procedureIdCounter = 0;
+let anesthesiaSessionCounter = 0;
 
 let activeTab = 'test'; // 현재 활성화된 카테고리 탭 (기본값: 검사)
 let etcAccordionOpen = false; // 기타 처치 아코디언의 펼침 여부 상태
@@ -251,9 +241,10 @@ let medicalItemsOverlay = [];
 let approvedSearchAliases = new Map();
 
 function normalizeMedicalItem(item) {
+    const code = String(item.code || item.item_code || '');
     return {
-        code: String(item.code || item.item_code || ''),
-        publicActionCode: item.publicActionCode || item.public_action_code || item.code || item.item_code,
+        code,
+        publicActionCode: item.publicActionCode || item.public_action_code || code.replace(/^FEE_/, ''),
         category: item.category || item.item_category || 'procedure',
         group: item.group || item.item_group || 'etc',
         type: item.type || item.item_type || 'custom',
@@ -561,11 +552,15 @@ function resetCalculatorState() {
     addedTests = [];
     addedSurgeries = [];
     addedProcedures = [];
+    pendingSurgeryItem = null;
     testIdCounter = 0;
     surgeryIdCounter = 0;
     procedureIdCounter = 0;
+    anesthesiaSessionCounter = 0;
     resultRequested = false;
     etcAccordionOpen = false;
+    const anesthesiaDialog = document.getElementById('anesthesia-dialog');
+    if (anesthesiaDialog?.open) anesthesiaDialog.close();
 
     const region = document.getElementById('nonbenefit_region');
     if (region) region.value = getStoredNonBenefitRegion() || '';
@@ -1985,7 +1980,7 @@ function finalRenderItemResults(query, targetGroup, items) {
         const classification = getHierarchicalClassification(item);
         const subLabel = CONSUMER_SUB_LABELS[classification.main]?.[classification.sub] || groupLabels[itemGroup] || '';
         const detailLabel = CONSUMER_DETAIL_LABELS[classification.sub]?.[classification.detail] || '';
-        const code = item.publicActionCode || item.actionCode || item.ediCode || item.code || '';
+        const code = item.estimateKind ? '' : (item.publicActionCode || item.actionCode || item.ediCode || item.code || '');
         const benefitBadge = item.isBenefit
             ? '<span class="badge badge-benefit" style="font-size:0.65rem;">급여</span>'
             : '<span class="badge badge-non-benefit" style="font-size:0.65rem;">비급여</span>';
@@ -2491,6 +2486,131 @@ function getItemTypeGroup(item) {
     return 'etc'; // 예외 방지 기본값
 }
 
+function anesthesiaProviderForClass(hospitalClass) {
+    return hospitalClass === 'clinic' ? 'clinic' : 'hospital';
+}
+
+function getAnesthesiaEstimate(hospitalClass) {
+    if (!window.MedicalEstimator) return { total: 0, episodes: [] };
+    return window.MedicalEstimator.estimateAnesthesia(
+        addedSurgeries,
+        anesthesiaProviderForClass(hospitalClass)
+    );
+}
+
+function updateAnesthesiaDialogStatus() {
+    const status = document.getElementById('anesthesia-status');
+    const type = document.getElementById('anesthesia-type')?.value;
+    const ageGroup = document.getElementById('anesthesia-age-group')?.value;
+    const sedation = document.getElementById('anesthesia-sedation')?.value === 'yes';
+    if (!status) return;
+
+    const messages = [];
+    if (type === 'general') messages.push('전신마취 기본료와 1시간 초과 15분 단위 비용을 자동 반영합니다.');
+    if (type === 'local') messages.push('단순 국소마취는 수술·처치료에 포함되어 별도 마취료를 더하지 않습니다.');
+    if (type === 'unknown') messages.push('선택 가능한 공식 마취료의 중앙값으로 계산합니다.');
+    if (sedation && ['general', 'spinal', 'nerve-block'].includes(type)) {
+        messages.push('전신·부위마취와 진정관리료는 중복 산정하지 않습니다.');
+    } else if (sedation) {
+        messages.push('마취과 의료진이 계속 감시한 진정관리료를 별도로 반영합니다.');
+    }
+    if (ageGroup === 'child') messages.push('소아 추가 가산은 일부 입원 수술에만 적용되어 본 예상에는 자동 반영하지 않습니다.');
+    status.textContent = messages.join(' ');
+}
+
+function syncAnesthesiaSessionMode() {
+    const sameSession = document.querySelector('input[name="anesthesia_session_mode"]:checked')?.value === 'same';
+    const hasExisting = addedSurgeries.length > 0;
+    ['anesthesia-type', 'anesthesia-age-group', 'anesthesia-sedation'].forEach(id => {
+        const field = document.getElementById(id);
+        if (field) field.disabled = hasExisting && sameSession;
+    });
+
+    if (hasExisting && sameSession) {
+        const plan = addedSurgeries[addedSurgeries.length - 1].anesthesia;
+        if (plan) {
+            document.getElementById('anesthesia-type').value = plan.type;
+            document.getElementById('anesthesia-age-group').value = plan.ageGroup;
+            document.getElementById('anesthesia-sedation').value = plan.sedationAnswer || (plan.sedation ? 'yes' : 'no');
+            document.getElementById('anesthesia-duration').value = plan.durationMinutes;
+        }
+    }
+    updateAnesthesiaDialogStatus();
+}
+
+function openAnesthesiaDialog(item) {
+    const dialog = document.getElementById('anesthesia-dialog');
+    const form = document.getElementById('anesthesia-form');
+    if (!dialog || !form) return false;
+
+    pendingSurgeryItem = item;
+    form.reset();
+    document.getElementById('anesthesia-surgery-name').textContent = item.name;
+    const sessionFieldset = document.getElementById('anesthesia-session-fieldset');
+    sessionFieldset.hidden = addedSurgeries.length === 0;
+    document.querySelector('input[name="anesthesia_session_mode"][value="same"]').checked = true;
+    document.getElementById('anesthesia-duration').value = '60';
+    document.getElementById('anesthesia-age-group').value = 'adult';
+    document.getElementById('anesthesia-sedation').value = 'unknown';
+    syncAnesthesiaSessionMode();
+    dialog.showModal();
+    return true;
+}
+
+function bindAnesthesiaDialog() {
+    const dialog = document.getElementById('anesthesia-dialog');
+    const form = document.getElementById('anesthesia-form');
+    if (!dialog || !form || form.dataset.bound === 'true') return;
+    form.dataset.bound = 'true';
+
+    document.getElementById('anesthesia-cancel')?.addEventListener('click', () => {
+        pendingSurgeryItem = null;
+        dialog.close();
+    });
+    dialog.addEventListener('cancel', () => { pendingSurgeryItem = null; });
+    form.addEventListener('change', event => {
+        if (event.target.name === 'anesthesia_session_mode') syncAnesthesiaSessionMode();
+        else updateAnesthesiaDialogStatus();
+    });
+    form.addEventListener('submit', event => {
+        event.preventDefault();
+        if (!pendingSurgeryItem) return;
+
+        const sameSession = addedSurgeries.length > 0
+            && document.querySelector('input[name="anesthesia_session_mode"]:checked')?.value === 'same';
+        const existingPlan = sameSession ? addedSurgeries[addedSurgeries.length - 1].anesthesia : null;
+        const durationMinutes = Math.max(15, Number(document.getElementById('anesthesia-duration').value) || 60);
+        const sedationAnswer = document.getElementById('anesthesia-sedation').value;
+        const plan = existingPlan
+            ? { ...existingPlan, durationMinutes }
+            : {
+                sessionId: `anesthesia-${++anesthesiaSessionCounter}`,
+                type: document.getElementById('anesthesia-type').value,
+                durationMinutes,
+                ageGroup: document.getElementById('anesthesia-age-group').value,
+                sedationAnswer,
+                sedation: sedationAnswer === 'yes'
+            };
+
+        if (!plan.type) {
+            document.getElementById('anesthesia-type').focus();
+            return;
+        }
+        if (sameSession) {
+            addedSurgeries.forEach(surgery => {
+                if (surgery.anesthesia?.sessionId === plan.sessionId) surgery.anesthesia = { ...plan };
+            });
+        }
+
+        const item = { ...pendingSurgeryItem, anesthesiaSelectionConfirmed: true, anesthesia: plan };
+        pendingSurgeryItem = null;
+        dialog.close();
+        addHiraItem(item);
+    });
+}
+
+onDocumentReady(bindAnesthesiaDialog);
+
 /** 실시간 검색된 심평원 수가 아이템을 기존 계산기 데이터 구조에 분기 추가 */
 function addHiraItem(item) {
     item = applyPublicStatsToItem(item);
@@ -2510,6 +2630,7 @@ function addHiraItem(item) {
             alert("이미 등록된 수술/시술 항목입니다.");
             return;
         }
+        if (!item.anesthesiaSelectionConfirmed && openAnesthesiaDialog(item)) return;
         surgeryIdCounter++;
         addedSurgeries.push({
             id: surgeryIdCounter,
@@ -2522,11 +2643,20 @@ function addHiraItem(item) {
             publicFeeScheduleSource: item.publicFeeScheduleSource || '',
             alreadyPricedByProvider: Boolean(item.alreadyPricedByProvider),
             isBenefit: item.isBenefit,
-            isDRG: item.isDRG || false
+            isDRG: item.isDRG || false,
+            anesthesia: item.anesthesia,
+            estimateKind: item.estimateKind || '',
+            estimateBucket: item.estimateBucket || '',
+            estimateRange: item.estimateRange || null,
+            estimateSampleCount: item.estimateSampleCount || 0
         });
     } 
     // 2. 처치/치료/마취 분류에 속하는 행위
     else if (item.category === 'procedure') {
+        if (addedSurgeries.length && (/^FEE_L(?:010[1-4]|12)/i.test(item.code) || /^PR_AN/.test(item.code))) {
+            alert('수술에 선택한 마취료가 이미 자동 반영되어 별도 마취 항목은 추가하지 않습니다.');
+            return;
+        }
         const existing = addedProcedures.find(p => p.type === item.code || p.typeName === item.name);
         if (existing) {
             existing.count++; // 이미 존재하면 횟수 누적
@@ -2543,7 +2673,11 @@ function addHiraItem(item) {
                 publicStatsSource: item.publicStatsSource || '',
                 publicFeeScheduleSource: item.publicFeeScheduleSource || '',
                 alreadyPricedByProvider: Boolean(item.alreadyPricedByProvider),
-                isBenefit: item.isBenefit
+                isBenefit: item.isBenefit,
+                estimateKind: item.estimateKind || '',
+                estimateBucket: item.estimateBucket || '',
+                estimateRange: item.estimateRange || null,
+                estimateSampleCount: item.estimateSampleCount || 0
             });
         }
     } 
@@ -2567,7 +2701,11 @@ function addHiraItem(item) {
                 publicStatsSource: item.publicStatsSource || '',
                 publicFeeScheduleSource: item.publicFeeScheduleSource || '',
                 alreadyPricedByProvider: Boolean(item.alreadyPricedByProvider),
-                isBenefit: item.isBenefit
+                isBenefit: item.isBenefit,
+                estimateKind: item.estimateKind || '',
+                estimateBucket: item.estimateBucket || '',
+                estimateRange: item.estimateRange || null,
+                estimateSampleCount: item.estimateSampleCount || 0
             });
         }
     }
@@ -2803,23 +2941,18 @@ function simulateCostForClass(targetClass) {
             }
         });
 
-        const hasManualAnesthesia = addedProcedures.some(p => p.category === 'anesthesia' || p.type.startsWith('PR_AN'));
-        if (!hasManualAnesthesia) {
-            const maxSurgPrice = addedSurgeriesSorted[0].basePrice;
-            const autoAnesthesia = DB.ANESTHESIA_AUTO.find(rule => maxSurgPrice <= rule.maxPrice);
-            if (autoAnesthesia) {
-                const anesthPay = autoAnesthesia.price * hData.gasanRate * patientBenefitRate;
-                gasanPatientPay += getAutoGasanPatientPay(autoAnesthesia.price, hData, patientBenefitRate);
-                patientTotalPay += anesthPay;
-                refundEligibleBenefit += anesthPay;
-            }
-            getSurgeryAutoSupportItems(maxSurgPrice).forEach(autoItem => {
-                const autoPay = autoItem.price * hData.gasanRate * patientBenefitRate;
-                gasanPatientPay += getAutoGasanPatientPay(autoItem.price, hData, patientBenefitRate);
-                patientTotalPay += autoPay;
-                refundEligibleBenefit += autoPay;
-            });
-        }
+        const anesthesiaEstimate = getAnesthesiaEstimate(targetClass);
+        const anesthPay = anesthesiaEstimate.total * patientBenefitRate;
+        patientTotalPay += anesthPay;
+        refundEligibleBenefit += anesthPay;
+
+        const maxSurgPrice = addedSurgeriesSorted[0].basePrice;
+        getSurgeryAutoSupportItems(maxSurgPrice).forEach(autoItem => {
+            const autoPay = autoItem.price * hData.gasanRate * patientBenefitRate;
+            gasanPatientPay += getAutoGasanPatientPay(autoItem.price, hData, patientBenefitRate);
+            patientTotalPay += autoPay;
+            refundEligibleBenefit += autoPay;
+        });
     }
 
     // E. 추가 처치/치료 연산
@@ -3064,27 +3197,32 @@ function calculate() {
             }
         });
 
-        // D-2. 마취비 자동 산정 (수술 시 마취가 필수 동반되나 사용자가 직접 마취를 지정하지 않은 경우)
-        const hasManualAnesthesia = addedProcedures.some(p => p.category === 'anesthesia' || p.type.startsWith('PR_AN'));
-        if (!hasManualAnesthesia) {
-            const maxSurgPrice = addedSurgeries[0].basePrice; // 최고가 주수술 기준
-            const autoAnesthesia = DB.ANESTHESIA_AUTO.find(rule => maxSurgPrice <= rule.maxPrice);
-            if (autoAnesthesia) {
-                const anesthPay = autoAnesthesia.price * hData.gasanRate * patientBenefitRate;
-                gasanPatientPay += getAutoGasanPatientPay(autoAnesthesia.price, hData, patientBenefitRate);
-                patientTotalPay += anesthPay;
-                refundEligibleBenefit += anesthPay;
-                // 명세서에만 표시하는 자동 산정 플래그 추가
-                breakdown.push({ name: `[자동산정] ${autoAnesthesia.name}`, type: "benefit", price: anesthPay, isAuto: true });
-            }
-            getSurgeryAutoSupportItems(maxSurgPrice).forEach(autoItem => {
-                const autoPay = autoItem.price * hData.gasanRate * patientBenefitRate;
-                gasanPatientPay += getAutoGasanPatientPay(autoItem.price, hData, patientBenefitRate);
-                patientTotalPay += autoPay;
-                refundEligibleBenefit += autoPay;
-                breakdown.push({ name: `[자동산정] ${autoItem.name}`, type: "benefit", price: autoPay, isAuto: true });
+        const anesthesiaEstimate = getAnesthesiaEstimate(hospitalClass);
+        anesthesiaEstimate.episodes.forEach(episode => {
+            const anesthPay = episode.total * patientBenefitRate;
+            patientTotalPay += anesthPay;
+            refundEligibleBenefit += anesthPay;
+            const notes = [
+                `${episode.durationMinutes}분`,
+                episode.ageMultiplier > 1 ? `연령 가산 ${Math.round((episode.ageMultiplier - 1) * 100)}%` : '',
+                episode.sedationNote
+            ].filter(Boolean).join(' · ');
+            breakdown.push({
+                name: `[자동산정] ${episode.label} (${notes})`,
+                type: "benefit",
+                price: anesthPay,
+                isAuto: true
             });
-        }
+        });
+
+        const maxSurgPrice = addedSurgeries[0].basePrice;
+        getSurgeryAutoSupportItems(maxSurgPrice).forEach(autoItem => {
+            const autoPay = autoItem.price * hData.gasanRate * patientBenefitRate;
+            gasanPatientPay += getAutoGasanPatientPay(autoItem.price, hData, patientBenefitRate);
+            patientTotalPay += autoPay;
+            refundEligibleBenefit += autoPay;
+            breakdown.push({ name: `[자동산정] ${autoItem.name}`, type: "benefit", price: autoPay, isAuto: true });
+        });
     }
 
     // ──────────────────────────────────────────
@@ -4895,7 +5033,12 @@ function eofRenderItemResults(query, targetGroup, items) {
         const safeSub = escapeHtml(sub);
         const safeDetail = escapeHtml(detail);
         const safeCode = escapeHtml(code);
-        const safePrice = escapeHtml(formatNumber(item.price));
+        const safePrice = item.estimateRange
+            ? `${escapeHtml(formatNumber(item.estimateRange.min))}~${escapeHtml(formatNumber(item.estimateRange.max))}${escapeHtml(EOF2_TEXT.won)}`
+            : `${escapeHtml(formatNumber(item.price))}${escapeHtml(EOF2_TEXT.won)}`;
+        const estimateMeta = item.estimateKind
+            ? ` / 공식 수가 ${escapeHtml(item.estimateSampleCount)}개 중앙값 ${escapeHtml(formatNumber(item.price))}${escapeHtml(EOF2_TEXT.won)}`
+            : '';
         const safeBenefitLabel = escapeHtml(benefitLabel);
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -4903,9 +5046,9 @@ function eofRenderItemResults(query, targetGroup, items) {
         btn.innerHTML = `
             <div class="search-result-info">
                 <span class="search-result-name"><span class="badge badge-benefit" style="padding:0.15rem 0.35rem;font-size:0.68rem;margin-right:0.4rem;">${safeGroup}</span>${safeName}</span>
-                <span class="search-result-keywords">${safeSub}${detail ? ` / ${safeDetail}` : ''}${code ? ` / ${escapeHtml(EOF2_TEXT.code)} ${safeCode}` : ''}</span>
+                <span class="search-result-keywords">${safeSub}${detail ? ` / ${safeDetail}` : ''}${code ? ` / ${escapeHtml(EOF2_TEXT.code)} ${safeCode}` : ''}${estimateMeta}</span>
             </div>
-            <div class="search-result-meta"><span class="search-result-price">${safePrice}${escapeHtml(EOF2_TEXT.won)}</span><span class="badge ${benefitClass}" style="font-size:0.65rem;">${safeBenefitLabel}</span><span class="btn-result-add">${escapeHtml(EOF2_TEXT.add)}</span></div>
+            <div class="search-result-meta"><span class="search-result-price">${safePrice}</span><span class="badge ${benefitClass}" style="font-size:0.65rem;">${safeBenefitLabel}</span><span class="btn-result-add">${escapeHtml(EOF2_TEXT.add)}</span></div>
         `;
         btn.onclick = () => {
             sendSearchClickLog(query, item);
@@ -4931,7 +5074,15 @@ function performSearch(query, targetGroup = 'scoped', options = {}) {
     if (!clean) return;
     const el = eofSearchElements(targetGroup);
     if (!el.results) return;
-    let matched = getMedicalItemDatabase().filter(item => isMatch(clean, item) && !isEmergencyManagementItem(item));
+    const database = getMedicalItemDatabase();
+    const hospitalClass = document.querySelector('input[name="hospital_class"]:checked')?.value || 'hospital';
+    const estimates = window.MedicalEstimator
+        ? window.MedicalEstimator.createConsumerEstimateItems(clean, database, anesthesiaProviderForClass(hospitalClass))
+        : [];
+    const estimateCodes = new Set(estimates.map(item => item.code));
+    let matched = estimates.concat(database.filter(item =>
+        !estimateCodes.has(item.code) && isMatch(clean, item) && !isEmergencyManagementItem(item)
+    ));
     if (targetGroup !== 'global') {
         const scope = getScopedSearchFilters();
         if (!scope.main) {
@@ -5158,10 +5309,20 @@ function renderAddedItems() {
         const benefitTag = item.isBenefit
             ? '<span class="badge badge-benefit">급여</span>'
             : '<span class="badge badge-non-benefit">비급여</span>';
+        const estimateText = item.estimateRange
+            ? ` / 공식 수가 ${item.estimateSampleCount}개 중앙값 ${formatNumber(item.basePrice)}원 · 범위 ${formatNumber(item.estimateRange.min)}~${formatNumber(item.estimateRange.max)}원`
+            : '';
+        const anesthesiaLabels = {
+            general: '전신마취', spinal: '척추마취', 'nerve-block': '신경차단마취',
+            local: '국소마취', none: '마취 없음', unknown: '마취 중앙값'
+        };
+        const anesthesiaText = item.anesthesia
+            ? ` / ${anesthesiaLabels[item.anesthesia.type] || item.anesthesia.type} · ${item.anesthesia.durationMinutes}분 · ${item.anesthesia.sessionId}`
+            : '';
         div.innerHTML = `
             <div class="item-info">
                 <span class="item-name">${escapeHtml(item.typeName || item.name || '')}${extraBadge}</span>
-                <span class="item-meta">${escapeHtml(label)} / ${escapeHtml(item.count)}건 / ${benefitTag}${item.publicStatsSource ? ` / ${escapeHtml(item.publicStatsSource)}` : ''}${item.publicFeeScheduleSource ? ` / ${escapeHtml(item.publicFeeScheduleSource)}` : ''}</span>
+                <span class="item-meta">${escapeHtml(label)} / ${escapeHtml(item.count || 1)}건 / ${benefitTag}${item.publicStatsSource ? ` / ${escapeHtml(item.publicStatsSource)}` : ''}${item.publicFeeScheduleSource ? ` / ${escapeHtml(item.publicFeeScheduleSource)}` : ''}${escapeHtml(estimateText)}${escapeHtml(anesthesiaText)}</span>
             </div>
             <button type="button" class="btn-remove" onclick="${removeHandler}(${Number(item.id)})" title="삭제">
                 <i data-lucide="x"></i>

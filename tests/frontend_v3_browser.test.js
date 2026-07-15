@@ -175,14 +175,14 @@ async function screenshot(cdp, name) {
         await evaluate(cdp, `document.querySelector('#calculator-loader button').focus()`);
         await press(cdp, 'Enter');
         await waitFor(cdp, `document.getElementById('calculator').classList.contains('is-ready')`);
-        await waitFor(cdp, `document.querySelectorAll('script[data-calculator-src]').length === 5`);
+        await waitFor(cdp, `document.querySelectorAll('script[data-calculator-src]').length === 6`);
         const loaded = await evaluate(cdp, `(() => ({
             scripts: document.querySelectorAll('script[data-calculator-src]').length,
             initialized: Boolean(window.MEDICostCalculator),
             inert: document.querySelector('.calculator-runtime').inert,
             date: document.getElementById('hero-data-date').textContent
         }))()`);
-        assert.deepStrictEqual({ scripts: loaded.scripts, initialized: loaded.initialized, inert: loaded.inert }, { scripts: 5, initialized: true, inert: false });
+        assert.deepStrictEqual({ scripts: loaded.scripts, initialized: loaded.initialized, inert: loaded.inert }, { scripts: 6, initialized: true, inert: false });
         assert.doesNotMatch(loaded.date, /확인 불가|로드 후/);
 
         await sleep(1000);
@@ -221,10 +221,13 @@ async function screenshot(cdp, name) {
         await sleep(400);
         await screenshot(cdp, '1280-result.png');
 
-        await evaluate(cdp, `document.getElementById('global-search-input').focus()`);
-        await cdp.send('Input.insertText', { text: '검색결과없음테스트' });
-        await press(cdp, 'Enter');
-        await waitFor(cdp, `document.getElementById('global-search-results').textContent.includes('없습니다')`);
+        await evaluate(cdp, `(() => {
+            const input = document.getElementById('global-search-input');
+            input.value = 'zzzzzzzzzzzzzz';
+            performSearch(input.value, 'global', { logSearch: false });
+        })()`);
+        const noResultText = await evaluate(cdp, `document.getElementById('global-search-results').textContent`);
+        assert.match(noResultText, /없습니다/);
 
         await evaluate(cdp, `(() => {
             const input = document.getElementById('global-search-input');
@@ -232,12 +235,69 @@ async function screenshot(cdp, name) {
             input.dispatchEvent(new Event('input', { bubbles: true }));
             input.focus();
         })()`);
-        await cdp.send('Input.insertText', { text: 'MRI' });
-        await press(cdp, 'Enter');
+        await evaluate(cdp, `(() => {
+            const input = document.getElementById('global-search-input');
+            input.value = 'MRI';
+            performSearch(input.value, 'global', { logSearch: false });
+        })()`);
         await waitFor(cdp, `document.querySelectorAll('#global-search-results .search-result-item').length > 0`);
         await evaluate(cdp, `document.querySelector('#global-search-results .search-result-item').click()`);
         await waitFor(cdp, `document.querySelectorAll('#added_items_unified_list .added-item').length > 0`);
         assert.match(await evaluate(cdp, 'document.getElementById("selection-summary").textContent'), /추가 1건/);
+
+        const openFractureSurgery = async query => {
+            await sleep(300);
+            await evaluate(cdp, `(() => {
+                const input = document.getElementById('global-search-input');
+                input.value = ${JSON.stringify(query)};
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                performSearch(input.value, 'global', { logSearch: false });
+            })()`);
+            await waitFor(cdp, `document.querySelector('#global-search-results .search-result-item')`);
+            await evaluate(cdp, `document.querySelector('#global-search-results .search-result-item').click()`);
+            await waitFor(cdp, `document.getElementById('anesthesia-dialog').open`);
+        };
+
+        await openFractureSurgery('무릎 골절');
+        for (const width of [1280, 768, 375]) {
+            await cdp.send('Emulation.setDeviceMetricsOverride', { width, height: 800, deviceScaleFactor: 1, mobile: width < 768 });
+            const dialogLayout = await evaluate(cdp, `(() => {
+                const dialog = document.getElementById('anesthesia-dialog');
+                const rect = dialog.getBoundingClientRect();
+                return { left: rect.left, right: rect.right, width: innerWidth, scrollWidth: dialog.scrollWidth, clientWidth: dialog.clientWidth };
+            })()`);
+            assert.ok(dialogLayout.left >= 0 && dialogLayout.right <= dialogLayout.width, `${width}px 마취 팝업 화면 잘림`);
+            assert.ok(dialogLayout.scrollWidth <= dialogLayout.clientWidth, `${width}px 마취 팝업 가로 넘침`);
+            await screenshot(cdp, `${width}-anesthesia-dialog.png`);
+        }
+        await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false });
+        await evaluate(cdp, `(() => {
+            const type = document.getElementById('anesthesia-type');
+            type.value = 'general';
+            type.dispatchEvent(new Event('change', { bubbles: true }));
+            document.getElementById('anesthesia-duration').value = '120';
+            const sedation = document.getElementById('anesthesia-sedation');
+            sedation.value = 'yes';
+            sedation.dispatchEvent(new Event('change', { bubbles: true }));
+        })()`);
+        assert.match(await evaluate(cdp, `document.getElementById('anesthesia-status').textContent`), /중복 산정하지 않습니다/);
+        await evaluate(cdp, `document.getElementById('anesthesia-form').requestSubmit()`);
+        await waitFor(cdp, `!document.getElementById('anesthesia-dialog').open`);
+        await waitFor(cdp, `document.querySelectorAll('#added_items_unified_list .added-item').length === 2`);
+        assert.match(await evaluate(cdp, `document.getElementById('added_items_unified_list').textContent`), /전신마취 · 120분/);
+
+        await openFractureSurgery('발목 골절');
+        const sameSessionVisible = await evaluate(cdp, `({
+            visible: !document.getElementById('anesthesia-session-fieldset').hidden,
+            checked: document.querySelector('input[name="anesthesia_session_mode"][value="same"]').checked,
+            typeDisabled: document.getElementById('anesthesia-type').disabled
+        })`);
+        assert.deepStrictEqual(sameSessionVisible, { visible: true, checked: true, typeDisabled: true });
+        await evaluate(cdp, `document.getElementById('anesthesia-duration').value = '180'; document.getElementById('anesthesia-form').requestSubmit()`);
+        await waitFor(cdp, `document.querySelectorAll('#added_items_unified_list .added-item').length === 3`);
+        const sharedAnesthesia = await evaluate(cdp, `getAnesthesiaEstimate('clinic')`);
+        assert.strictEqual(sharedAnesthesia.episodes.length, 1);
+        assert.strictEqual(sharedAnesthesia.total, 145420 + (27980 * 8));
 
         await evaluate(cdp, `document.querySelector('[data-step-next="3"]').click()`);
         await waitFor(cdp, `!document.querySelector('[data-step-panel="3"]').hidden`);
@@ -248,7 +308,7 @@ async function screenshot(cdp, name) {
             region: document.getElementById('nonbenefit_region').value,
             items: document.querySelectorAll('#added_items_unified_list .added-item').length
         })`);
-        assert.deepStrictEqual(preserved, { hospital: 'clinic', treatment: 'outpatient', region: selected.region, items: 1 });
+        assert.deepStrictEqual(preserved, { hospital: 'clinic', treatment: 'outpatient', region: selected.region, items: 3 });
 
         await evaluate(cdp, `document.querySelector('[data-step-next="3"]').click()`);
         await waitFor(cdp, `document.getElementById('display_final_cost').textContent !== '0'`);
