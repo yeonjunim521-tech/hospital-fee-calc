@@ -3294,7 +3294,7 @@ function calculate() {
     const gasanLabelEl = document.getElementById('display_gasan_label');
     const gasanInfo = getHospitalGasanInfo(hData);
     if (gasanCostEl) gasanCostEl.innerText = formatNumber(gasanPatientPay);
-    if (gasanLabelEl) gasanLabelEl.innerText = `${gasanInfo.label}이 급여 검사·시술·수술·자동산정 항목에 포함되었습니다.`;
+    if (gasanLabelEl) gasanLabelEl.innerText = `${gasanInfo.label}를 급여 검사·시술·수술과 자동 산정 항목에 포함했습니다.`;
     document.getElementById('display_refund_cost').innerText = formatNumber(refundTotal);
     document.getElementById('display_final_cost').innerText = formatNumber(finalPatientPay);
     document.getElementById('display_cost_range').innerText = `${formatNumber(minRange)}원 ~ ${formatNumber(maxRange)}원`;
