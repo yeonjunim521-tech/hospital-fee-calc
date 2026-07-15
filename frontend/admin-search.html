@@ -353,9 +353,12 @@
             background: var(--blue-soft);
         }
 
-        .keyword-cell {
+        .board-table td.keyword-cell,
+        .bottom-table td.keyword-cell {
             color: var(--text-strong);
             font-weight: 600;
+            white-space: normal;
+            overflow-wrap: anywhere;
         }
 
         .status-badge {
@@ -793,7 +796,7 @@
                         <div class="board-column">
                             <div class="board-head">
                                 <span class="board-symbol">!</span>
-                                긴급 확인
+                                검색결과 없음
                                 <span class="count-chip" id="urgent-count">0</span>
                             </div>
                             <table class="board-table">
@@ -813,7 +816,7 @@
                         <div class="board-column">
                             <div class="board-head">
                                 <span class="board-symbol">+</span>
-                                후보 보강
+                                승인대기
                                 <span class="count-chip" id="candidate-count">0</span>
                             </div>
                             <table class="board-table">
@@ -1021,7 +1024,7 @@
         const HIRA_MRI_SOURCE_URL = "https://www.hira.or.kr/dummy.do?cmsurl=%2Fcms%2Fmedi_info%2F02%2F01%2F1343489_27565.html&pgmid=HIRAA050200000000&subject=MRI";
 
         const state = {
-            activePeriod: "30",
+            activePeriod: "7",
             stats: null,
             candidates: [],
             selectedQuery: ""
