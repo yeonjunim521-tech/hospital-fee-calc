@@ -72,7 +72,8 @@ test('메인 페이지는 v3.0, 단계형 계산기, 동의 설정과 환자 부
     assert.match(html, /data-step-panel="3"/);
     assert.match(html, /data-step-next="3"/);
     assert.match(html, /data-step-quick-result/);
-    assert.match(html, />조건 선택<\/button>/);
+    assert.match(html, /data-quick-result/);
+    assert.match(html, />바로 결과 보기<\/button>/);
     assert.match(html, /id="advanced-items-toggle"/);
     assert.match(html, /id="advanced-items-panel"/);
     assert.match(html, /id="selection-summary"/);
@@ -80,6 +81,8 @@ test('메인 페이지는 v3.0, 단계형 계산기, 동의 설정과 환자 부
     assert.match(html, /id="result-insights-drivers"/);
     assert.match(html, /id="result-insights-summary"/);
     assert.match(html, /data-reset-calculator/);
+    assert.match(html, /data-result-insurance/);
+    assert.match(html, /data-result-edit/);
     assert.doesNotMatch(html, /data-open-insurance|data-edit-conditions/);
     assert.doesNotMatch(html, /id="btn-show-result"|id="result-ready-message"|data-focus-result/);
     assert.match(html, /실비 환급 전 예상 환자 부담금/);

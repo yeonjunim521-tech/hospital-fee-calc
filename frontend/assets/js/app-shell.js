@@ -259,7 +259,7 @@
             if (step === 3) showResult();
             else goToStep(step);
         }));
-        root.document.querySelector('[data-step-quick-result]')?.addEventListener('click', () => goToStep(2));
+        root.document.querySelector('[data-step-quick-result]')?.addEventListener('click', showResult);
         root.document.querySelectorAll('[data-step-back]').forEach(button => button.addEventListener('click', () => showStep(Number(button.dataset.stepBack))));
         root.document.querySelectorAll('[data-reset-calculator]').forEach(button => button.addEventListener('click', () => {
             root.resetCalculatorState?.();

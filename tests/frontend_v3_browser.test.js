@@ -187,7 +187,7 @@ async function screenshot(cdp, name) {
 
         await sleep(1000);
         cdp.consoleEvents.length = 0;
-        await evaluate(cdp, `document.querySelector('[data-step-target="2"]').focus()`);
+        await evaluate(cdp, `document.querySelector('[data-step-quick-result]').focus()`);
         await press(cdp, 'Enter');
         const validation = await evaluate(cdp, `({
             error: document.getElementById('step-1-error').textContent,
@@ -210,16 +210,23 @@ async function screenshot(cdp, name) {
         })()`);
         assert.ok(selected.hospital && selected.treatment && selected.region);
         await evaluate(cdp, 'document.querySelector("[data-step-quick-result]").click()');
-        await waitFor(cdp, '!document.querySelector("[data-step-panel=\\\"2\\\"]").hidden');
-        assert.strictEqual(await evaluate(cdp, 'document.querySelector("[data-step-panel=\\\"3\\\"]").hidden'), true);
-        await evaluate(cdp, 'document.querySelector("[data-step-next=\\\"3\\\"]").click()');
         await waitFor(cdp, 'document.getElementById("display_final_cost").textContent !== "0"');
         assert.strictEqual(await evaluate(cdp, 'document.querySelector("[data-step-panel=\\\"2\\\"]").hidden'), true);
         assert.strictEqual(await evaluate(cdp, 'document.querySelector("[data-step-panel=\\\"3\\\"]").hidden'), false);
         assert.match(await evaluate(cdp, 'document.getElementById("result-insurance-status").textContent'), /미적용/);
         assert.match(await evaluate(cdp, 'document.getElementById("selection-summary").textContent'), /동네 의원/);
+        await evaluate(cdp, 'document.querySelector("[data-result-insurance]").click()');
+        assert.strictEqual(await evaluate(cdp, 'document.activeElement.id'), 'step-3-title');
+        await evaluate(cdp, 'document.querySelector("[data-result-edit]").click()');
+        assert.strictEqual(await evaluate(cdp, 'document.querySelector("[data-step-panel=\\\"1\\\"]").hidden'), false);
+        assert.strictEqual(await evaluate(cdp, 'document.activeElement.id'), 'step-1-title');
+        await evaluate(cdp, 'document.querySelector("[data-step-quick-result]").click()');
+        await waitFor(cdp, '!document.querySelector("[data-step-panel=\\\"3\\\"]").hidden');
         await sleep(400);
         await screenshot(cdp, '1280-result.png');
+
+        await evaluate(cdp, 'document.querySelector("[data-step-target=\\\"2\\\"]").click()');
+        await waitFor(cdp, '!document.querySelector("[data-step-panel=\\\"2\\\"]").hidden');
 
         await evaluate(cdp, `(() => {
             const input = document.getElementById('global-search-input');
@@ -322,9 +329,13 @@ async function screenshot(cdp, name) {
         assert.notStrictEqual(result.totalCost, '0');
         assert.ok(result.rows > 0);
         assert.strictEqual(result.sticky, 'sticky');
-        const insights = JSON.parse(await evaluate(cdp, 'JSON.stringify({ drivers: document.querySelectorAll("#result-insights-drivers li").length, summary: document.getElementById("result-insights-summary").textContent })'));
+        const insights = JSON.parse(await evaluate(cdp, 'JSON.stringify({ drivers: document.querySelectorAll("#result-insights-drivers li").length, summary: document.getElementById("result-insights-summary").textContent, gasan: document.getElementById("display_gasan_label").textContent, gasanWordBreak: getComputedStyle(document.getElementById("display_gasan_label")).wordBreak, summaryWordBreak: getComputedStyle(document.getElementById("result-insights-summary")).wordBreak })'));
         assert.ok(insights.drivers > 0);
         assert.match(insights.summary, /비급여 공개자료|실손보험/);
+        assert.match(insights.gasan, /%를/);
+        assert.doesNotMatch(insights.gasan, /%이/);
+        assert.strictEqual(insights.gasanWordBreak, 'keep-all');
+        assert.strictEqual(insights.summaryWordBreak, 'keep-all');
         await evaluate(cdp, 'document.getElementById("result-insights").scrollIntoView({ block: "center" })');
         await sleep(300);
         await screenshot(cdp, '1280-result-insights.png');
@@ -382,6 +393,14 @@ async function screenshot(cdp, name) {
         assert.notStrictEqual(insuranceResult.refund, '0');
         assert.notStrictEqual(insuranceResult.refund, insuranceResult.initialRefund);
         assert.strictEqual(insuranceResult.visible, true);
+        await cdp.send('Emulation.setDeviceMetricsOverride', { width: 375, height: 800, deviceScaleFactor: 1, mobile: true });
+        await evaluate(cdp, 'document.querySelector(".result-card").scrollIntoView({ block: "start" })');
+        await sleep(300);
+        await screenshot(cdp, '375-result-controls.png');
+        await cdp.send('Emulation.setDeviceMetricsOverride', { width: 768, height: 800, deviceScaleFactor: 1, mobile: false });
+        await evaluate(cdp, 'document.querySelector(".result-card").scrollIntoView({ block: "start" })');
+        await sleep(300);
+        await screenshot(cdp, '768-result-controls.png');
         await cdp.send('Emulation.setDeviceMetricsOverride', { width: 375, height: 800, deviceScaleFactor: 1, mobile: true });
         await evaluate(cdp, 'document.getElementById("result-insights").scrollIntoView({ block: "start" })');
         await sleep(300);
