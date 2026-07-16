@@ -1,15 +1,13 @@
 (function (root) {
     const STORAGE_KEY = 'medicost-consent-v1';
     const GA_MEASUREMENT_ID = 'G-YCKQ2W2BWT';
-    const KAKAO_AD_SCRIPT_URL = 'https://t1.kakaocdn.net/kas/static/ba.min.js';
-    const DEFAULT_CONSENT = Object.freeze({ analytics: false, ads: false, updatedAt: null });
+    const DEFAULT_CONSENT = Object.freeze({ analytics: false, updatedAt: null });
 
     function isValidConsent(value) {
         return Boolean(
             value
             && typeof value === 'object'
             && typeof value.analytics === 'boolean'
-            && typeof value.ads === 'boolean'
             && typeof value.updatedAt === 'string'
         );
     }
@@ -18,7 +16,9 @@
         if (!raw) return { ...DEFAULT_CONSENT };
         try {
             const parsed = JSON.parse(raw);
-            return isValidConsent(parsed) ? parsed : { ...DEFAULT_CONSENT };
+            return isValidConsent(parsed)
+                ? { analytics: parsed.analytics, updatedAt: parsed.updatedAt }
+                : { ...DEFAULT_CONSENT };
         } catch (error) {
             return { ...DEFAULT_CONSENT };
         }
@@ -35,10 +35,6 @@
 
     function canLoadAnalytics(consent) {
         return consent.analytics === true;
-    }
-
-    function canLoadAds(consent) {
-        return consent.ads === true;
     }
 
     function readConsent() {
@@ -78,25 +74,15 @@
         }
     }
 
-    function syncKakaoAdSlots(enabled) {
-        root.document?.querySelectorAll('.kakao_ad_area').forEach((slot) => {
-            slot.style.display = enabled ? 'block' : 'none';
-        });
-    }
-
     function applyConsent(consent) {
         const analyticsEnabled = canLoadAnalytics(consent);
-        const adsEnabled = canLoadAds(consent);
         syncAnalyticsRuntime(analyticsEnabled);
         syncScript('medicost-analytics', analyticsEnabled, 'assets/js/analytics.js');
-        syncKakaoAdSlots(adsEnabled);
-        const hasKakaoAdSlots = Boolean(root.document?.querySelector('.kakao_ad_area'));
-        syncScript('medicost-kakao-ads', adsEnabled && hasKakaoAdSlots, KAKAO_AD_SCRIPT_URL);
         if (!analyticsEnabled) removeAnalyticsLoader();
     }
 
-    function saveConsent(analytics, ads) {
-        const consent = { analytics, ads, updatedAt: new Date().toISOString() };
+    function saveConsent(analytics) {
+        const consent = { analytics, updatedAt: new Date().toISOString() };
         root.localStorage.setItem(STORAGE_KEY, JSON.stringify(consent));
         applyConsent(consent);
         root.dispatchEvent(new CustomEvent('medicost:consent-changed', { detail: consent }));
@@ -115,14 +101,12 @@
 
         const settings = root.document.getElementById('consent-settings');
         const analyticsInput = root.document.getElementById('consent-analytics');
-        const adsInput = root.document.getElementById('consent-ads');
         const saveButton = banner.querySelector('[data-consent-save]');
         const settingsButton = banner.querySelector('[data-consent-settings]');
         const status = root.document.getElementById('consent-status');
 
         function openSettings() {
             analyticsInput.checked = readConsent().analytics;
-            adsInput.checked = readConsent().ads;
             settings.hidden = false;
             saveButton.hidden = false;
             settingsButton.hidden = true;
@@ -131,7 +115,7 @@
         }
 
         function closeWith(consent, message) {
-            saveConsent(consent.analytics, consent.ads);
+            saveConsent(consent.analytics);
             status.textContent = message;
             root.setTimeout(() => {
                 banner.hidden = true;
@@ -140,14 +124,14 @@
         }
 
         banner.querySelector('[data-consent-all]').addEventListener('click', () => {
-            closeWith({ analytics: true, ads: true }, '분석과 광고를 허용했습니다.');
+            closeWith({ analytics: true }, '서비스 분석을 허용했습니다.');
         });
         banner.querySelector('[data-consent-essential]').addEventListener('click', () => {
-            closeWith({ analytics: false, ads: false }, '필수 기능만 사용합니다.');
+            closeWith({ analytics: false }, '서비스 분석 없이 사용합니다.');
         });
         settingsButton.addEventListener('click', openSettings);
         saveButton.addEventListener('click', () => {
-            closeWith({ analytics: analyticsInput.checked, ads: adsInput.checked }, '선택한 설정을 저장했습니다.');
+            closeWith({ analytics: analyticsInput.checked }, '선택한 설정을 저장했습니다.');
         });
         root.document.querySelectorAll('[data-open-consent]').forEach(button => button.addEventListener('click', openSettings));
 
@@ -159,7 +143,7 @@
         }
     }
 
-    const api = { STORAGE_KEY, KAKAO_AD_SCRIPT_URL, parseConsent, canLoadAnalytics, canLoadAds, readConsent, saveConsent, applyConsent };
+    const api = { STORAGE_KEY, parseConsent, canLoadAnalytics, readConsent, saveConsent, applyConsent };
     root.MEDICostConsent = api;
 
     if (typeof module !== 'undefined' && module.exports) module.exports = api;

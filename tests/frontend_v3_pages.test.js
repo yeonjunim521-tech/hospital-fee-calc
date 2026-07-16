@@ -56,11 +56,19 @@ test('초기 HTML은 계산 데이터, 분석, 광고 스크립트를 직접 로
     }
 });
 
-test('공개 HTML은 동의 전에 분석과 광고 스크립트를 직접 로드하지 않는다', () => {
+test('공개 HTML은 동의 전에 분석 스크립트를 직접 로드하지 않는다', () => {
     const htmlFiles = fs.readdirSync(frontend).filter(name => name.endsWith('.html') && !name.startsWith('admin-'));
     for (const name of htmlFiles) {
         const html = readPage(name);
-        assert.doesNotMatch(html, /<script[^>]+(?:analytics\.js|pagead2\.googlesyndication\.com|t1\.kakaocdn\.net)/i, name);
+        assert.doesNotMatch(html, /<script[^>]+(?:analytics\.js|pagead2\.googlesyndication\.com)/i, name);
+    }
+});
+
+test('광고 동의 항목은 없고 분석 동의만 유지한다', () => {
+    for (const name of pages) {
+        const html = readPage(name);
+        assert.match(html, /id="consent-analytics"/, name);
+        assert.doesNotMatch(html, /id="consent-ads"|맞춤 광고/, name);
     }
 });
 
@@ -104,6 +112,9 @@ test('개인정보 안내는 최소수집과 30일 보유 기준을 명시한다
     assert.match(html, /30일/);
     assert.match(html, /데이터 오류/);
     assert.match(html, /Kakao AdFit/);
+    assert.match(html, /익명화된 인터넷 사용정보/);
+    assert.match(html, /privacy\.kakao\.com\/policy\?lang=ko/);
+    assert.match(html, /메인 계산기와 사용자 입력·계산 결과 화면에는 광고 단위를 배치하지 않습니다/);
 });
 
 test('필수 안내 페이지는 현재 위치를 탐색 메뉴에 표시한다', () => {
@@ -139,9 +150,10 @@ test('공개 SEO 페이지는 고유 한글 메타데이터와 검색용 본문�
         assert.strictEqual((html.match(/class="kakao_ad_area"/g) || []).length, 2, `${name}: Kakao ad slots`);
         assert.match(html, /data-ad-unit="DAN-dmM66J0Ueo0AkcLo"/);
         assert.match(html, /data-ad-unit="DAN-FwOH9Vn3dSU1pp97"/);
+        assert.strictEqual((html.match(/t1\.kakaocdn\.net\/kas\/static\/ba\.min\.js/g) || []).length, 2, `${name}: direct Kakao scripts`);
         assert.match(html, /id="consent-banner"/);
         assert.match(html, /data-open-consent/);
-        assert.doesNotMatch(html, /(?:googlesyndication|pagead2\.googlesyndication\.com|t1\.kakaocdn\.net)/i, `${name}: direct ad script`);
+        assert.doesNotMatch(html, /(?:googlesyndication|pagead2\.googlesyndication\.com)/i, `${name}: Google ad script`);
     }
 });
 
