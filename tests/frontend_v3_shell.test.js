@@ -19,28 +19,25 @@ console.log('=== MEDICost v3.0 shell contract ===');
 
 test('Given no saved consent, when parsed, then optional categories stay disabled', () => {
     const parsed = consent.parseConsent(null);
-    assert.deepStrictEqual(parsed, { analytics: false, ads: false, updatedAt: null });
+    assert.deepStrictEqual(parsed, { analytics: false, updatedAt: null });
 });
 
 test('Given malformed consent, when parsed, then it fails closed', () => {
     const parsed = consent.parseConsent('{"analytics":"yes","ads":true}');
-    assert.deepStrictEqual(parsed, { analytics: false, ads: false, updatedAt: null });
+    assert.deepStrictEqual(parsed, { analytics: false, updatedAt: null });
 });
 
-test('Given accepted analytics only, when checked, then ads remain blocked', () => {
+test('Given legacy consent, when parsed, then the removed ad preference is ignored', () => {
     const value = { analytics: true, ads: false, updatedAt: '2026-07-11T00:00:00.000Z' };
-    assert.strictEqual(consent.canLoadAnalytics(value), true);
-    assert.strictEqual(consent.canLoadAds(value), false);
+    assert.deepStrictEqual(consent.parseConsent(JSON.stringify(value)), { analytics: true, updatedAt: value.updatedAt });
 });
 
-test('Given optional tracking is withdrawn, when consent is applied, then loaded optional scripts are removed', () => {
+test('Given optional analytics is withdrawn, when consent is applied, then loaded analytics scripts are removed', () => {
     const consentSource = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'assets', 'js', 'consent.js'), 'utf8');
     assert.match(consentSource, /syncScript/);
     assert.match(consentSource, /medicost-analytics/);
     assert.match(consentSource, /medicost-analytics-loader/);
-    assert.match(consentSource, /medicost-kakao-ads/);
-    assert.match(consentSource, /t1\.kakaocdn\.net\/kas\/static\/ba\.min\.js/);
-    assert.match(consentSource, /kakao_ad_area/);
+    assert.doesNotMatch(consentSource, /medicost-kakao-ads|t1\.kakaocdn\.net|kakao_ad_area|canLoadAds/);
     assert.doesNotMatch(consentSource, /medicost-ads/);
     assert.match(consentSource, /existing\.remove\(\)/);
 });
