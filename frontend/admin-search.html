@@ -881,7 +881,6 @@
                                     <th>검색어</th>
                                     <th>결과</th>
                                     <th>페이지</th>
-                                    <th>사용 환경</th>
                                 </tr>
                             </thead>
                             <tbody id="recent-searches-body"></tbody>
@@ -1027,6 +1026,7 @@
             activePeriod: "7",
             stats: null,
             candidates: [],
+            clickedItemsByQuery: {},
             selectedQuery: ""
         };
 
@@ -1081,10 +1081,6 @@
             });
         }
 
-        function getClickedItems() {
-            return state.stats && Array.isArray(state.stats.clickedItems) ? state.stats.clickedItems : [];
-        }
-
         function getRecentSearches() {
             return state.stats && Array.isArray(state.stats.recentSearches) ? state.stats.recentSearches : [];
         }
@@ -1104,24 +1100,6 @@
                 return "약제";
             }
             return "기타";
-        }
-
-        function getDeviceLabel(userAgent) {
-            const ua = String(userAgent || "").toLowerCase();
-            if (!ua) {
-                return "환경 정보 없음";
-            }
-            const browser = ua.includes("edg/") ? "Edge"
-                : ua.includes("chrome/") ? "Chrome"
-                : ua.includes("safari/") && !ua.includes("chrome/") ? "Safari"
-                : ua.includes("firefox/") ? "Firefox"
-                : "기타 브라우저";
-            const device = /iphone|ipad|ipod/.test(ua) ? "iOS"
-                : ua.includes("android") ? "Android"
-                : ua.includes("windows") ? "Windows"
-                : ua.includes("mac os") ? "Mac"
-                : "기타 기기";
-            return device + " / " + browser;
         }
 
         function sortCandidatesByLatest(list) {
@@ -1197,10 +1175,8 @@
             }));
         }
 
-        function findClickedRecord(query) {
-            return getClickedItems().find(function(item) {
-                return normalizeQuery(item.normalized_query || item.query || item.clicked_item_name) === normalizeQuery(query);
-            }) || null;
+        function findClickedRecords(query) {
+            return state.clickedItemsByQuery[normalizeQuery(query)] || [];
         }
 
         function relatedKeywords(query) {
@@ -1338,10 +1314,9 @@
                     '<td class="keyword-cell">' + escapeHtml(row.query || query) + "</td>",
                     "<td>" + resultBadge(row.result_count) + "</td>",
                     "<td>" + escapeHtml(row.path || "/fee/search") + "</td>",
-                    '<td title="' + escapeHtml(row.user_agent || "") + '">' + escapeHtml(getDeviceLabel(row.user_agent)) + "</td>",
                     "</tr>"
                 ].join("");
-            }).join("") : renderEmpty(5, "최근 검색 로그가 없습니다.");
+            }).join("") : renderEmpty(4, "최근 검색 로그가 없습니다.");
         }
 
         function renderKeywordChips(targetId, values, emptyLabel) {
@@ -1355,7 +1330,7 @@
             const query = state.selectedQuery;
             const top = query ? findTopRecord(query) : null;
             const recent = query ? findRecentRecord(query) : null;
-            const clicked = query ? findClickedRecord(query) : null;
+            const clickedRows = query ? findClickedRecords(query) : [];
             const candidateRows = query ? findCandidateRecords(query) : [];
             const zeroCount = top ? Number(top.zero_result_count || 0) : 0;
             const totalCount = top ? Number(top.search_count || 0) : 0;
@@ -1380,8 +1355,15 @@
             document.getElementById("detail-path").textContent = recent && recent.path ? recent.path : "/fee/search";
             document.getElementById("detail-last-at").textContent = recent ? formatDate(recent.created_at) : "-";
 
-            if (Number(state.stats && state.stats.clickCount || 0) > 0) {
-                document.getElementById("detail-clicked-item").textContent = "비식별 총 클릭수 " + formatCount(Number(state.stats.clickCount));
+            if (clickedRows.length) {
+                document.getElementById("detail-clicked-item").textContent = clickedRows.slice(0, 5).map(function(clicked) {
+                    const name = clicked.clicked_item_name || "이름 없음";
+                    const code = clicked.clicked_item_id ? " (" + clicked.clicked_item_id + ")" : "";
+                    return name + code
+                        + " · " + formatCount(clicked.click_count) + "회"
+                        + " · " + (clicked.path || "페이지 없음")
+                        + " · " + formatDate(clicked.last_clicked_at);
+                }).join(" / ");
             } else if (latestRow) {
                 document.getElementById("detail-clicked-item").textContent = "최근 저장 상태: " + statusMeta.label;
             } else {
@@ -1433,10 +1415,20 @@
         async function loadStats() {
             const data = await fetchJson("/api/admin/search-stats?period=" + encodeURIComponent(state.activePeriod));
             state.stats = data;
+            state.clickedItemsByQuery = {};
             if (!state.selectedQuery) {
                 const zeroRows = Array.isArray(data.zeroResultSearches) ? data.zeroResultSearches : [];
                 state.selectedQuery = zeroRows[0] ? normalizeQuery(zeroRows[0].normalized_query || zeroRows[0].query) : "";
             }
+        }
+
+        async function loadClickDetails(query) {
+            const normalized = normalizeQuery(query);
+            if (!normalized || Object.prototype.hasOwnProperty.call(state.clickedItemsByQuery, normalized)) return;
+            const data = await fetchJson("/api/admin/search-stats?period="
+                + encodeURIComponent(state.activePeriod)
+                + "&query=" + encodeURIComponent(normalized));
+            state.clickedItemsByQuery[normalized] = Array.isArray(data.clickedItems) ? data.clickedItems : [];
         }
 
         async function loadCandidates() {
@@ -1448,6 +1440,7 @@
             setStatus("데이터를 불러오는 중입니다.", false);
             try {
                 await Promise.all([loadStats(), loadCandidates()]);
+                await loadClickDetails(state.selectedQuery);
                 renderAll();
                 const activeLabel = (PERIOD_OPTIONS.find(function(item) {
                     return item.value === state.activePeriod;
@@ -1563,6 +1556,12 @@
                 state.selectedQuery = normalizeQuery(row.getAttribute("data-query"));
                 clearInputs();
                 renderAll();
+                const selectedQuery = state.selectedQuery;
+                loadClickDetails(selectedQuery).then(function() {
+                    if (state.selectedQuery === selectedQuery) renderDetail();
+                }).catch(function(error) {
+                    setStatus(error instanceof Error ? error.message : "클릭 상세 조회에 실패했습니다.", true);
+                });
                 return;
             }
 

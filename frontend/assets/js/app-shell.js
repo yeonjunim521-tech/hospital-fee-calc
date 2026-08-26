@@ -4,6 +4,7 @@
         'assets/js/nonbenefit_data.js',
         'assets/js/fee_schedule_items.js',
         'assets/js/medical-estimator.js',
+        'assets/js/search-telemetry.js',
         'assets/js/script.js'
     ]);
     const DEFERRED_CALCULATOR_SCRIPTS = Object.freeze([

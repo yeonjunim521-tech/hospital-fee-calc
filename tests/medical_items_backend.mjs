@@ -67,6 +67,24 @@ await run('rejects approval when prices and official HIRA source are incomplete'
   assert.equal(writes, 0);
 });
 
+await run('rejects candidate item codes that cannot be used by click telemetry', async () => {
+  let writes = 0;
+  const database = {
+    prepare() {
+      writes += 1;
+      return { bind() { return this; }, async run() { return { success: true }; } };
+    },
+  };
+
+  const response = await saveCandidate({
+    request: approvedRequest({ code: '123456-1234567' }),
+    env: { DB: database },
+  });
+
+  assert.equal(response.status, 400);
+  assert.equal(writes, 0);
+});
+
 await run('atomically upserts an approved item and normalized aliases', async () => {
   // Given
   const prepared = [];

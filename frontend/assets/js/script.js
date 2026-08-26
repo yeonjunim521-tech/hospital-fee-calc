@@ -673,8 +673,6 @@ function handleDirectSelectChange(selectType) {
     const matchedItem = getMedicalItemDatabase().find(item => item.code === selectedCode);
     
     if (matchedItem) {
-        sendSearchLog(matchedItem.name, 1);
-        sendSearchClickLog(matchedItem.name, matchedItem);
         addHiraItem(matchedItem);
     }
     
@@ -1331,16 +1329,18 @@ function hasAnalyticsConsent() {
 
 async function sendSearchLog(query, resultCount) {
     if (!hasAnalyticsConsent() || !query || query.trim().length < 2 || typeof fetch !== 'function') return;
+    const payload = window.MEDICostSearchTelemetry?.buildSearchLogPayload(
+        query,
+        resultCount,
+        window.location.pathname
+    );
+    if (!payload) return;
 
     try {
         await fetch('/api/search-log', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                searchScope: 'aggregate',
-                resultCount,
-                path: window.location.pathname
-            }),
+            body: JSON.stringify(payload),
             keepalive: true
         });
     } catch (error) {
@@ -1350,15 +1350,18 @@ async function sendSearchLog(query, resultCount) {
 
 async function sendSearchClickLog(searchQuery, item) {
     if (!hasAnalyticsConsent() || !searchQuery || !item || typeof fetch !== 'function') return;
+    const payload = window.MEDICostSearchTelemetry?.buildSearchClickPayload(
+        searchQuery,
+        item,
+        window.location.pathname
+    );
+    if (!payload) return;
 
     try {
         await fetch('/api/search-click', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                itemGroup: 'aggregate',
-                path: window.location.pathname
-            }),
+            body: JSON.stringify(payload),
             keepalive: true
         });
     } catch (error) {
@@ -4179,8 +4182,6 @@ function renderHierarchicalItemsList(mainVal, subVal, detailVal) {
                 '</div>';
             
             btn.addEventListener('click', () => {
-                sendSearchLog(item.name, 1);
-                sendSearchClickLog(item.name, item);
                 addHiraItem(item);
             });
             
@@ -4962,7 +4963,6 @@ function renderHierarchicalItemsList(mainVal, subVal, detailVal = 'all') {
             <div class="search-result-meta"><span class="search-result-price">${escapeHtml(formatNumber(item.price))}${escapeHtml(EOF2_TEXT.won)}</span><span class="btn-result-add">${escapeHtml(EOF2_TEXT.add)}</span></div>
         `;
         btn.onclick = () => {
-            sendSearchClickLog('', item);
             addHiraItem(item);
             eof2ShowAddedFeedback(btn);
         };
@@ -5174,7 +5174,6 @@ function renderHierarchicalItemsList(mainVal, subVal, detailVal = 'all') {
             <div class="search-result-meta"><span class="search-result-price">${escapeHtml(formatNumber(item.price))}${escapeHtml(EOF2_TEXT.won)}</span><span class="btn-result-add">${escapeHtml(EOF2_TEXT.add)}</span></div>
         `;
         btn.onclick = () => {
-            sendSearchClickLog('', item);
             addHiraItem(item);
             eof2ShowAddedFeedback(btn);
         };

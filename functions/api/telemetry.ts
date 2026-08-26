@@ -5,6 +5,41 @@ export function limitedText(value: unknown, maxLength: number): string | null {
   return typeof value === 'string' && value.length <= maxLength ? value : null;
 }
 
+export function compactTelemetryText(value: unknown, maxLength: number): string | null {
+  if (typeof value !== 'string') return null;
+  const compact = value.trim().replace(/\s+/g, ' ');
+  return compact && compact.length <= maxLength ? compact : null;
+}
+
+export function normalizeSearchQuery(value: unknown): { query: string; normalizedQuery: string } | null {
+  const query = compactTelemetryText(value, 100);
+  if (!query || query.length < 2) return null;
+  return { query, normalizedQuery: query.toLowerCase() };
+}
+
+export function containsPersonalData(value: string): boolean {
+  const normalizedValue = value.normalize('NFKC');
+  const patterns = [
+    /\b\d{6}[ .-]?[1-4]\d{6}\b/,
+    /(?:\+?82[\s().-]*|0)\d{1,2}[\s().-]*\d{3,4}[\s().-]*\d{4}(?!\d)/,
+    /\b01[016789]\d{7,8}\b/,
+    /\b\d{13}\b/,
+    /[^\s@]+@[^\s@]+\.[^\s@]+/u,
+  ];
+  return patterns.some((pattern) => pattern.test(normalizedValue));
+}
+
+export function normalizeTelemetryPath(value: unknown): string | null {
+  const path = compactTelemetryText(value, 200);
+  if (!path || !/^\/[A-Za-z0-9/_-]*(?:\.html)?$/.test(path) || containsPersonalData(path)) return null;
+  return path;
+}
+
+export function isValidTelemetryItemId(value: unknown): value is string {
+  const itemId = compactTelemetryText(value, 100);
+  return Boolean(itemId && /^[A-Za-z0-9_.:-]+$/.test(itemId) && !containsPersonalData(itemId));
+}
+
 export async function countHourlyTelemetryRequest(db: D1Database, clientIp: string, eventType: string): Promise<number> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${eventType}:${clientIp}`));
   const rateKey = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
