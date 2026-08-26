@@ -2,6 +2,12 @@
 
 이 파일은 `TASKS.md`에서 빠진 이전 작업 기록을 보관한다.
 
+## Kakao AdFit 설치와 동의 분리
+
+- 법적 위험을 줄이면서 정적 안내 페이지에서 AdFit을 즉시 호출하고 Google Analytics 동의만 별도로 유지했다.
+- 광고 동의 항목 제거, 정적 안내 페이지 7곳 설치, 개인정보 처리 안내와 자동 검증을 완료했다.
+- 메인 계산기, 사용자 입력, 계산 결과 화면에는 광고를 배치하지 않았다.
+
 ## main 대상 PR 생성 및 GitHub 동기화
 
 - commit(커밋): `5310e06 feat: add calculation logs and result gate`

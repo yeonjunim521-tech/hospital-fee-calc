@@ -47,6 +47,22 @@ test('Given a search event, when analytics is sent, then raw search terms are no
     assert.doesNotMatch(scriptSource, /search_term\s*:/);
 });
 
+test('Given a direct medical-item selection, when it is added, then search analytics are not polluted', () => {
+    const scriptSource = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'assets', 'js', 'script.js'), 'utf8');
+    const directSelectBlock = scriptSource.slice(
+        scriptSource.indexOf('function handleDirectSelectChange'),
+        scriptSource.indexOf('function renderRecommendChips')
+    );
+    const hierarchicalBlock = scriptSource.slice(
+        scriptSource.indexOf('function renderHierarchicalItemsList'),
+        scriptSource.indexOf('function toggleDiseaseCodeSection')
+    );
+
+    assert.doesNotMatch(directSelectBlock, /sendSearch(?:Log|ClickLog)\(/);
+    assert.doesNotMatch(hierarchicalBlock, /sendSearch(?:Log|ClickLog)\(/);
+    assert.doesNotMatch(scriptSource, /sendSearchClickLog\(\s*['"]{2}\s*,/);
+});
+
 test('Given missing required selections, when validated, then exact labels are returned', () => {
     const missing = shell.getMissingRequiredSelections({ hospitalClass: '', treatmentType: 'er', nonBenefitRegion: '' });
     assert.deepStrictEqual(missing, ['병원 등급', '비급여 기준 지역']);
@@ -58,6 +74,7 @@ test('Given calculator assets, when requested, then first-step data loads before
         'assets/js/nonbenefit_data.js',
         'assets/js/fee_schedule_items.js',
         'assets/js/medical-estimator.js',
+        'assets/js/search-telemetry.js',
         'assets/js/script.js'
     ]);
     assert.deepStrictEqual(shell.DEFERRED_CALCULATOR_SCRIPTS, [

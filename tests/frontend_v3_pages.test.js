@@ -108,13 +108,27 @@ test('문의 안내는 채널과 의료상담을 만들어내지 않는다', () 
 
 test('개인정보 안내는 최소수집과 30일 보유 기준을 명시한다', () => {
     const html = readPage('privacy.html');
-    assert.match(html, /원시 검색어/);
+    assert.match(html, /검색어/);
+    assert.match(html, /클릭한 의료 항목/);
+    assert.match(html, /주민등록번호.*전화번호.*이메일/);
     assert.match(html, /30일/);
     assert.match(html, /데이터 오류/);
     assert.match(html, /Kakao AdFit/);
     assert.match(html, /익명화된 인터넷 사용정보/);
     assert.match(html, /privacy\.kakao\.com\/policy\?lang=ko/);
     assert.match(html, /메인 계산기와 사용자 입력·계산 결과 화면에는 광고 단위를 배치하지 않습니다/);
+});
+
+test('관리자 검색 상세는 클릭 항목 코드·이름·횟수·페이지·시각을 모두 표시한다', () => {
+    const html = readPage('admin-search.html');
+    assert.match(html, /clicked_item_id/);
+    assert.match(html, /clicked_item_name/);
+    assert.match(html, /click_count/);
+    assert.match(html, /clicked\.path/);
+    assert.match(html, /last_clicked_at/);
+    assert.match(html, /clickedItemsByQuery/);
+    assert.match(html, /&query=/);
+    assert.doesNotMatch(html, /row\.user_agent|getDeviceLabel/);
 });
 
 test('필수 안내 페이지는 현재 위치를 탐색 메뉴에 표시한다', () => {

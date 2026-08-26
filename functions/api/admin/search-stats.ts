@@ -69,6 +69,38 @@ function bindRange(statement: D1PreparedStatement, range: PeriodRange): D1Prepar
   return range.bindValue ? statement.bind(range.bindValue) : statement;
 }
 
+function bindRangeAndQuery(statement: D1PreparedStatement, range: PeriodRange, query: string): D1PreparedStatement {
+  return range.bindValue ? statement.bind(range.bindValue, query) : statement.bind(query);
+}
+
+function normalizeRequestedQuery(value: string): string | null {
+  const query = value.trim().toLowerCase().replace(/\s+/g, " ");
+  return query.length >= 2 && query.length <= 100 && query !== "aggregate" ? query : null;
+}
+
+function clickedItemsStatement(db: D1Database, range: PeriodRange, query: string | null) {
+  const queryClause = query ? "AND normalized_query = ?" : "";
+  const statement = db.prepare(`
+    SELECT
+      clicked_item_id,
+      clicked_item_name,
+      normalized_query,
+      path,
+      COUNT(*) AS click_count,
+      MAX(created_at) AS last_clicked_at
+    FROM search_click_logs
+    WHERE created_at >= ${range.sql}
+      AND normalized_query <> 'aggregate'
+      ${queryClause}
+      AND clicked_item_id IS NOT NULL
+      AND clicked_item_name IS NOT NULL
+    GROUP BY clicked_item_id, clicked_item_name, normalized_query, path
+    ORDER BY click_count DESC, last_clicked_at DESC
+    LIMIT 50
+  `);
+  return query ? bindRangeAndQuery(statement, range, query) : bindRange(statement, range);
+}
+
 export const onRequestGet: PagesFunction<Env> = async (context) => {
   try {
     const url = new URL(context.request.url);
@@ -80,6 +112,22 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       );
     }
 
+    const requestedQueryValue = url.searchParams.get("query");
+    const requestedQuery = requestedQueryValue === null ? null : normalizeRequestedQuery(requestedQueryValue);
+    if (requestedQueryValue !== null && !requestedQuery) {
+      return Response.json({ ok: false, error: "query 형식이 올바르지 않습니다." }, { status: 400 });
+    }
+    if (requestedQuery) {
+      const clickedItems = await clickedItemsStatement(context.env.DB, range, requestedQuery).all();
+      return Response.json({
+        ok: true,
+        period: range.period,
+        periodLabel: range.label,
+        query: requestedQuery,
+        clickedItems: rows(clickedItems),
+      });
+    }
+
     const topSearches = await bindRange(context.env.DB.prepare(`
       SELECT
         normalized_query,
@@ -88,6 +136,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
         SUM(CASE WHEN result_count = 0 THEN 1 ELSE 0 END) AS zero_result_count
       FROM search_logs
       WHERE created_at >= ${range.sql}
+        AND normalized_query <> 'aggregate'
       GROUP BY normalized_query
       ORDER BY search_count DESC
       LIMIT 50
@@ -101,6 +150,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       FROM search_logs
       WHERE result_count = 0
         AND created_at >= ${range.sql}
+        AND normalized_query <> 'aggregate'
       GROUP BY normalized_query
       ORDER BY zero_result_count DESC
       LIMIT 50
@@ -112,8 +162,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
         COUNT(*) AS click_count
       FROM search_click_logs
       WHERE created_at >= ${range.sql}
-        AND clicked_item_id IS NULL
-        AND clicked_item_name IS NULL
+        AND normalized_query <> 'aggregate'
     `), range)
       .all();
     const clickSummaryRow = rows(clickSummary)[0];
@@ -123,6 +172,8 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       ? Number(clickSummaryRow.click_count)
       : 0;
 
+    const clickedItems = await clickedItemsStatement(context.env.DB, range, null).all();
+
     const recentSearches = await bindRange(context.env.DB.prepare(`
       SELECT
         id,
@@ -130,10 +181,10 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
         normalized_query,
         result_count,
         path,
-        user_agent,
         created_at
       FROM search_logs
       WHERE created_at >= ${range.sql}
+        AND normalized_query <> 'aggregate'
       ORDER BY created_at DESC
       LIMIT 50
     `), range)
@@ -159,7 +210,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       periodLabel: range.label,
       topSearches: rows(topSearches),
       zeroResultSearches: rows(zeroResultSearches),
-      clickedItems: [],
+      clickedItems: rows(clickedItems),
       clickCount: Number.isFinite(clickCount) ? clickCount : 0,
       recentSearches: rows(recentSearches),
       calculationConditions: rows(calculationConditions),

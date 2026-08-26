@@ -1,3 +1,5 @@
+import { isValidTelemetryItemId } from "../telemetry.ts";
+
 interface Env {
   DB: D1Database;
 }
@@ -101,6 +103,9 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
     if (normalizedQuery.length < 2 || !name) {
       return Response.json({ ok: false, error: "검색어와 항목명은 필수입니다." }, { status: 400 });
+    }
+    if (code && !isValidTelemetryItemId(code)) {
+      return Response.json({ ok: false, error: "항목 코드 형식이 올바르지 않습니다." }, { status: 400 });
     }
     if (!status) {
       return Response.json({ ok: false, error: "허용되지 않은 상태입니다." }, { status: 400 });
