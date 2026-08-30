@@ -149,17 +149,12 @@ li {
     max-width: 100%;
 }
 
-.coupang-banner-link {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 44px;
-    padding: 0 16px;
-    border-radius: 10px;
-    background: #087a68;
-    color: #ffffff;
-    text-decoration: none;
-    font-weight: 700;
+.coupang-widget-fallback {
+    margin: 0;
+    padding: 12px;
+    color: #64748b;
+    font-size: 0.8rem;
+    line-height: 1.5;
 }
 
 .ad-slot .kakao_ad_area {
@@ -283,7 +278,7 @@ nav a {
     font-weight: 600;
 }
 
-@media (max-width: 48rem) {
+@media (max-width: 767px) {
     .coupang-widget--wide {
         display: none;
     }

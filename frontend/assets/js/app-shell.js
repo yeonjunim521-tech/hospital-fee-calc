@@ -244,6 +244,7 @@
             const dialog = root.document.getElementById('result-ad-dialog');
             if (!dialog || typeof dialog.showModal !== 'function' || dialog.open) return;
             if (root.sessionStorage?.getItem('medicost-result-ad-notice') === '1') return;
+            root.MEDICostCoupangAds?.renderTriggeredSlots('result-dialog');
             dialog.showModal();
             const closeNotice = () => {
                 root.sessionStorage?.setItem('medicost-result-ad-notice', '1');
