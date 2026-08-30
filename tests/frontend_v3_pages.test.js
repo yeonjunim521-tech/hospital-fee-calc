@@ -116,7 +116,8 @@ test('개인정보 안내는 최소수집과 30일 보유 기준을 명시한다
     assert.match(html, /Kakao AdFit/);
     assert.match(html, /익명화된 인터넷 사용정보/);
     assert.match(html, /privacy\.kakao\.com\/policy\?lang=ko/);
-    assert.match(html, /메인 계산기와 사용자 입력·계산 결과 화면에는 광고 단위를 배치하지 않습니다/);
+    assert.match(html, /입력칸과 예상 금액 숫자 위에는 광고를 겹치지 않습니다/);
+    assert.match(html, /쿠팡 파트너스/);
 });
 
 test('관리자 검색 상세는 클릭 항목 코드·이름·횟수·페이지·시각을 모두 표시한다', () => {
@@ -168,6 +169,14 @@ test('공개 SEO 페이지는 고유 한글 메타데이터와 검색용 본문�
         assert.match(html, /id="consent-banner"/);
         assert.match(html, /data-open-consent/);
         assert.doesNotMatch(html, /(?:googlesyndication|pagead2\.googlesyndication\.com)/i, `${name}: Google ad script`);
+        assert.match(html, /coupang-banner-link/);
+        assert.match(html, /lptag=AF2104018/);
+        assert.strictEqual((html.match(/ads-partners\.coupang\.com\/g\.js/g) || []).length, 1, `${name}: Coupang loader script`);
+        assert.match(html, /assets\/js\/coupang-ads\.js/);
+        assert.match(html, /data-coupang-id="1017923"/);
+        assert.match(html, /data-coupang-id="1017935"/);
+        assert.doesNotMatch(html, /data-coupang-id="0"/);
+        assert.match(html, /쿠팡 파트너스 활동의 일환/);
     }
 });
 
@@ -201,4 +210,41 @@ test('공개 SEO 페이지의 JSON-LD와 크롤링 파일은 대표 URL과 일�
     }
     assert.doesNotMatch(llms, /(?:�|癰|沅|쑴|쎿)/);
     assert.strictEqual(key.trim(), 'medicost-pages-20260712');
+});
+
+test('홈 계산기는 좌측·하단 AdFit과 반응형 쿠팡 다이나믹 배너를 둔다', () => {
+    const html = readPage('index.html');
+    const css = readPage('assets/css/style-v3.css');
+    const runtimeIndex = html.indexOf('class="app-container calculator-runtime"');
+    const mobileAdFitIndex = html.indexOf('class="ad-slot ad-slot--calc-bottom"', runtimeIndex);
+    const appMainIndex = html.indexOf('class="app-main"', runtimeIndex);
+    assert.match(html, /monetization-strip/);
+    assert.match(html, /ad-slot--calc-left/);
+    assert.match(html, /ad-slot--calc-right/);
+    assert.match(html, /ad-slot--calc-bottom/);
+    assert.strictEqual((html.match(/class="kakao_ad_area"/g) || []).length, 2);
+    assert.strictEqual((html.match(/DAN-dmM66J0Ueo0AkcLo/g) || []).length, 1);
+    assert.strictEqual((html.match(/DAN-FwOH9Vn3dSU1pp97/g) || []).length, 1);
+    assert.ok(runtimeIndex >= 0 && mobileAdFitIndex > runtimeIndex && mobileAdFitIndex < appMainIndex, '모바일 AdFit은 계산기 입력 전에 둔다');
+    assert.match(css, /@media \(max-width: 48rem\) \{[\s\S]*?\.ad-slot--calc-bottom \{ order: 0; \}/);
+    assert.match(html, /coupang-banner-link/);
+    assert.match(html, /lptag=AF2104018/);
+    assert.strictEqual((html.match(/ads-partners\.coupang\.com\/g\.js/g) || []).length, 1);
+    assert.match(html, /assets\/js\/coupang-ads\.js/);
+    assert.match(html, /data-coupang-id="1017933"[^>]+data-coupang-width="120"[^>]+data-coupang-height="400"/);
+    assert.match(html, /data-coupang-id="1017923"[^>]+data-coupang-width="680"[^>]+data-coupang-height="140"/);
+    assert.match(html, /data-coupang-id="1017935"[^>]+data-coupang-width="250"[^>]+data-coupang-height="250"/);
+    assert.doesNotMatch(html, /data-coupang-id="0"/);
+    assert.match(html, /id="result-ad-dialog"/);
+    assert.match(html, /광고를 꼭 봐야 결과가 열리는 방식은 사용하지 않습니다/);
+    assert.doesNotMatch(html, /pagead2\.googlesyndication\.com/i);
+});
+
+test('쿠팡 로더는 현재 화면용 위젯만 공식 container에 렌더하고 실패 시 링크를 유지한다', () => {
+    const script = readPage('assets/js/coupang-ads.js');
+    assert.match(script, /new root\.PartnersCoupang\.G/);
+    assert.match(script, /trackingCode: 'AF2104018'/);
+    assert.match(script, /container: frame/);
+    assert.match(script, /root\.matchMedia/);
+    assert.match(script, /fallback\.hidden = Boolean\(hasAd\)/);
 });

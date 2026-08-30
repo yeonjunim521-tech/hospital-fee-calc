@@ -2,6 +2,7 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
+const { CALCULATOR_SCRIPTS, DEFERRED_CALCULATOR_SCRIPTS } = require('../frontend/assets/js/app-shell.js');
 
 const root = path.join(__dirname, '..');
 const frontend = path.join(root, 'frontend');
@@ -10,6 +11,7 @@ const chromePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 const serverPort = 4193;
 const debugPort = 9233;
 const baseUrl = `http://127.0.0.1:${serverPort}`;
+const expectedCalculatorScriptCount = CALCULATOR_SCRIPTS.length + DEFERRED_CALCULATOR_SCRIPTS.length;
 
 fs.mkdirSync(evidence, { recursive: true });
 
@@ -149,12 +151,19 @@ async function screenshot(cdp, name) {
         const initial = await evaluate(cdp, `(() => ({
             consentVisible: !document.getElementById('consent-banner').hidden,
             heavyScripts: performance.getEntriesByType('resource').filter(entry => /(?:hira_codes|fee_schedule_items|nonbenefit_data|medical_statistics|script)\\.js/.test(entry.name)).length,
-            externalOptional: performance.getEntriesByType('resource').filter(entry => /googletagmanager|googlesyndication|analytics\\.js|t1\\.kakaocdn\\.net/.test(entry.name)).length,
+            analyticsRequests: performance.getEntriesByType('resource').filter(entry => /googletagmanager|googlesyndication|analytics\\.js/.test(entry.name)).length,
+            adRequests: performance.getEntriesByType('resource').filter(entry => /t1\\.kakaocdn\\.net|ads-partners\\.coupang\\.com/.test(entry.name)).length,
+            adScripts: {
+                kakao: document.querySelectorAll('script[src*="t1.kakaocdn.net/kas/static/ba.min.js"]').length,
+                coupang: document.querySelectorAll('script[src*="ads-partners.coupang.com/g.js"]').length
+            },
             overflow: document.documentElement.scrollWidth - innerWidth
         }))()`);
         assert.strictEqual(initial.consentVisible, true);
         assert.strictEqual(initial.heavyScripts, 0);
-        assert.strictEqual(initial.externalOptional, 0);
+        assert.strictEqual(initial.analyticsRequests, 0);
+        assert.ok(initial.adRequests >= 2);
+        assert.deepStrictEqual(initial.adScripts, { kakao: 2, coupang: 1 });
         assert.ok(initial.overflow <= 0, `1280px 초기 가로 넘침: ${initial.overflow}`);
 
         await evaluate(cdp, `document.querySelector('[data-consent-essential]').focus()`);
@@ -175,14 +184,17 @@ async function screenshot(cdp, name) {
         await evaluate(cdp, `document.querySelector('#calculator-loader button').focus()`);
         await press(cdp, 'Enter');
         await waitFor(cdp, `document.getElementById('calculator').classList.contains('is-ready')`);
-        await waitFor(cdp, `document.querySelectorAll('script[data-calculator-src]').length === 6`);
+        await waitFor(cdp, `document.querySelectorAll('script[data-calculator-src]').length === ${expectedCalculatorScriptCount}`);
         const loaded = await evaluate(cdp, `(() => ({
             scripts: document.querySelectorAll('script[data-calculator-src]').length,
             initialized: Boolean(window.MEDICostCalculator),
             inert: document.querySelector('.calculator-runtime').inert,
             date: document.getElementById('hero-data-date').textContent
         }))()`);
-        assert.deepStrictEqual({ scripts: loaded.scripts, initialized: loaded.initialized, inert: loaded.inert }, { scripts: 6, initialized: true, inert: false });
+        assert.deepStrictEqual(
+            { scripts: loaded.scripts, initialized: loaded.initialized, inert: loaded.inert },
+            { scripts: expectedCalculatorScriptCount, initialized: true, inert: false }
+        );
         assert.doesNotMatch(loaded.date, /확인 불가|로드 후/);
 
         await sleep(1000);
@@ -211,6 +223,10 @@ async function screenshot(cdp, name) {
         assert.ok(selected.hospital && selected.treatment && selected.region);
         await evaluate(cdp, 'document.querySelector("[data-step-quick-result]").click()');
         await waitFor(cdp, 'document.getElementById("display_final_cost").textContent !== "0"');
+        assert.strictEqual(await evaluate(cdp, 'document.getElementById("result-ad-dialog").open'), true);
+        assert.notStrictEqual(await evaluate(cdp, 'document.getElementById("display_final_cost").textContent'), '0');
+        await evaluate(cdp, 'document.querySelector("#result-ad-dialog button[value=\\"continue\\"]").click()');
+        await waitFor(cdp, '!document.getElementById("result-ad-dialog").open');
         assert.strictEqual(await evaluate(cdp, 'document.querySelector("[data-step-panel=\\\"2\\\"]").hidden'), true);
         assert.strictEqual(await evaluate(cdp, 'document.querySelector("[data-step-panel=\\\"3\\\"]").hidden'), false);
         assert.match(await evaluate(cdp, 'document.getElementById("result-insurance-status").textContent'), /미적용/);
@@ -451,7 +467,9 @@ async function screenshot(cdp, name) {
 
         const optionalRequests = await evaluate(cdp, `performance.getEntriesByType('resource').filter(entry => /googletagmanager|googlesyndication|analytics\\.js/.test(entry.name)).length`);
         assert.strictEqual(optionalRequests, 0);
-        assert.deepStrictEqual(cdp.consoleEvents, []);
+        const vendorConsoleEvents = cdp.consoleEvents.filter(event => /Cannot visible ad on screen ins\.kakao_ad_area/.test(event.text));
+        const appConsoleEvents = cdp.consoleEvents.filter(event => !/Cannot visible ad on screen ins\.kakao_ad_area/.test(event.text));
+        assert.deepStrictEqual(appConsoleEvents, []);
 
         const supportResults = [];
         for (const page of ['about.html', 'data-sources.html', 'privacy.html', 'contact.html']) {
@@ -501,7 +519,7 @@ async function screenshot(cdp, name) {
         })`);
         assert.deepStrictEqual(optionalScriptsAfterWithdrawal, { analytics: false, analyticsLoader: false, analyticsDisabled: true, kakaoScripts: 2, kakaoSlots: 2 });
 
-        const report = { initial, loaded, validation, selected, preserved, result, scenarioResults, viewportChecks, reducedMotion, optionalRequests, supportResults, optionalScriptsAfterConsent, optionalScriptsAfterWithdrawal };
+        const report = { initial, loaded, validation, selected, preserved, result, scenarioResults, viewportChecks, reducedMotion, optionalRequests, vendorConsoleEvents, appConsoleEvents, supportResults, optionalScriptsAfterConsent, optionalScriptsAfterWithdrawal };
         fs.writeFileSync(path.join(evidence, 'results.json'), JSON.stringify(report, null, 2));
         console.log('PASS: MEDICost v3.0 Chrome QA');
         console.log(JSON.stringify(report, null, 2));
