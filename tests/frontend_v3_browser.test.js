@@ -2,6 +2,7 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
+const { CALCULATOR_SCRIPTS, DEFERRED_CALCULATOR_SCRIPTS } = require('../frontend/assets/js/app-shell.js');
 
 const root = path.join(__dirname, '..');
 const frontend = path.join(root, 'frontend');
@@ -10,6 +11,7 @@ const chromePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 const serverPort = 4193;
 const debugPort = 9233;
 const baseUrl = `http://127.0.0.1:${serverPort}`;
+const expectedCalculatorScriptCount = CALCULATOR_SCRIPTS.length + DEFERRED_CALCULATOR_SCRIPTS.length;
 
 fs.mkdirSync(evidence, { recursive: true });
 
@@ -182,14 +184,17 @@ async function screenshot(cdp, name) {
         await evaluate(cdp, `document.querySelector('#calculator-loader button').focus()`);
         await press(cdp, 'Enter');
         await waitFor(cdp, `document.getElementById('calculator').classList.contains('is-ready')`);
-        await waitFor(cdp, `document.querySelectorAll('script[data-calculator-src]').length === 6`);
+        await waitFor(cdp, `document.querySelectorAll('script[data-calculator-src]').length === ${expectedCalculatorScriptCount}`);
         const loaded = await evaluate(cdp, `(() => ({
             scripts: document.querySelectorAll('script[data-calculator-src]').length,
             initialized: Boolean(window.MEDICostCalculator),
             inert: document.querySelector('.calculator-runtime').inert,
             date: document.getElementById('hero-data-date').textContent
         }))()`);
-        assert.deepStrictEqual({ scripts: loaded.scripts, initialized: loaded.initialized, inert: loaded.inert }, { scripts: 6, initialized: true, inert: false });
+        assert.deepStrictEqual(
+            { scripts: loaded.scripts, initialized: loaded.initialized, inert: loaded.inert },
+            { scripts: expectedCalculatorScriptCount, initialized: true, inert: false }
+        );
         assert.doesNotMatch(loaded.date, /확인 불가|로드 후/);
 
         await sleep(1000);
