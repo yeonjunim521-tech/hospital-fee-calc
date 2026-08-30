@@ -162,8 +162,8 @@ async function screenshot(cdp, name) {
         assert.strictEqual(initial.consentVisible, true);
         assert.strictEqual(initial.heavyScripts, 0);
         assert.strictEqual(initial.analyticsRequests, 0);
-        assert.ok(initial.adRequests >= 2);
-        assert.deepStrictEqual(initial.adScripts, { kakao: 2, coupang: 1 });
+        assert.ok(initial.adRequests >= 1);
+        assert.deepStrictEqual(initial.adScripts, { kakao: 0, coupang: 1 });
         assert.ok(initial.overflow <= 0, `1280px 초기 가로 넘침: ${initial.overflow}`);
 
         await evaluate(cdp, `document.querySelector('[data-consent-essential]').focus()`);
@@ -196,6 +196,34 @@ async function screenshot(cdp, name) {
             { scripts: expectedCalculatorScriptCount, initialized: true, inert: false }
         );
         assert.doesNotMatch(loaded.date, /확인 불가|로드 후/);
+        await waitFor(cdp, `document.querySelectorAll('script[src*="t1.kakaocdn.net/kas/static/ba.min.js"]').length === 1`);
+        const activeAdFit = await evaluate(cdp, `(() => {
+            const active = document.querySelector('[data-adfit-active="true"]');
+            return {
+                slots: document.querySelectorAll('[data-adfit-active="true"]').length,
+                unit: active?.dataset.adfitUnit,
+                kakaoAreas: document.querySelectorAll('.kakao_ad_area').length
+            };
+        })()`);
+        assert.deepStrictEqual(activeAdFit, { slots: 1, unit: 'DAN-FwOH9Vn3dSU1pp97', kakaoAreas: 1 });
+
+        await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1000, height: 720, deviceScaleFactor: 1, mobile: false });
+        await sleep(300);
+        const resizedMobileAdFit = await evaluate(cdp, `(() => ({
+            slots: document.querySelectorAll('[data-adfit-active="true"]').length,
+            unit: document.querySelector('[data-adfit-active="true"]')?.dataset.adfitUnit,
+            kakaoAreas: document.querySelectorAll('.kakao_ad_area').length
+        }))()`);
+        assert.deepStrictEqual(resizedMobileAdFit, { slots: 1, unit: 'DAN-dmM66J0Ueo0AkcLo', kakaoAreas: 1 });
+
+        await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 720, deviceScaleFactor: 1, mobile: false });
+        await sleep(300);
+        const resizedDesktopAdFit = await evaluate(cdp, `(() => ({
+            slots: document.querySelectorAll('[data-adfit-active="true"]').length,
+            unit: document.querySelector('[data-adfit-active="true"]')?.dataset.adfitUnit,
+            kakaoAreas: document.querySelectorAll('.kakao_ad_area').length
+        }))()`);
+        assert.deepStrictEqual(resizedDesktopAdFit, { slots: 1, unit: 'DAN-FwOH9Vn3dSU1pp97', kakaoAreas: 1 });
 
         await sleep(1000);
         cdp.consoleEvents.length = 0;
@@ -225,6 +253,13 @@ async function screenshot(cdp, name) {
         await waitFor(cdp, 'document.getElementById("display_final_cost").textContent !== "0"');
         assert.strictEqual(await evaluate(cdp, 'document.getElementById("result-ad-dialog").open'), true);
         assert.notStrictEqual(await evaluate(cdp, 'document.getElementById("display_final_cost").textContent'), '0');
+        await waitFor(cdp, `document.querySelector('#result-ad-dialog [data-coupang-trigger="result-dialog"] iframe')`);
+        const resultCoupang = await evaluate(cdp, `(() => ({
+            genericLinks: document.querySelectorAll('#result-ad-dialog a[href*="www.coupang.com?lptag="]').length,
+            frameSrc: document.querySelector('#result-ad-dialog [data-coupang-trigger="result-dialog"] iframe')?.src || ''
+        }))()`);
+        assert.strictEqual(resultCoupang.genericLinks, 0);
+        assert.match(resultCoupang.frameSrc, /trackingCode=AF2104018/);
         await evaluate(cdp, 'document.querySelector("#result-ad-dialog button[value=\\"continue\\"]").click()');
         await waitFor(cdp, '!document.getElementById("result-ad-dialog").open');
         assert.strictEqual(await evaluate(cdp, 'document.querySelector("[data-step-panel=\\\"2\\\"]").hidden'), true);
@@ -375,11 +410,17 @@ async function screenshot(cdp, name) {
         await evaluate(cdp, `document.querySelector('[data-step-target="2"]').click()`);
         await evaluate(cdp, `document.getElementById('advanced-items-toggle').click()`);
         await evaluate(cdp, `document.getElementById('has_disease_code').click()`);
-        await evaluate(cdp, `document.getElementById('disease_code_input').focus()`);
+        const diseaseFocus = await evaluate(cdp, `(() => {
+            document.getElementById('disease_code_input').focus();
+            return { id: document.activeElement.id, tag: document.activeElement.tagName };
+        })()`);
+        assert.deepStrictEqual(diseaseFocus, { id: 'disease_code_input', tag: 'INPUT' });
         await cdp.send('Input.insertText', { text: '감기' });
         await sleep(300);
         const diseaseDiagnostics = await evaluate(cdp, `({
             inputValue: document.getElementById('disease_code_input').value,
+            activeElementId: document.activeElement.id,
+            activeElementTag: document.activeElement.tagName,
             hasInputHandler: typeof document.getElementById('disease_code_input').oninput === 'function',
             databaseSize: ALL_KCD_DATABASE.length,
             matchedCount: eofSearchKcd('감기').length,
@@ -433,7 +474,7 @@ async function screenshot(cdp, name) {
         const scenarioResults = { emergencyCost, inpatientCost, diseaseDiagnostics, diseaseSelection, insuranceResult };
 
         const viewportChecks = [];
-        for (const width of [375, 768, 1280]) {
+        for (const width of [375, 768, 1000, 1280, 1440]) {
             await cdp.send('Emulation.setDeviceMetricsOverride', { width, height: 800, deviceScaleFactor: 1, mobile: width < 768 });
             await navigate(cdp, `${baseUrl}/index.html`);
             const check = await evaluate(cdp, `(() => {
@@ -447,13 +488,21 @@ async function screenshot(cdp, name) {
                     scrollWidth: document.documentElement.scrollWidth,
                     minTouch: Math.min(...touchNodes.map(node => node.getBoundingClientRect().height)),
                     smallTouches: touchNodes.filter(node => node.getBoundingClientRect().height < 44).map(node => ({ tag: node.tagName, id: node.id, className: node.className, text: node.textContent.trim().slice(0, 30), height: node.getBoundingClientRect().height })).slice(0, 12),
-                    resultPosition: getComputedStyle(document.querySelector('.result-card')).position
+                    resultPosition: getComputedStyle(document.querySelector('.result-card')).position,
+                    appColumns: getComputedStyle(document.querySelector('.app-main')).gridTemplateColumns.split(' ').length,
+                    topAdOrder: getComputedStyle(document.querySelector('.ad-slot--calc-bottom')).order,
+                    activeAdFitSlots: document.querySelectorAll('[data-adfit-active="true"]').length,
+                    activeAdFitUnit: document.querySelector('[data-adfit-active="true"]')?.dataset.adfitUnit || ''
                 };
             })()`);
             viewportChecks.push(check);
             assert.ok(check.scrollWidth <= check.width, `${width}px 가로 넘침: ${check.scrollWidth - check.width}px`);
             assert.ok(check.minTouch >= 44, `${width}px 최소 터치 높이: ${check.minTouch}px ${JSON.stringify(check.smallTouches)}`);
-            assert.strictEqual(check.resultPosition, width === 1280 ? 'sticky' : 'static');
+            assert.strictEqual(check.resultPosition, width < 768 ? 'static' : 'sticky');
+            assert.strictEqual(check.appColumns, width < 768 ? 1 : width < 1280 ? 2 : 4);
+            assert.strictEqual(check.topAdOrder, width < 1280 ? '0' : '3');
+            assert.strictEqual(check.activeAdFitSlots, 1);
+            assert.strictEqual(check.activeAdFitUnit, width < 1280 ? 'DAN-dmM66J0Ueo0AkcLo' : 'DAN-FwOH9Vn3dSU1pp97');
             await screenshot(cdp, `${width}-hero.png`);
         }
 

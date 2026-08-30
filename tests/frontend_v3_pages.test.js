@@ -169,8 +169,8 @@ test('공개 SEO 페이지는 고유 한글 메타데이터와 검색용 본문�
         assert.match(html, /id="consent-banner"/);
         assert.match(html, /data-open-consent/);
         assert.doesNotMatch(html, /(?:googlesyndication|pagead2\.googlesyndication\.com)/i, `${name}: Google ad script`);
-        assert.match(html, /coupang-banner-link/);
-        assert.match(html, /lptag=AF2104018/);
+        assert.match(html, /coupang-widget-fallback/);
+        assert.doesNotMatch(html, /https:\/\/www\.coupang\.com\?lptag=/);
         assert.strictEqual((html.match(/ads-partners\.coupang\.com\/g\.js/g) || []).length, 1, `${name}: Coupang loader script`);
         assert.match(html, /assets\/js\/coupang-ads\.js/);
         assert.match(html, /data-coupang-id="1017923"/);
@@ -212,7 +212,7 @@ test('공개 SEO 페이지의 JSON-LD와 크롤링 파일은 대표 URL과 일�
     assert.strictEqual(key.trim(), 'medicost-pages-20260712');
 });
 
-test('홈 계산기는 좌측·하단 AdFit과 반응형 쿠팡 다이나믹 배너를 둔다', () => {
+test('홈 계산기는 화면별 AdFit 하나와 추적 가능한 쿠팡 다이나믹 배너만 둔다', () => {
     const html = readPage('index.html');
     const css = readPage('assets/css/style-v3.css');
     const runtimeIndex = html.indexOf('class="app-container calculator-runtime"');
@@ -222,13 +222,18 @@ test('홈 계산기는 좌측·하단 AdFit과 반응형 쿠팡 다이나믹 배
     assert.match(html, /ad-slot--calc-left/);
     assert.match(html, /ad-slot--calc-right/);
     assert.match(html, /ad-slot--calc-bottom/);
-    assert.strictEqual((html.match(/class="kakao_ad_area"/g) || []).length, 2);
+    assert.strictEqual((html.match(/class="kakao_ad_area"/g) || []).length, 0);
     assert.strictEqual((html.match(/DAN-dmM66J0Ueo0AkcLo/g) || []).length, 1);
     assert.strictEqual((html.match(/DAN-FwOH9Vn3dSU1pp97/g) || []).length, 1);
     assert.ok(runtimeIndex >= 0 && mobileAdFitIndex > runtimeIndex && mobileAdFitIndex < appMainIndex, '모바일 AdFit은 계산기 입력 전에 둔다');
-    assert.match(css, /@media \(max-width: 48rem\) \{[\s\S]*?\.ad-slot--calc-bottom \{ order: 0; \}/);
-    assert.match(html, /coupang-banner-link/);
-    assert.match(html, /lptag=AF2104018/);
+    assert.match(html, /data-adfit-media="\(max-width: 1279px\)"/);
+    assert.match(html, /data-adfit-media="\(min-width: 1280px\)"/);
+    assert.strictEqual((html.match(/t1\.kakaocdn\.net\/kas\/static\/ba\.min\.js/g) || []).length, 0);
+    assert.strictEqual((html.match(/assets\/js\/adfit-ads\.js/g) || []).length, 1);
+    assert.match(css, /@media \(min-width: 768px\) and \(max-width: 1279px\)/);
+    assert.match(css, /@media \(max-width: 767px\)/);
+    assert.match(html, /coupang-widget-fallback/);
+    assert.doesNotMatch(html, /https:\/\/www\.coupang\.com\?lptag=/);
     assert.strictEqual((html.match(/ads-partners\.coupang\.com\/g\.js/g) || []).length, 1);
     assert.match(html, /assets\/js\/coupang-ads\.js/);
     assert.match(html, /data-coupang-id="1017933"[^>]+data-coupang-width="120"[^>]+data-coupang-height="400"/);
@@ -236,15 +241,18 @@ test('홈 계산기는 좌측·하단 AdFit과 반응형 쿠팡 다이나믹 배
     assert.match(html, /data-coupang-id="1017935"[^>]+data-coupang-width="250"[^>]+data-coupang-height="250"/);
     assert.doesNotMatch(html, /data-coupang-id="0"/);
     assert.match(html, /id="result-ad-dialog"/);
+    assert.match(html, /data-coupang-trigger="result-dialog"/);
     assert.match(html, /광고를 꼭 봐야 결과가 열리는 방식은 사용하지 않습니다/);
     assert.doesNotMatch(html, /pagead2\.googlesyndication\.com/i);
 });
 
-test('쿠팡 로더는 현재 화면용 위젯만 공식 container에 렌더하고 실패 시 링크를 유지한다', () => {
+test('쿠팡 로더는 공식 추적 위젯만 렌더하고 결과 안내 위젯은 요청 시 연다', () => {
     const script = readPage('assets/js/coupang-ads.js');
     assert.match(script, /new root\.PartnersCoupang\.G/);
     assert.match(script, /trackingCode: 'AF2104018'/);
     assert.match(script, /container: frame/);
     assert.match(script, /root\.matchMedia/);
     assert.match(script, /fallback\.hidden = Boolean\(hasAd\)/);
+    assert.match(script, /renderTriggeredSlots/);
+    assert.match(script, /root\.MEDICostCoupangAds/);
 });

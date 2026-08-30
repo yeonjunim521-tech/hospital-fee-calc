@@ -599,7 +599,10 @@ html:has(.choice-dialog[open]), body:has(.choice-dialog[open]) { overflow: hidde
     border: 1px solid var(--border-default);
     border-radius: var(--radius-lg);
     padding: 0;
+    width: min(28rem, calc(100% - 2rem));
     max-width: min(28rem, calc(100% - 2rem));
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
     background: var(--surface-primary);
     box-shadow: var(--shadow-elevated);
 }
@@ -644,10 +647,10 @@ html:has(.choice-dialog[open]), body:has(.choice-dialog[open]) { overflow: hidde
 .ad-slot--home,
 .ad-slot--coupang { display: flex; flex-direction: column; justify-content: center; padding: var(--space-3); }
 .ad-slot-label { margin: 0 0 var(--space-3); color: var(--text-tertiary); font-size: 0.75rem; line-height: 1.5; }
-.coupang-banner-link { display: inline-flex; align-items: center; justify-content: center; min-height: 2.75rem; padding: 0 var(--space-4); border-radius: var(--radius-md); background: var(--accent-primary); color: #ffffff; text-decoration: none; font-size: 0.875rem; font-weight: 700; }
-.coupang-banner-link:hover { background: var(--accent-hover); }
+.coupang-widget-fallback { margin: 0; padding: var(--space-3); color: var(--text-tertiary); font-size: 0.75rem; line-height: 1.5; }
 .coupang-widget { max-width: 100%; flex-direction: column; align-items: center; justify-content: center; padding: var(--space-3); text-align: center; }
 .coupang-widget--rail { display: flex; }
+.coupang-widget--dialog { display: flex; min-height: 17rem; padding: var(--space-2); }
 .coupang-widget--wide,
 .coupang-widget--square { display: none; }
 .coupang-widget-frame { max-width: 100%; overflow: hidden; line-height: 0; }
@@ -663,23 +666,26 @@ html:has(.choice-dialog[open]), body:has(.choice-dialog[open]) { overflow: hidde
 .is-loading .calculator-runtime { opacity: 0.55; pointer-events: none; }
 .is-ready .calculator-loader { display: none; }
 
-@media (max-width: 80rem) {
+@media (min-width: 768px) and (max-width: 1279px) {
     .app-main { grid-template-columns: minmax(0, 1.15fr) minmax(20rem, 0.85fr); gap: var(--space-6); }
     .ad-slot--calc-left,
     .coupang-widget--rail { display: none; }
+    .ad-slot--calc-bottom { order: 0; }
     .coupang-widget--wide { display: flex; }
 }
 
 @media (max-width: 64rem) {
     .hero { grid-template-columns: 1fr 22rem; gap: var(--space-8); }
-    .app-main { grid-template-columns: 1fr; }
-    .result-card { position: static; max-height: none; overflow-y: visible; }
     .faq-list { grid-template-columns: 1fr; }
     .monetization-strip { grid-template-columns: 1fr; }
 }
 
-@media (max-width: 48rem) {
+@media (max-width: 767px) {
     body { word-break: normal; }
+    .app-main { grid-template-columns: 1fr; }
+    .result-card { position: static; max-height: none; overflow-y: visible; }
+    .ad-slot--calc-left,
+    .coupang-widget--rail { display: none; }
     .ad-slot--calc-bottom { order: 0; }
     .coupang-widget--wide { display: none; }
     .coupang-widget--square { display: flex; }
