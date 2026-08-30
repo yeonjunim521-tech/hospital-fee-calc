@@ -233,14 +233,31 @@
         const advancedDisease = root.document.querySelector('[data-advanced-disease]');
         if (advancedPanel && advancedDisease) advancedPanel.prepend(advancedDisease);
 
-        function showResult() {
-            if (!goToStep(3)) return;
-            root.requestCalculation?.();
-            updateInsuranceStatus();
+        function revealResult() {
             root.document.querySelector('.result-card')?.scrollIntoView({
                 behavior: getResultScrollBehavior(root.matchMedia?.('(prefers-reduced-motion: reduce)')),
                 block: 'start'
             });
+        }
+
+        function showResultAdNotice() {
+            const dialog = root.document.getElementById('result-ad-dialog');
+            if (!dialog || typeof dialog.showModal !== 'function' || dialog.open) return;
+            if (root.sessionStorage?.getItem('medicost-result-ad-notice') === '1') return;
+            dialog.showModal();
+            const closeNotice = () => {
+                root.sessionStorage?.setItem('medicost-result-ad-notice', '1');
+                dialog.removeEventListener('close', closeNotice);
+            };
+            dialog.addEventListener('close', closeNotice);
+        }
+
+        function showResult() {
+            if (!goToStep(3)) return;
+            root.requestCalculation?.();
+            updateInsuranceStatus();
+            revealResult();
+            showResultAdNotice();
         }
 
         const advancedToggle = root.document.getElementById('advanced-items-toggle');
