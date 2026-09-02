@@ -2,6 +2,20 @@
 
 이 파일은 `TASKS.md`에서 빠진 이전 작업 기록을 보관한다.
 
+## 2026-09-02 PC 계산기 폭 회귀 수정
+
+- 숨긴 광고 열이 입력 카드를 11.5rem 폭으로 밀어 넣던 원인을 수정했다.
+- 입력·결과를 `.calculator-workspace`로 묶고, 좌우 광고 레일과 분리했다.
+- 1440px와 1280px 운영 화면에서 계산기 폭과 가로 넘침을 확인했다.
+- PR #13을 `main`에 병합하고 Cloudflare Pages Production에 배포했다.
+
+## 검색 운영 관리자·익명 통계 운영 배포
+
+- 미결과·추가 완료·전체 검색어·방문자 통계 4개 탭으로 관리자 화면을 단순화했다.
+- 실제 검색어 통계와 동의한 익명 방문 통계를 분리하고 30일 보유 계약을 적용했다.
+- 자동 테스트, Pages Functions 빌드, 운영 D1, 실제 Chrome과 배포 자산 해시를 확인했다.
+- 당시 Production 직접 배포만 완료하고 원격 Git `main`에는 저장하지 않아 후속 배포 시 회귀 위험이 남았다.
+
 ## main 대상 PR 생성 및 GitHub 동기화
 
 - commit(커밋): `5310e06 feat: add calculation logs and result gate`

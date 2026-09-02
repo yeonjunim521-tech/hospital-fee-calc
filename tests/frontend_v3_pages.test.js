@@ -248,6 +248,7 @@ test('홈 계산기는 화면별 AdFit 하나와 추적 가능한 쿠팡 다이�
     assert.match(html, /ad-slot--calc-left/);
     assert.match(html, /ad-slot--calc-right/);
     assert.match(html, /ad-slot--calc-bottom/);
+    assert.match(html, /calculator-workspace/);
     assert.strictEqual((html.match(/class="kakao_ad_area"/g) || []).length, 0);
     assert.strictEqual((html.match(/DAN-dmM66J0Ueo0AkcLo/g) || []).length, 1);
     assert.strictEqual((html.match(/DAN-FwOH9Vn3dSU1pp97/g) || []).length, 1);

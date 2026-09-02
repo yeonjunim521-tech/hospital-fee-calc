@@ -550,6 +550,9 @@ async function screenshot(cdp, name) {
                     smallTouches: touchNodes.filter(node => node.getBoundingClientRect().height < 44).map(node => ({ tag: node.tagName, id: node.id, className: node.className, text: node.textContent.trim().slice(0, 30), height: node.getBoundingClientRect().height })).slice(0, 12),
                     resultPosition: getComputedStyle(document.querySelector('.result-card')).position,
                     appColumns: getComputedStyle(document.querySelector('.app-main')).gridTemplateColumns.split(' ').length,
+                    workspaceColumns: getComputedStyle(document.querySelector('.calculator-workspace')).gridTemplateColumns.split(' ').length,
+                    formWidth: Math.round(document.querySelector('.form-card').getBoundingClientRect().width),
+                    workspaceWidth: Math.round(document.querySelector('.calculator-workspace').getBoundingClientRect().width),
                     topAdOrder: getComputedStyle(document.querySelector('.ad-slot--calc-bottom')).order,
                     activeAdFitSlots: document.querySelectorAll('[data-adfit-active="true"]').length,
                     activeAdFitUnit: document.querySelector('[data-adfit-active="true"]')?.dataset.adfitUnit || ''
@@ -559,10 +562,15 @@ async function screenshot(cdp, name) {
             assert.ok(check.scrollWidth <= check.width, `${width}px 가로 넘침: ${check.scrollWidth - check.width}px`);
             assert.ok(check.minTouch >= 44, `${width}px 최소 터치 높이: ${check.minTouch}px ${JSON.stringify(check.smallTouches)}`);
             assert.strictEqual(check.resultPosition, width < 768 ? 'static' : 'sticky');
-            assert.strictEqual(check.appColumns, width < 768 ? 1 : width < 1280 ? 2 : 4);
+            assert.strictEqual(check.appColumns, width < 1280 ? 1 : 3);
+            assert.strictEqual(check.workspaceColumns, width < 768 ? 1 : 2);
             assert.strictEqual(check.topAdOrder, width < 1280 ? '0' : '3');
             assert.strictEqual(check.activeAdFitSlots, 1);
             assert.strictEqual(check.activeAdFitUnit, width < 1280 ? 'DAN-dmM66J0Ueo0AkcLo' : 'DAN-FwOH9Vn3dSU1pp97');
+            if (width >= 1280) {
+                assert.ok(check.formWidth >= 360, `${width}px 입력 카드가 광고 레일 폭으로 줄었습니다: ${check.formWidth}px`);
+                assert.ok(check.workspaceWidth >= width * 0.55, `${width}px 계산기 작업면이 PC 폭을 쓰지 않습니다: ${check.workspaceWidth}px`);
+            }
             await screenshot(cdp, `${width}-hero.png`);
         }
 
