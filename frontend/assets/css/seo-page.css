@@ -166,13 +166,20 @@ li {
     position: fixed;
     z-index: 80;
     inset: auto 16px 16px;
-    margin-left: auto;
+    margin: 0 0 0 auto;
     width: min(38rem, calc(100% - 2rem));
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
     border: 1px solid #cfded9;
     border-radius: 14px;
     padding: 20px;
     background: #ffffff;
     box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16);
+}
+
+.consent-banner::backdrop {
+    background: rgba(15, 61, 54, 0.46);
+    backdrop-filter: blur(2px);
 }
 
 .consent-banner[hidden] {
@@ -188,6 +195,39 @@ li {
     margin: 8px 0 0;
     color: #475569;
     font-size: 14px;
+}
+
+.consent-summary {
+    margin: 16px 0 0;
+    overflow: hidden;
+    border: 1px solid #e2ece9;
+    border-radius: 12px;
+    background: #f7faf9;
+}
+
+.consent-summary > div {
+    display: grid;
+    grid-template-columns: 108px minmax(0, 1fr);
+    gap: 12px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #e2ece9;
+}
+
+.consent-summary > div:last-child {
+    border-bottom: 0;
+}
+
+.consent-summary dt {
+    color: #17312d;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.consent-summary dd {
+    margin: 0;
+    color: #526b66;
+    font-size: 12px;
+    line-height: 1.55;
 }
 
 .consent-settings {
@@ -206,6 +246,13 @@ li {
 .consent-setting strong,
 .consent-setting span {
     display: block;
+}
+
+.consent-setting input {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 auto;
+    accent-color: #087a68;
 }
 
 .consent-setting span {
@@ -298,6 +345,11 @@ nav a {
     .consent-actions {
         display: grid;
         grid-template-columns: 1fr;
+    }
+
+    .consent-summary > div {
+        grid-template-columns: 1fr;
+        gap: 4px;
     }
 
     .consent-setting {

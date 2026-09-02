@@ -4,34 +4,36 @@ const path = require('path');
 
 const root = path.resolve(__dirname, '..');
 const admin = fs.readFileSync(path.join(root, 'frontend', 'admin-search.html'), 'utf8');
+const adminScript = fs.readFileSync(path.join(root, 'frontend', 'assets', 'js', 'admin-search.js'), 'utf8');
 const script = fs.readFileSync(path.join(root, 'frontend', 'assets', 'js', 'script.js'), 'utf8');
 
 const requiredAdminFields = [
-    'item-id-input',
-    'item-name-input',
-    'item-category-input',
-    'item-group-input',
-    'item-type-input',
-    'clinic-price-input',
-    'hospital-price-input',
-    'is-benefit-input',
-    'source-url-input',
-    'source-date-input',
-    'keywords-input'
+    'process-code',
+    'process-name',
+    'process-category',
+    'process-group',
+    'process-type',
+    'process-clinic-price',
+    'process-hospital-price',
+    'process-benefit',
+    'process-source-url',
+    'process-source-date',
+    'process-keywords'
 ];
 
 for (const id of requiredAdminFields) {
     assert(admin.includes(`id="${id}"`), `관리자 입력 필드 누락: ${id}`);
 }
 
-assert(admin.includes('승인하면 공개 검색 DB에 즉시 반영됩니다.'), '승인 효과 안내 문구가 필요합니다.');
-assert(admin.includes('id="lower-limb-mri-preset"'), '하지 MRI 부위 선택이 필요합니다.');
-assert(admin.includes('FEE_HE118') && admin.includes('FEE_HE120') && admin.includes('FEE_HE121') && admin.includes('FEE_HE123'), '하지 MRI 공식 코드 preset이 필요합니다.');
-assert(admin.includes('applyLowerLimbMriPreset'), '하지 MRI preset 적용 함수가 필요합니다.');
-assert(admin.includes('clinicPrice: clinicPrice'), '의원 가격이 승인 요청에 포함되어야 합니다.');
-assert(admin.includes('hospitalPrice: hospitalPrice'), '병원 가격이 승인 요청에 포함되어야 합니다.');
-assert(admin.includes('sourceUrl: sourceUrl'), '공식 출처 URL이 승인 요청에 포함되어야 합니다.');
-assert(admin.includes('keywords: keywords'), '검색 키워드가 승인 요청에 포함되어야 합니다.');
+assert(admin.includes('검색 항목 추가'), '미결과 검색어를 항목으로 추가하는 창이 필요합니다.');
+assert(admin.includes('HIRA 공식 출처'), '공식 출처 입력 안내가 필요합니다.');
+assert(adminScript.includes("fetchJson('/api/admin/search-candidates'"), '승인 요청은 관리자 후보 API로 전송해야 합니다.');
+assert(adminScript.includes("itemId: element('process-code').value.trim()"), '항목 코드가 승인 요청에 포함되어야 합니다.');
+assert(adminScript.includes('clinicPrice,'), '의원 가격이 승인 요청에 포함되어야 합니다.');
+assert(adminScript.includes('hospitalPrice,'), '병원 가격이 승인 요청에 포함되어야 합니다.');
+assert(adminScript.includes("sourceUrl: element('process-source-url').value.trim()"), '공식 출처 URL이 승인 요청에 포함되어야 합니다.');
+assert(adminScript.includes("keywords: element('process-keywords').value.split(',')"), '검색 키워드가 승인 요청에 포함되어야 합니다.');
+assert(adminScript.includes("status: 'approved'"), '추가 완료 요청은 승인 상태로 저장해야 합니다.');
 
 assert(script.includes("fetch('/api/medical-items'"), '공개 의료 항목 API를 불러와야 합니다.');
 assert(script.includes("fetch('/api/search-aliases'"), '완료된 검색 별칭 API를 불러와야 합니다.');

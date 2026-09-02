@@ -381,7 +381,10 @@ function initializeCalculatorApp() {
 }
 
 if (typeof window !== 'undefined') {
-    window.MEDICostCalculator = Object.freeze({ init: initializeCalculatorApp });
+    window.MEDICostCalculator = Object.freeze({
+        init: initializeCalculatorApp,
+        prepareBasicCalculation
+    });
 }
 
 // =========================================================
@@ -582,6 +585,30 @@ function resetCalculatorState() {
     renderAddedItems();
     updateEtcAddedBadge();
     resetResultView();
+    document.dispatchEvent(new Event('medicost:items-changed'));
+}
+
+function prepareBasicCalculation() {
+    addedTests = [];
+    addedSurgeries = [];
+    addedProcedures = [];
+    pendingSurgeryItem = null;
+    ['has_sanjeong', 'has_disease_code', 'has_insurance'].forEach(id => {
+        const input = document.getElementById(id);
+        if (input) input.checked = false;
+    });
+    const diseaseInput = document.getElementById('disease_code_input');
+    if (diseaseInput) diseaseInput.value = '';
+    ['sanjeong_details', 'disease_code_details', 'insurance_details'].forEach(id => {
+        document.getElementById(id)?.classList.add('hidden');
+    });
+    document.querySelectorAll('.search-results-list').forEach(results => {
+        results.replaceChildren();
+        results.classList.add('hidden');
+    });
+    renderAddedItems();
+    updateEtcAddedBadge();
+    markResultStale();
     document.dispatchEvent(new Event('medicost:items-changed'));
 }
 
@@ -1327,45 +1354,41 @@ function hasAnalyticsConsent() {
     return window.MEDICostConsent.canLoadAnalytics(window.MEDICostConsent.readConsent());
 }
 
+function hasEnhancedFeatureConsent() {
+    if (typeof window === 'undefined' || !window.MEDICostConsent) return false;
+    return window.MEDICostConsent.canUseEnhancedFeatures(window.MEDICostConsent.readConsent());
+}
+
+const pendingSearchLogs = new Map();
+
 async function sendSearchLog(query, resultCount) {
-    if (!hasAnalyticsConsent() || !query || query.trim().length < 2 || typeof fetch !== 'function') return;
-    const payload = window.MEDICostSearchTelemetry?.buildSearchLogPayload(
-        query,
-        resultCount,
-        window.location.pathname
-    );
-    if (!payload) return;
+    if (!hasEnhancedFeatureConsent() || !query || query.trim().length < 2 || typeof fetch !== 'function') return;
+
+    const telemetryKey = query.normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('ko-KR');
+    const pending = pendingSearchLogs.get(telemetryKey);
+    if (pending) {
+        pending.resultCount = Math.max(pending.resultCount, resultCount);
+        return;
+    }
+
+    const payload = { query, resultCount };
+    pendingSearchLogs.set(telemetryKey, payload);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    pendingSearchLogs.delete(telemetryKey);
 
     try {
         await fetch('/api/search-log', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
+            body: JSON.stringify({
+                query: payload.query,
+                resultCount: payload.resultCount,
+                operationalConsent: true
+            }),
             keepalive: true
         });
     } catch (error) {
         // 검색 로그 저장 실패는 사용자 검색 흐름을 막지 않는다.
-    }
-}
-
-async function sendSearchClickLog(searchQuery, item) {
-    if (!hasAnalyticsConsent() || !searchQuery || !item || typeof fetch !== 'function') return;
-    const payload = window.MEDICostSearchTelemetry?.buildSearchClickPayload(
-        searchQuery,
-        item,
-        window.location.pathname
-    );
-    if (!payload) return;
-
-    try {
-        await fetch('/api/search-click', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-            keepalive: true
-        });
-    } catch (error) {
-        // 클릭 로그 저장 실패는 항목 추가 흐름을 막지 않는다.
     }
 }
 
@@ -1389,6 +1412,7 @@ async function sendCalculationLog(payload) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 ...payload,
+                operationalConsent: true,
                 path: window.location.pathname
             }),
             keepalive: true
@@ -1472,7 +1496,6 @@ function performSearch(query, targetGroup, options = {}) {
             
             // 검색 결과 항목 선택(클릭) 이벤트
             btn.addEventListener('click', () => {
-                sendSearchClickLog(query, item);
                 addHiraItem(item);
                 
                 // 입력창 및 결과 목록 클리어
@@ -1821,7 +1844,6 @@ function renderSearchResults(query, targetGroup, resultsList, items) {
                 </div>
             `;
             btn.addEventListener('click', () => {
-                sendSearchClickLog(query, item);
                 addHiraItem(item);
                 const el = getSearchElements(targetGroup);
                 if (el.input) el.input.value = '';
@@ -2003,7 +2025,6 @@ function finalRenderItemResults(query, targetGroup, items) {
             </div>
         `;
         btn.onclick = () => {
-            sendSearchClickLog(query, item);
             addHiraItem(item);
             const searchEl = getFinalSearchElements(targetGroup);
             if (searchEl.input) searchEl.input.value = '';
@@ -3860,7 +3881,6 @@ function performSearch(query, targetGroup, options = {}) {
                 
                 // 검색 결과 항목 선택(클릭) 이벤트
                 btn.addEventListener('click', () => {
-                    sendSearchClickLog(query, item);
                     addHiraItem(item);
                     
                     // 입력창 및 결과 목록 클리어
@@ -4513,7 +4533,6 @@ function performSearch(query, targetGroup, options = {}) {
                 `;
                 
                 btn.addEventListener('click', () => {
-                    sendSearchClickLog(query, item);
                     addHiraItem(item);
                     
                     const searchInput = targetGroup === 'etc' 
@@ -4685,7 +4704,6 @@ function eofRenderItemResults(query, targetGroup, items) {
             <div class="search-result-meta"><span class="search-result-price">${formatNumber(item.price)}?</span>${benefit}<span class="btn-result-add">??</span></div>
         `;
         btn.onclick = () => {
-            sendSearchClickLog(query, item);
             if (typeof window.trackGAEvent === 'function') {
                 window.trackGAEvent('search_result_click', {
                     item_group: targetGroup,
@@ -5051,7 +5069,6 @@ function eofRenderItemResults(query, targetGroup, items) {
             <div class="search-result-meta"><span class="search-result-price">${safePrice}</span><span class="badge ${benefitClass}" style="font-size:0.65rem;">${safeBenefitLabel}</span><span class="btn-result-add">${escapeHtml(EOF2_TEXT.add)}</span></div>
         `;
         btn.onclick = () => {
-            sendSearchClickLog(query, item);
             addHiraItem(item);
             eof2ShowAddedFeedback(btn, () => {
                 const searchEl = eofSearchElements(targetGroup);
@@ -5274,7 +5291,6 @@ function renderSearchResults(query, targetGroup, resultsList, items) {
             </div>
         `;
         btn.addEventListener('click', () => {
-            sendSearchClickLog(query, item);
             addHiraItem(item);
             const el = getSearchElements(targetGroup);
             if (el.input) el.input.value = '';

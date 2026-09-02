@@ -12,6 +12,26 @@ const serverPort = 4193;
 const debugPort = 9233;
 const baseUrl = `http://127.0.0.1:${serverPort}`;
 const expectedCalculatorScriptCount = CALCULATOR_SCRIPTS.length + DEFERRED_CALCULATOR_SCRIPTS.length;
+const staticServerScript = `
+import http.server
+
+class Handler(http.server.SimpleHTTPRequestHandler):
+    def do_POST(self):
+        if not self.path.startswith('/api/'):
+            self.send_error(404)
+            return
+        length = int(self.headers.get('Content-Length', '0'))
+        if length:
+            self.rfile.read(length)
+        payload = b'{"ok":true}'
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Length', str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
+
+http.server.ThreadingHTTPServer(('127.0.0.1', ${serverPort}), Handler).serve_forever()
+`;
 
 fs.mkdirSync(evidence, { recursive: true });
 
@@ -37,6 +57,7 @@ class CDP {
         this.nextId = 1;
         this.pending = new Map();
         this.consoleEvents = [];
+        this.networkRequests = [];
     }
 
     async connect() {
@@ -54,6 +75,13 @@ class CDP {
             }
             if (message.method === 'Log.entryAdded' && message.params.entry.level === 'error') {
                 this.consoleEvents.push({ type: 'error', text: message.params.entry.text || '' });
+            }
+            if (message.method === 'Network.requestWillBeSent') {
+                this.networkRequests.push({
+                    url: message.params.request.url,
+                    method: message.params.request.method,
+                    postData: message.params.request.postData || ''
+                });
             }
         });
         await new Promise((resolve, reject) => {
@@ -119,7 +147,7 @@ async function screenshot(cdp, name) {
     const stamp = Date.now();
     const serverLog = fs.openSync(path.join(evidence, `server-${stamp}.log`), 'a');
     const chromeLog = fs.openSync(path.join(evidence, `chrome-${stamp}.log`), 'a');
-    const server = spawn('py', ['-3', '-m', 'http.server', String(serverPort), '--bind', '127.0.0.1'], {
+    const server = spawn('py', ['-3', '-c', staticServerScript], {
         cwd: frontend,
         stdio: ['ignore', serverLog, serverLog]
     });
@@ -150,6 +178,8 @@ async function screenshot(cdp, name) {
         await navigate(cdp, `${baseUrl}/index.html`);
         const initial = await evaluate(cdp, `(() => ({
             consentVisible: !document.getElementById('consent-banner').hidden,
+            consentTitle: document.getElementById('consent-title').textContent,
+            consentSummary: document.getElementById('consent-summary').textContent,
             heavyScripts: performance.getEntriesByType('resource').filter(entry => /(?:hira_codes|fee_schedule_items|nonbenefit_data|medical_statistics|script)\\.js/.test(entry.name)).length,
             analyticsRequests: performance.getEntriesByType('resource').filter(entry => /googletagmanager|googlesyndication|analytics\\.js/.test(entry.name)).length,
             adRequests: performance.getEntriesByType('resource').filter(entry => /t1\\.kakaocdn\\.net|ads-partners\\.coupang\\.com/.test(entry.name)).length,
@@ -160,6 +190,11 @@ async function screenshot(cdp, name) {
             overflow: document.documentElement.scrollWidth - innerWidth
         }))()`);
         assert.strictEqual(initial.consentVisible, true);
+        assert.match(initial.consentTitle, /\[필수\] 프로토타입 선택 기능 데이터 수집 동의/);
+        assert.match(initial.consentSummary, /수집·이용 목적/);
+        assert.match(initial.consentSummary, /수집 항목/);
+        assert.match(initial.consentSummary, /보유·이용 기간/);
+        assert.match(initial.consentSummary, /동의 거부/);
         assert.strictEqual(initial.heavyScripts, 0);
         assert.strictEqual(initial.analyticsRequests, 0);
         assert.ok(initial.adRequests >= 1);
@@ -168,21 +203,19 @@ async function screenshot(cdp, name) {
 
         await evaluate(cdp, `document.querySelector('[data-consent-essential]').focus()`);
         await press(cdp, 'Enter');
-        const essentialConsent = await evaluate(cdp, `JSON.parse(localStorage.getItem('medicost-consent-v1'))`);
+        const essentialConsent = await evaluate(cdp, `JSON.parse(localStorage.getItem('medicost-consent-v3'))`);
         assert.deepStrictEqual(
-            { analytics: essentialConsent.analytics },
-            { analytics: false }
+            { enhancedFeatures: essentialConsent.enhancedFeatures, analytics: essentialConsent.analytics },
+            { enhancedFeatures: false, analytics: false }
         );
 
         await cdp.send('Network.setBlockedURLs', { urls: ['*nonbenefit_data.js*'] });
-        await evaluate(cdp, `document.querySelector('[data-load-calculator]').focus()`);
-        await press(cdp, 'Enter');
+        await evaluate(cdp, `document.querySelector('[data-load-calculator]').click()`);
         await waitFor(cdp, `document.querySelector('#calculator-loader strong')?.textContent.includes('불러오지 못했습니다')`);
         assert.strictEqual(await evaluate(cdp, `document.querySelectorAll('script[data-calculator-src="assets/js/nonbenefit_data.js"]').length`), 0);
 
         await cdp.send('Network.setBlockedURLs', { urls: [] });
-        await evaluate(cdp, `document.querySelector('#calculator-loader button').focus()`);
-        await press(cdp, 'Enter');
+        await evaluate(cdp, `document.querySelector('#calculator-loader button').click()`);
         await waitFor(cdp, `document.getElementById('calculator').classList.contains('is-ready')`);
         await waitFor(cdp, `document.querySelectorAll('script[data-calculator-src]').length === ${expectedCalculatorScriptCount}`);
         const loaded = await evaluate(cdp, `(() => ({
@@ -227,7 +260,7 @@ async function screenshot(cdp, name) {
 
         await sleep(1000);
         cdp.consoleEvents.length = 0;
-        await evaluate(cdp, `document.querySelector('[data-step-quick-result]').focus()`);
+        await evaluate(cdp, `document.querySelector('[data-step-next="2"]').focus()`);
         await press(cdp, 'Enter');
         const validation = await evaluate(cdp, `({
             error: document.getElementById('step-1-error').textContent,
@@ -249,7 +282,7 @@ async function screenshot(cdp, name) {
             return { hospital: hospital.checked, treatment: treatment.checked, region: region.value };
         })()`);
         assert.ok(selected.hospital && selected.treatment && selected.region);
-        await evaluate(cdp, 'document.querySelector("[data-step-quick-result]").click()');
+        await evaluate(cdp, 'document.querySelector("[data-step-basic-result]").click()');
         await waitFor(cdp, 'document.getElementById("display_final_cost").textContent !== "0"');
         assert.strictEqual(await evaluate(cdp, 'document.getElementById("result-ad-dialog").open'), true);
         assert.notStrictEqual(await evaluate(cdp, 'document.getElementById("display_final_cost").textContent'), '0');
@@ -262,22 +295,49 @@ async function screenshot(cdp, name) {
         assert.match(resultCoupang.frameSrc, /trackingCode=AF2104018/);
         await evaluate(cdp, 'document.querySelector("#result-ad-dialog button[value=\\"continue\\"]").click()');
         await waitFor(cdp, '!document.getElementById("result-ad-dialog").open');
-        assert.strictEqual(await evaluate(cdp, 'document.querySelector("[data-step-panel=\\\"2\\\"]").hidden'), true);
-        assert.strictEqual(await evaluate(cdp, 'document.querySelector("[data-step-panel=\\\"3\\\"]").hidden'), false);
-        assert.match(await evaluate(cdp, 'document.getElementById("result-insurance-status").textContent'), /미적용/);
-        assert.match(await evaluate(cdp, 'document.getElementById("selection-summary").textContent'), /동네 의원/);
-        await evaluate(cdp, 'document.querySelector("[data-result-insurance]").click()');
-        assert.strictEqual(await evaluate(cdp, 'document.activeElement.id'), 'step-3-title');
-        await evaluate(cdp, 'document.querySelector("[data-result-edit]").click()');
-        assert.strictEqual(await evaluate(cdp, 'document.querySelector("[data-step-panel=\\\"1\\\"]").hidden'), false);
-        assert.strictEqual(await evaluate(cdp, 'document.activeElement.id'), 'step-1-title');
-        await evaluate(cdp, 'document.querySelector("[data-step-quick-result]").click()');
         await waitFor(cdp, '!document.querySelector("[data-step-panel=\\\"3\\\"]").hidden');
+        const basicResult = await evaluate(cdp, `({
+            insuranceDisabled: document.getElementById('has_insurance').disabled,
+            optionalCount: document.querySelectorAll('#added_items_unified_list .added-item').length,
+            result: document.getElementById('display_final_cost').textContent
+        })`);
+        assert.strictEqual(basicResult.insuranceDisabled, true);
+        assert.strictEqual(basicResult.optionalCount, 0);
+        assert.notStrictEqual(basicResult.result, '0');
+        await evaluate(cdp, 'document.querySelector("[data-step-back=\\\"2\\\"]").click()');
+        await waitFor(cdp, '!document.querySelector("[data-step-panel=\\\"1\\\"]").hidden');
+        await evaluate(cdp, 'document.querySelector("[data-step-next=\\\"2\\\"]").click()');
+        await waitFor(cdp, 'document.getElementById("consent-banner").open');
+        assert.strictEqual(await evaluate(cdp, 'document.querySelector("[data-step-panel=\\\"2\\\"]").hidden'), true);
+        await evaluate(cdp, 'document.querySelector("[data-consent-all]").click()');
+        await waitFor(cdp, '!document.getElementById("consent-banner").open');
+        const enhancedConsent = await evaluate(cdp, `JSON.parse(localStorage.getItem('medicost-consent-v3'))`);
+        assert.deepStrictEqual(
+            { enhancedFeatures: enhancedConsent.enhancedFeatures, analytics: enhancedConsent.analytics },
+            { enhancedFeatures: true, analytics: false }
+        );
+        await evaluate(cdp, 'document.querySelector("[data-step-next=\\\"2\\\"]").click()');
+        await waitFor(cdp, '!document.querySelector("[data-step-panel=\\\"2\\\"]").hidden');
+        assert.strictEqual(await evaluate(cdp, 'document.querySelector("[data-step-panel=\\\"3\\\"]").hidden'), true);
+        assert.match(await evaluate(cdp, 'document.getElementById("selection-summary").textContent'), /동네 의원/);
+        assert.strictEqual(await evaluate(cdp, 'document.querySelectorAll("[data-result-insurance], [data-result-edit]").length'), 0);
+        cdp.networkRequests.length = 0;
+        await evaluate(cdp, `(() => {
+            const input = document.getElementById('global-search-input');
+            input.value = 'qa-browser-missing';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            document.getElementById('btn-run-global-search').click();
+        })()`);
+        await sleep(500);
+        const telemetrySearchRequests = cdp.networkRequests.filter(request => request.method === 'POST' && request.url.endsWith('/api/search-log'));
+        assert.strictEqual(telemetrySearchRequests.length, 1, '검색 실행 한 번은 검색 로그 한 건만 전송해야 합니다.');
+        assert.deepStrictEqual(JSON.parse(telemetrySearchRequests[0].postData), {
+            query: 'qa-browser-missing',
+            resultCount: 0,
+            operationalConsent: true
+        });
         await sleep(400);
         await screenshot(cdp, '1280-result.png');
-
-        await evaluate(cdp, 'document.querySelector("[data-step-target=\\\"2\\\"]").click()');
-        await waitFor(cdp, '!document.querySelector("[data-step-panel=\\\"2\\\"]").hidden');
 
         await evaluate(cdp, `(() => {
             const input = document.getElementById('global-search-input');
@@ -568,7 +628,7 @@ async function screenshot(cdp, name) {
         })`);
         assert.deepStrictEqual(optionalScriptsAfterWithdrawal, { analytics: false, analyticsLoader: false, analyticsDisabled: true, kakaoScripts: 2, kakaoSlots: 2 });
 
-        const report = { initial, loaded, validation, selected, preserved, result, scenarioResults, viewportChecks, reducedMotion, optionalRequests, vendorConsoleEvents, appConsoleEvents, supportResults, optionalScriptsAfterConsent, optionalScriptsAfterWithdrawal };
+        const report = { initial, loaded, validation, selected, telemetrySearchRequestCount: telemetrySearchRequests.length, preserved, result, scenarioResults, viewportChecks, reducedMotion, optionalRequests, vendorConsoleEvents, appConsoleEvents, supportResults, optionalScriptsAfterConsent, optionalScriptsAfterWithdrawal };
         fs.writeFileSync(path.join(evidence, 'results.json'), JSON.stringify(report, null, 2));
         console.log('PASS: MEDICost v3.0 Chrome QA');
         console.log(JSON.stringify(report, null, 2));

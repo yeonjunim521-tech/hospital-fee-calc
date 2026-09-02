@@ -1,4 +1,11 @@
-import { countHourlyTelemetryRequest, limitedText, purgeExpiredTelemetry, RATE_LIMIT_MAX_REQUESTS_PER_HOUR } from './telemetry.ts';
+import {
+  countHourlyTelemetryRequest,
+  limitedText,
+  purgeExpiredTelemetry,
+  RATE_LIMIT_MAX_REQUESTS_PER_HOUR,
+  readSameOriginJsonObject,
+  telemetryClientAddress,
+} from './telemetry.ts';
 
 interface Env { DB: D1Database; }
 const HOSPITAL_CLASSES = new Set(['clinic', 'hospital', 'general_hospital', 'tertiary_hospital']);
@@ -9,14 +16,17 @@ const COST_BUCKETS = new Set(['under_50k', '50k_to_199k', '200k_or_more']);
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
   try {
-    const body = await context.request.json() as { hospitalClass?: unknown; treatmentType?: unknown; nonBenefitRegion?: unknown; stayDaysBucket?: unknown; hasInsurance?: unknown; finalCostBucket?: unknown };
+    const body = await readSameOriginJsonObject(context.request);
+    if (!body) {
+      return Response.json({ ok: false, error: '분석 요청이 유효하지 않습니다.' }, { status: 400 });
+    }
     const hospitalClass = limitedText(body.hospitalClass, 30);
     const treatmentType = limitedText(body.treatmentType, 20);
     const nonBenefitRegion = limitedText(body.nonBenefitRegion, 10);
     const stayDaysBucket = limitedText(body.stayDaysBucket, 20);
     const finalCostBucket = limitedText(body.finalCostBucket, 20);
-    const clientIp = context.request.headers.get('CF-Connecting-IP');
-    if (!hospitalClass || !treatmentType || !nonBenefitRegion || !stayDaysBucket || !finalCostBucket || !clientIp || !HOSPITAL_CLASSES.has(hospitalClass) || !TREATMENT_TYPES.has(treatmentType) || !REGION_CODES.has(nonBenefitRegion) || !STAY_DAY_BUCKETS.has(stayDaysBucket) || !COST_BUCKETS.has(finalCostBucket) || typeof body.hasInsurance !== 'boolean') {
+    const clientIp = telemetryClientAddress(context.request);
+    if (body.operationalConsent !== true || !hospitalClass || !treatmentType || !nonBenefitRegion || !stayDaysBucket || !finalCostBucket || !clientIp || !HOSPITAL_CLASSES.has(hospitalClass) || !TREATMENT_TYPES.has(treatmentType) || !REGION_CODES.has(nonBenefitRegion) || !STAY_DAY_BUCKETS.has(stayDaysBucket) || !COST_BUCKETS.has(finalCostBucket) || typeof body.hasInsurance !== 'boolean') {
       return Response.json({ ok: false, error: '분석 요청이 유효하지 않습니다.' }, { status: 400 });
     }
     await purgeExpiredTelemetry(context.env.DB);
