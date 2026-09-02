@@ -36,6 +36,18 @@
         let loadPromise = null;
         let activeStep = 1;
 
+        function hasEnhancedFeatureAccess() {
+            return root.MEDICostConsent?.canUseEnhancedFeatures?.(
+                root.MEDICostConsent.readConsent()
+            ) === true;
+        }
+
+        function requestEnhancedFeatureAccess() {
+            root.MEDICostConsent?.openDialog?.({
+                message: '프로토타입 선택 조건과 추가 검색은 자체 방문·검색 통계 수집에 동의한 경우 사용할 수 있습니다. 동의하지 않아도 필수 조건 계산은 가능합니다.'
+            });
+        }
+
         function replaceIcons() {
             if (root.lucide) root.lucide.createIcons({ attrs: { 'stroke-width': 1.8 } });
         }
@@ -169,6 +181,10 @@
         function updateInsuranceStatus() {
             const status = root.document.getElementById('result-insurance-status');
             if (!status) return;
+            if (!hasEnhancedFeatureAccess()) {
+                status.textContent = '기본 계산 모드입니다. 선택 조건과 실손보험은 반영하지 않습니다.';
+                return;
+            }
             status.textContent = root.document.getElementById('has_insurance')?.checked
                 ? '실손보험 적용 상태입니다. 보험 세대를 바꾸면 예상 환급금이 바로 반영됩니다.'
                 : '실손보험 미적용 상태입니다. 3단계에서 보험 적용 여부를 선택할 수 있습니다.';
@@ -188,7 +204,9 @@
             const descriptions = {
                 1: '1단계: 병원 등급, 진료 형태, 비급여 기준 지역을 선택하세요.',
                 2: '2단계: 알고 있는 상병코드와 치료·검사 항목을 선택적으로 추가하세요.',
-                3: '3단계: 실손보험 적용 여부와 현재 선택 조건을 확인하세요.'
+                3: hasEnhancedFeatureAccess()
+                    ? '3단계: 실손보험 적용 여부와 현재 선택 조건을 확인하세요.'
+                    : '기본 계산 결과: 필수 조건만 반영했습니다.'
             };
             root.document.getElementById('step-status').textContent = descriptions[activeStep];
             updateSelectionSummary();
@@ -222,8 +240,35 @@
                 showStep(1, false);
                 return false;
             }
+            if (step === 2 && !hasEnhancedFeatureAccess()) {
+                requestEnhancedFeatureAccess();
+                return false;
+            }
             showStep(step);
             return true;
+        }
+
+        function updateFeatureGate() {
+            const enabled = hasEnhancedFeatureAccess();
+            const secondStepButton = root.document.querySelector('[data-step-target="2"]');
+            const secondStepPanel = root.document.querySelector('[data-step-panel="2"]');
+            const insuranceInput = root.document.getElementById('has_insurance');
+            const insuranceGeneration = root.document.getElementById('insurance_generation');
+            const gateNote = root.document.getElementById('feature-gate-note');
+            const insuranceNote = root.document.getElementById('insurance-gate-note');
+            const resultBackButton = root.document.getElementById('step-3-back');
+            section.dataset.enhancedFeatures = String(enabled);
+            if (secondStepButton) {
+                secondStepButton.setAttribute('aria-disabled', String(!enabled));
+                secondStepButton.title = enabled ? '' : '자체 방문·검색 통계 수집 동의 후 프로토타입 선택 조건과 추가 검색을 사용할 수 있습니다.';
+            }
+            if (secondStepPanel) secondStepPanel.inert = !enabled;
+            if (insuranceInput) insuranceInput.disabled = !enabled;
+            if (insuranceGeneration) insuranceGeneration.disabled = !enabled;
+            if (gateNote) gateNote.hidden = enabled;
+            if (insuranceNote) insuranceNote.hidden = enabled;
+            if (resultBackButton) resultBackButton.textContent = enabled ? '선택 조건으로' : '필수 조건으로';
+            updateInsuranceStatus();
         }
 
         const specialBox = root.document.querySelector('.sanjeong-toggle-box');
@@ -232,13 +277,6 @@
         const advancedPanel = root.document.getElementById('advanced-items-panel');
         const advancedDisease = root.document.querySelector('[data-advanced-disease]');
         if (advancedPanel && advancedDisease) advancedPanel.prepend(advancedDisease);
-
-        function revealResult() {
-            root.document.querySelector('.result-card')?.scrollIntoView({
-                behavior: getResultScrollBehavior(root.matchMedia?.('(prefers-reduced-motion: reduce)')),
-                block: 'start'
-            });
-        }
 
         function showResultAdNotice() {
             const dialog = root.document.getElementById('result-ad-dialog');
@@ -253,11 +291,17 @@
             dialog.addEventListener('close', closeNotice);
         }
 
-        function showResult() {
+        function showResult(options = {}) {
+            const basicOnly = options.basicOnly === true || !hasEnhancedFeatureAccess();
             if (!goToStep(3)) return;
+            if (basicOnly) root.MEDICostCalculator?.prepareBasicCalculation?.();
             root.requestCalculation?.();
+            updateFeatureGate();
             updateInsuranceStatus();
-            revealResult();
+            root.document.querySelector('.result-card')?.scrollIntoView({
+                behavior: getResultScrollBehavior(root.matchMedia?.('(prefers-reduced-motion: reduce)')),
+                block: 'start'
+            });
             showResultAdNotice();
         }
 
@@ -272,14 +316,22 @@
         root.document.querySelectorAll('[data-load-calculator]').forEach(link => {
             link.addEventListener('click', () => loadCalculator().catch(() => undefined));
         });
-        root.document.querySelectorAll('[data-step-target]').forEach(button => button.addEventListener('click', () => goToStep(Number(button.dataset.stepTarget))));
+        root.document.querySelectorAll('[data-step-target]').forEach(button => button.addEventListener('click', () => {
+            const step = Number(button.dataset.stepTarget);
+            if (step === 3 && !hasEnhancedFeatureAccess()) showResult({ basicOnly: true });
+            else goToStep(step);
+        }));
         root.document.querySelectorAll('[data-step-next]').forEach(button => button.addEventListener('click', () => {
             const step = Number(button.dataset.stepNext);
             if (step === 3) showResult();
             else goToStep(step);
         }));
+        root.document.querySelector('[data-step-basic-result]')?.addEventListener('click', () => showResult({ basicOnly: true }));
         root.document.querySelector('[data-step-quick-result]')?.addEventListener('click', showResult);
-        root.document.querySelectorAll('[data-step-back]').forEach(button => button.addEventListener('click', () => showStep(Number(button.dataset.stepBack))));
+        root.document.querySelectorAll('[data-step-back]').forEach(button => button.addEventListener('click', () => {
+            const step = Number(button.dataset.stepBack);
+            showStep(step === 2 && !hasEnhancedFeatureAccess() ? 1 : step);
+        }));
         root.document.querySelectorAll('[data-reset-calculator]').forEach(button => button.addEventListener('click', () => {
             root.resetCalculatorState?.();
             showStep(1, false);
@@ -294,6 +346,15 @@
             updateInsuranceStatus();
         });
         root.document.addEventListener('medicost:items-changed', updateSelectionSummary);
+        root.addEventListener('medicost:consent-changed', () => {
+            updateFeatureGate();
+            if (!hasEnhancedFeatureAccess() && activeStep === 2) showStep(1, false);
+            if (!hasEnhancedFeatureAccess() && activeStep === 3) {
+                root.MEDICostCalculator?.prepareBasicCalculation?.();
+                root.requestCalculation?.();
+                updateSelectionSummary();
+            }
+        });
 
         const observer = new IntersectionObserver(entries => {
             if (entries.some(entry => entry.isIntersecting)) {
@@ -305,6 +366,7 @@
 
         replaceIcons();
         updateSelectionSummary();
+        updateFeatureGate();
         updateInsuranceStatus();
         showStep(1, false);
         if (shouldLoadForHash(root.location.hash)) loadCalculator().catch(() => undefined);

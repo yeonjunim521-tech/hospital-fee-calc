@@ -3,5 +3,6 @@ Allow: /
 Disallow: /admin-search
 Disallow: /admin-search.html
 Disallow: /admin-dashboard-prototype
+Disallow: /admin
 
 Sitemap: https://hospital-fee-calc.pages.dev/sitemap.xml

@@ -3,6 +3,8 @@ interface Env {
 }
 
 const PROTECTED_PATHS = new Set([
+  "/admin",
+  "/admin/",
   "/admin-search",
   "/admin-search.html",
   "/admin-dashboard-prototype",

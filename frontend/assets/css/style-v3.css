@@ -392,8 +392,8 @@ svg { display: block; }
 .ad-slot--calc-right { position: sticky; top: var(--space-4); }
 .ad-slot--calc-left[hidden],
 .ad-slot--calc-right[hidden] { display: none !important; width: 0; max-width: 0; min-height: 0; padding: 0; border: 0; }
-.ad-slot--calc-left:not(:has(iframe)),
-.ad-slot--calc-bottom:not(:has(iframe)) { display: none !important; width: 0; max-width: 0; min-height: 0; padding: 0; border: 0; background: transparent; }
+.ad-slot--calc-left[data-adfit-state="error"]:not(:has(iframe)),
+.ad-slot--calc-bottom[data-adfit-state="error"]:not(:has(iframe)) { display: none !important; width: 0; max-width: 0; min-height: 0; padding: 0; border: 0; background: transparent; }
 .ad-slot--calc-bottom { order: 3; width: min(100%, 22rem); display: flex; justify-self: center; justify-content: center; padding: var(--space-3); }
 .calculator-ad-footer { order: 2; display: grid; gap: var(--space-5); justify-items: center; }
 
@@ -407,6 +407,7 @@ svg { display: block; }
 .step-progress button { width: 100%; min-height: 3.25rem; border: 1px solid var(--border-default); border-radius: var(--radius-md); padding: var(--space-2); color: var(--text-secondary); background: var(--surface-primary); cursor: pointer; font-size: 0.75rem; font-weight: 700; }
 .step-progress button[aria-current="step"] { color: var(--text-on-strong); border-color: var(--surface-strong); background: var(--surface-strong); }
 .step-progress button[data-complete="true"] { color: var(--status-success); border-color: var(--accent-soft); background: var(--surface-accent); }
+.step-progress button[aria-disabled="true"]:not([aria-current="step"]) { border-style: dashed; color: var(--text-tertiary); background: var(--surface-secondary); }
 .step-progress .step-number { display: block; font-family: "Outfit", sans-serif; font-size: 1rem; }
 
 .calculator-step[hidden] { display: none; }
@@ -415,6 +416,7 @@ svg { display: block; }
 .step-intro { margin: 0 0 var(--space-5); color: var(--text-secondary); font-size: 0.875rem; }
 .step-actions { margin-top: var(--space-6); padding-top: var(--space-5); display: flex; justify-content: space-between; gap: var(--space-3); border-top: 1px solid var(--border-subtle); }
 .step-error { min-height: 1.5rem; margin: var(--space-3) 0 0; color: var(--status-error); font-size: 0.875rem; font-weight: 700; }
+.feature-gate-note { margin: var(--space-4) 0 0; border: 1px solid var(--border-default); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); color: var(--text-secondary); background: var(--surface-secondary); font-size: 0.8125rem; line-height: 1.6; }
 .selection-summary { margin: 0 0 var(--space-5); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: var(--space-3); background: var(--surface-secondary); }
 .selection-summary > strong { display: block; margin-bottom: var(--space-2); font-size: 0.75rem; }
 .selection-summary-items { display: flex; flex-wrap: wrap; gap: var(--space-2); }
@@ -631,15 +633,23 @@ html:has(.choice-dialog[open]), body:has(.choice-dialog[open]) { overflow: hidde
 .result-ad-card { display: grid; gap: var(--space-4); padding: var(--space-6); }
 .result-ad-card h2 { margin: 0; font-size: 1.25rem; line-height: 1.35; }
 .result-ad-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); }
-.consent-banner { position: fixed; z-index: 80; inset: 50% auto auto 50%; transform: translate(-50%, -50%); width: min(46rem, calc(100% - 2rem)); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: var(--space-8); background: var(--surface-primary); box-shadow: 0 0 0 100vmax rgb(15 61 54 / 42%), var(--shadow-elevated); }
+.consent-banner { position: fixed; z-index: 80; inset: 50% auto auto 50%; transform: translate(-50%, -50%); width: min(46rem, calc(100% - 2rem)); max-height: calc(100dvh - 2rem); margin: 0; overflow-y: auto; border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: var(--space-8); color: var(--text-primary); background: var(--surface-primary); box-shadow: var(--shadow-elevated); animation: consent-enter 180ms ease-out; }
+.consent-banner::backdrop { background: rgb(15 61 54 / 48%); backdrop-filter: blur(2px); }
+@keyframes consent-enter { from { opacity: 0; transform: translate(-50%, calc(-50% + 0.25rem)); } to { opacity: 1; transform: translate(-50%, -50%); } }
 .consent-banner h2 { margin: 0; font-size: 1.5rem; }
 .consent-banner p { margin: var(--space-3) 0 0; color: var(--text-secondary); font-size: 1rem; line-height: 1.7; }
+.consent-summary { margin: var(--space-4) 0 0; overflow: hidden; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--surface-secondary); }
+.consent-summary > div { display: grid; grid-template-columns: 7rem minmax(0, 1fr); gap: var(--space-3); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border-subtle); }
+.consent-summary > div:last-child { border-bottom: 0; }
+.consent-summary dt { color: var(--text-primary); font-size: 0.8125rem; font-weight: 800; }
+.consent-summary dd { margin: 0; color: var(--text-secondary); font-size: 0.8125rem; line-height: 1.55; }
 .consent-actions { margin-top: var(--space-6); display: flex; flex-wrap: wrap; gap: var(--space-3); }
 .consent-actions .consent-button { min-height: 3.25rem; flex: 1 1 10rem; font-size: 1rem; }
 .consent-settings { margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--border-subtle); }
 .consent-setting { padding: var(--space-3) 0; display: flex; justify-content: space-between; gap: var(--space-4); }
 .consent-setting strong, .consent-setting span { display: block; }
 .consent-setting span { color: var(--text-secondary); font-size: 0.75rem; }
+.consent-setting input { width: 1.25rem; height: 1.25rem; flex: 0 0 auto; accent-color: var(--accent-primary); }
 .consent-status { min-height: 1.5rem; margin: var(--space-2) 0 0; color: var(--status-success); font-size: 0.75rem; font-weight: 700; }
 
 .monetization-strip {
@@ -731,6 +741,7 @@ html:has(.choice-dialog[open]), body:has(.choice-dialog[open]) { overflow: hidde
     .footer-grid { grid-template-columns: 1fr; }
     .footer-links { justify-content: flex-start; }
     .consent-banner { inset: 50% auto auto 50%; width: calc(100% - var(--space-4)); padding: var(--space-6); }
+    .consent-summary > div { grid-template-columns: 1fr; gap: var(--space-1); }
     .consent-actions { display: grid; grid-template-columns: 1fr; }
     .choice-dialog { width: calc(100% - var(--space-4)); max-height: calc(100dvh - var(--space-4)); }
     .choice-dialog-card { padding: var(--space-5); }

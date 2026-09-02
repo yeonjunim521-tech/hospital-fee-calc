@@ -40,9 +40,44 @@ export function isValidTelemetryItemId(value: unknown): value is string {
   return Boolean(itemId && /^[A-Za-z0-9_.:-]+$/.test(itemId) && !containsPersonalData(itemId));
 }
 
+export async function readSameOriginJsonObject(request: Request): Promise<Record<string, unknown> | null> {
+  const contentType = request.headers.get('Content-Type')?.split(';', 1)[0].trim().toLowerCase();
+  const requestOrigin = request.headers.get('Origin');
+  const fetchSite = request.headers.get('Sec-Fetch-Site');
+
+  if (contentType !== 'application/json'
+    || requestOrigin !== new URL(request.url).origin
+    || (fetchSite !== null && fetchSite !== 'same-origin')) {
+    return null;
+  }
+
+  try {
+    const body: unknown = await request.json();
+    return typeof body === 'object' && body !== null && !Array.isArray(body)
+      ? body as Record<string, unknown>
+      : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+export function telemetryClientAddress(request: Request): string | null {
+  const edgeAddress = request.headers.get('CF-Connecting-IP');
+  if (edgeAddress) return edgeAddress;
+
+  const hostname = new URL(request.url).hostname;
+  return hostname === '127.0.0.1' || hostname === 'localhost' || hostname === '::1'
+    ? 'local-development'
+    : null;
+}
+
+export async function sha256Hex(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
 export async function countHourlyTelemetryRequest(db: D1Database, clientIp: string, eventType: string): Promise<number> {
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${eventType}:${clientIp}`));
-  const rateKey = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+  const rateKey = await sha256Hex(`${eventType}:${clientIp}`);
   const windowStartedAt = Math.floor(Date.now() / RATE_LIMIT_WINDOW_MS) * RATE_LIMIT_WINDOW_MS;
   await db.prepare('DELETE FROM telemetry_rate_limits WHERE window_started_at < ?').bind(windowStartedAt - RATE_LIMIT_WINDOW_MS).run();
   const result = await db.prepare(`
@@ -63,15 +98,17 @@ export async function countHourlyTelemetryRequest(db: D1Database, clientIp: stri
 }
 
 export async function purgeExpiredTelemetry(db: D1Database) {
-  const [searchLogs, searchClickLogs, calculationLogs] = await Promise.all([
+  const [searchLogs, searchClickLogs, calculationLogs, visitorDailyStats] = await Promise.all([
     db.prepare("DELETE FROM search_logs WHERE created_at < datetime('now', '-30 days')").run(),
     db.prepare("DELETE FROM search_click_logs WHERE created_at < datetime('now', '-30 days')").run(),
     db.prepare("DELETE FROM calculation_logs WHERE created_at < datetime('now', '-30 days')").run(),
+    db.prepare("DELETE FROM visitor_daily_stats WHERE day < date('now', '+9 hours', '-29 days')").run(),
     db.prepare("DELETE FROM telemetry_rate_limits WHERE window_started_at < ?").bind(Date.now() - RATE_LIMIT_WINDOW_MS).run(),
   ]);
   return {
     searchLogs: searchLogs.meta?.changes ?? 0,
     searchClickLogs: searchClickLogs.meta?.changes ?? 0,
     calculationLogs: calculationLogs.meta?.changes ?? 0,
+    visitorDailyStats: visitorDailyStats.meta?.changes ?? 0,
   };
 }

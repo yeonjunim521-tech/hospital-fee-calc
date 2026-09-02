@@ -19,17 +19,25 @@ console.log('=== MEDICost v3.0 shell contract ===');
 
 test('Given no saved consent, when parsed, then optional categories stay disabled', () => {
     const parsed = consent.parseConsent(null);
-    assert.deepStrictEqual(parsed, { analytics: false, updatedAt: null });
+    assert.strictEqual(consent.STORAGE_KEY, 'medicost-consent-v3');
+    assert.deepStrictEqual(parsed, { enhancedFeatures: false, analytics: false, updatedAt: null });
 });
 
 test('Given malformed consent, when parsed, then it fails closed', () => {
     const parsed = consent.parseConsent('{"analytics":"yes","ads":true}');
-    assert.deepStrictEqual(parsed, { analytics: false, updatedAt: null });
+    assert.deepStrictEqual(parsed, { enhancedFeatures: false, analytics: false, updatedAt: null });
 });
 
-test('Given legacy consent, when parsed, then the removed ad preference is ignored', () => {
+test('Given legacy consent, when parsed, then exact-search collection fails closed until a new choice', () => {
     const value = { analytics: true, ads: false, updatedAt: '2026-07-11T00:00:00.000Z' };
-    assert.deepStrictEqual(consent.parseConsent(JSON.stringify(value)), { analytics: true, updatedAt: value.updatedAt });
+    assert.deepStrictEqual(consent.parseConsent(JSON.stringify(value)), { enhancedFeatures: false, analytics: false, updatedAt: null });
+});
+
+test('Given current consent, when parsed, then enhanced features and external analytics stay independent', () => {
+    const value = { enhancedFeatures: true, analytics: false, updatedAt: '2026-08-30T00:00:00.000Z' };
+    assert.deepStrictEqual(consent.parseConsent(JSON.stringify(value)), value);
+    assert.strictEqual(consent.canUseEnhancedFeatures(value), true);
+    assert.strictEqual(consent.canLoadAnalytics(value), false);
 });
 
 test('Given optional analytics is withdrawn, when consent is applied, then loaded analytics scripts are removed', () => {
@@ -42,9 +50,26 @@ test('Given optional analytics is withdrawn, when consent is applied, then loade
     assert.match(consentSource, /existing\.remove\(\)/);
 });
 
-test('Given a search event, when analytics is sent, then raw search terms are not included', () => {
+test('Given an enhanced search, when operational telemetry is sent, then the exact term is included without identity fields', () => {
     const scriptSource = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'assets', 'js', 'script.js'), 'utf8');
-    assert.doesNotMatch(scriptSource, /search_term\s*:/);
+    const searchLogSource = scriptSource.match(/async function sendSearchLog[\s\S]*?function compactSelectedItems/)?.[0] || '';
+    assert.match(searchLogSource, /query: payload\.query,\s*resultCount: payload\.resultCount,\s*operationalConsent: true/);
+    assert.match(scriptSource, /const pendingSearchLogs = new Map\(\)/);
+    assert.doesNotMatch(searchLogSource, /userAgent|visitorId|sessionId/);
+    assert.doesNotMatch(scriptSource, /sendSearchClickLog|\/api\/search-click/);
+});
+
+test('Given basic-only use, when the shell is rendered, then required calculation stays available and optional step is gated', () => {
+    const shellSource = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'assets', 'js', 'app-shell.js'), 'utf8');
+    const pageSource = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'index.html'), 'utf8');
+    assert.match(shellSource, /step === 2 && !hasEnhancedFeatureAccess/);
+    assert.match(shellSource, /prepareBasicCalculation/);
+    assert.match(pageSource, /data-step-basic-result>필수 조건으로 계산/);
+    assert.match(pageSource, /data-step-next="2">선택 조건 추가/);
+    assert.match(pageSource, /\[필수\] 프로토타입 선택 기능 데이터 수집 동의/);
+    assert.match(pageSource, /\[선택\] Google Analytics/);
+    assert.match(pageSource, /동의하지 않고 기본 계산/);
+    assert.match(shellSource, /자체 방문·검색 통계 수집에 동의한 경우/);
 });
 
 test('Given a direct medical-item selection, when it is added, then search analytics are not polluted', () => {

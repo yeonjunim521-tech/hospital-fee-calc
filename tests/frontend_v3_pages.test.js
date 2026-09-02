@@ -64,10 +64,21 @@ test('공개 HTML은 동의 전에 분석 스크립트를 직접 로드하지 �
     }
 });
 
-test('광고 동의 항목은 없고 분석 동의만 유지한다', () => {
-    for (const name of pages) {
+test('모든 공개 페이지는 프로토타입 필수 자체통계와 선택 외부 분석을 구분한다', () => {
+    for (const name of [...pages, ...seoPages.map(([pageName]) => pageName)]) {
         const html = readPage(name);
+        assert.match(html, /\[필수\] 프로토타입 선택 기능 데이터 수집 동의/, name);
+        assert.match(html, /수집·이용 목적/, name);
+        assert.match(html, /수집 항목/, name);
+        assert.match(html, /보유·이용 기간/, name);
+        assert.match(html, /동의 거부/, name);
+        assert.match(html, /필수 통계에 동의하고 선택 기능 이용/, name);
+        assert.match(html, /동의하지 않고 기본 계산/, name);
+        assert.match(html, /id="consent-enhanced"/, name);
         assert.match(html, /id="consent-analytics"/, name);
+        assert.match(html, /\[필수\] 자체 방문·검색 통계 수집/, name);
+        assert.match(html, /\[선택\] Google Analytics/, name);
+        assert.match(html, /선택하지 않아도 프로토타입 선택 기능을 이용할 수 있습니다/, name);
         assert.doesNotMatch(html, /id="consent-ads"|맞춤 광고/, name);
     }
 });
@@ -79,9 +90,11 @@ test('메인 페이지는 v3.0, 단계형 계산기, 동의 설정과 환자 부
     assert.match(html, /data-step-panel="2"/);
     assert.match(html, /data-step-panel="3"/);
     assert.match(html, /data-step-next="3"/);
-    assert.match(html, /data-step-quick-result/);
-    assert.match(html, /data-quick-result/);
-    assert.match(html, />바로 결과 보기<\/button>/);
+    assert.match(html, /data-step-next="2"/);
+    assert.match(html, /data-step-basic-result>필수 조건으로 계산/);
+    assert.match(html, />선택 조건 추가<\/button>/);
+    assert.match(html, />선택 조건으로<\/button>/);
+    assert.doesNotMatch(html, /data-step-quick-result|data-quick-result/);
     assert.match(html, /id="advanced-items-toggle"/);
     assert.match(html, /id="advanced-items-panel"/);
     assert.match(html, /id="selection-summary"/);
@@ -89,8 +102,7 @@ test('메인 페이지는 v3.0, 단계형 계산기, 동의 설정과 환자 부
     assert.match(html, /id="result-insights-drivers"/);
     assert.match(html, /id="result-insights-summary"/);
     assert.match(html, /data-reset-calculator/);
-    assert.match(html, /data-result-insurance/);
-    assert.match(html, /data-result-edit/);
+    assert.doesNotMatch(html, /data-result-insurance|data-result-edit/);
     assert.doesNotMatch(html, /data-open-insurance|data-edit-conditions/);
     assert.doesNotMatch(html, /id="btn-show-result"|id="result-ready-message"|data-focus-result/);
     assert.match(html, /실비 환급 전 예상 환자 부담금/);
@@ -108,9 +120,15 @@ test('문의 안내는 채널과 의료상담을 만들어내지 않는다', () 
 
 test('개인정보 안내는 최소수집과 30일 보유 기준을 명시한다', () => {
     const html = readPage('privacy.html');
-    assert.match(html, /검색어/);
-    assert.match(html, /클릭한 의료 항목/);
-    assert.match(html, /주민등록번호.*전화번호.*이메일/);
+    assert.match(html, /프로토타입 선택 기능 필수 동의 항목/);
+    assert.match(html, /목적:/);
+    assert.match(html, /항목:/);
+    assert.match(html, /보유·이용 기간:/);
+    assert.match(html, /동의 거부 권리와 이용 제한/);
+    assert.match(html, /실제 검색어/);
+    assert.match(html, /검색 로그에는 IP, 브라우저 식별자, 세션, User-Agent를 저장하지 않습니다/);
+    assert.match(html, /검색 로그와 연결하는 키를 두지 않습니다/);
+    assert.match(html, /기본 계산은 가능합니다/);
     assert.match(html, /30일/);
     assert.match(html, /데이터 오류/);
     assert.match(html, /Kakao AdFit/);
@@ -120,16 +138,24 @@ test('개인정보 안내는 최소수집과 30일 보유 기준을 명시한다
     assert.match(html, /쿠팡 파트너스/);
 });
 
-test('관리자 검색 상세는 클릭 항목 코드·이름·횟수·페이지·시각을 모두 표시한다', () => {
+test('관리자 검색 화면은 레거시 클릭 상세 대신 운영 통계 자산을 사용한다', () => {
     const html = readPage('admin-search.html');
-    assert.match(html, /clicked_item_id/);
-    assert.match(html, /clicked_item_name/);
-    assert.match(html, /click_count/);
-    assert.match(html, /clicked\.path/);
-    assert.match(html, /last_clicked_at/);
-    assert.match(html, /clickedItemsByQuery/);
-    assert.match(html, /&query=/);
-    assert.doesNotMatch(html, /row\.user_agent|getDeviceLabel/);
+    assert.match(html, /assets\/css\/admin-search\.css/);
+    assert.match(html, /assets\/js\/admin-search\.js/);
+    assert.doesNotMatch(html, /clicked_item_id|clicked_item_name|row\.user_agent|getDeviceLabel/);
+});
+
+test('검색 운영 관리자는 필요한 네 보기와 목록별 삭제 확인을 제공한다', () => {
+    const html = readPage('admin-search.html');
+    const script = readPage('assets/js/admin-search.js');
+    assert.match(html, /data-tab="missing"/);
+    assert.match(html, /data-tab="completed"/);
+    assert.match(html, /data-tab="searches"/);
+    assert.match(html, /data-tab="visitors"/);
+    assert.match(html, /id="delete-dialog"/);
+    assert.match(html, /검색어와 연결되지 않은 일별 익명 통계/);
+    assert.match(script, /type: state\.pendingDelete\.type/);
+    assert.match(script, /candidate-history/);
 });
 
 test('필수 안내 페이지는 현재 위치를 탐색 메뉴에 표시한다', () => {

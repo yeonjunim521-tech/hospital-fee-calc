@@ -79,10 +79,14 @@ const fixtureItems = [
 
 {
     const admin = fs.readFileSync(path.join(root, 'frontend', 'admin-search.html'), 'utf8');
-    assert.match(admin, /검색결과 없음/);
-    assert.match(admin, /승인대기/);
-    assert.match(admin, /activePeriod:\s*"7"/);
-    assert.match(admin, /\.board-table td\.keyword-cell[\s\S]*white-space:\s*normal/);
+    const adminScript = fs.readFileSync(path.join(root, 'frontend', 'assets', 'js', 'admin-search.js'), 'utf8');
+    const adminStyles = fs.readFileSync(path.join(root, 'frontend', 'assets', 'css', 'admin-search.css'), 'utf8');
+    assert.match(admin, /결과가 없었던 검색어/);
+    assert.match(admin, /추가 완료 이력/);
+    assert.match(admin, /방문자가 검색한 전체 검색어/);
+    assert.match(admin, /날짜별 방문 흐름/);
+    assert.match(adminScript, /period:\s*'7'/);
+    assert.match(adminStyles, /\.table-scroll\s*\{\s*overflow-x:\s*auto/);
 }
 
 {
